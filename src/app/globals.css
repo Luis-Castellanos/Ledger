@@ -964,6 +964,64 @@ button {
   color: var(--green);
 }
 
+.review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.review-actions button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+}
+
+.review-actions button:hover {
+  border-color: rgba(87, 184, 157, 0.45);
+  color: var(--green);
+}
+
+.cashflow-bars {
+  margin-top: 28px;
+  display: grid;
+  gap: 16px;
+}
+
+.cashflow-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(120px, 1fr) 108px;
+  gap: 16px;
+  align-items: center;
+}
+
+.cashflow-row span {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cashflow-row div {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.cashflow-row i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--green), var(--violet));
+}
+
 .auth-page {
   display: grid;
   min-height: 100vh;

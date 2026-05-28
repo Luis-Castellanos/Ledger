@@ -57,3 +57,17 @@ test("settings page supports ledger settings edits", async ({ page }) => {
 
   await expect(page.getByText("Forensic Ledger")).toBeVisible();
 });
+
+test("review, cashflow, and net worth pages render", async ({ page }) => {
+  await page.goto("/review");
+  await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
+  await expect(page.getByText("Unresolved transactions")).toBeVisible();
+
+  await page.goto("/cashflow");
+  await expect(page.getByRole("heading", { name: "Cashflow" })).toBeVisible();
+  await expect(page.getByText("Category movement")).toBeVisible();
+
+  await page.goto("/net-worth");
+  await expect(page.getByRole("heading", { name: "Net Worth" })).toBeVisible();
+  await expect(page.getByText("Account position")).toBeVisible();
+});

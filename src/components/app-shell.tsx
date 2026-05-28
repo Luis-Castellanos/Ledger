@@ -15,10 +15,10 @@ import Link from "next/link";
 const nav = [
   { label: "Dashboard", href: "/", icon: ChartNoAxesCombined },
   { label: "Transactions", href: "/transactions", icon: ReceiptText },
-  { label: "Review", href: "#", icon: ListChecks },
+  { label: "Review", href: "/review", icon: ListChecks },
   { label: "Imports", href: "/imports", icon: FileUp },
-  { label: "Cashflow", href: "#", icon: BadgeDollarSign },
-  { label: "Net Worth", href: "#", icon: Landmark },
+  { label: "Cashflow", href: "/cashflow", icon: BadgeDollarSign },
+  { label: "Net Worth", href: "/net-worth", icon: Landmark },
   { label: "Accounts", href: "/accounts", icon: WalletCards },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
