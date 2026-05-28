@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, ListChecks, Search, ShieldAlert, Upload } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { sampleImportBatches, sampleImportRows, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
+import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
 const categories = ["Uncategorized", ...defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)])];
@@ -17,8 +17,52 @@ const statuses = [
 
 export function ImportsWorkbench() {
   const [rows, setRows] = useState<ImportPreviewRow[]>(sampleImportRows);
+  const [batches, setBatches] = useState<ImportBatch[]>(sampleImportBatches);
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+  const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
-  const [selectedAccount, setSelectedAccount] = useState(sampleAccounts[0]?.name ?? "");
+  const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
+  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadImports() {
+      try {
+        const [accountsResponse, importsResponse] = await Promise.all([
+          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
+          fetch("/api/imports", { headers: { Accept: "application/json" } }),
+        ]);
+
+        if (!accountsResponse.ok || !importsResponse.ok) {
+          throw new Error("Import APIs unavailable");
+        }
+
+        const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
+        const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+        const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
+
+        if (isMounted && !hasLocalEdits.current) {
+          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+          setSelectedAccountId(nextAccounts[0]?.id ?? selectedAccountId);
+          setBatches(importsPayload.batches);
+          setRows(importsPayload.rows);
+          setDataSource("database");
+        }
+      } catch {
+        if (isMounted) {
+          setDataSource("demo");
+        }
+      }
+    }
+
+    void loadImports();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedAccountId]);
 
   const summary = useMemo(() => {
     return rows.reduce(
@@ -40,25 +84,93 @@ export function ImportsWorkbench() {
     return rows.filter((row) => [row.description, row.category, row.date, String(row.rowNumber)].some((value) => value.toLowerCase().includes(normalizedQuery)));
   }, [query, rows]);
 
-  function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
+  async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
+    hasLocalEdits.current = true;
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+
+    if (dataSource === "database") {
+      try {
+        await fetch("/api/imports", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ id, category: patch.category, status: patch.status }),
+        });
+      } catch {
+        setError("Import row update stayed local because the API was unavailable.");
+      }
+    }
   }
 
-  function stageMockFile() {
+  async function stageMockFile() {
     const nextNumber = Math.max(...rows.map((row) => row.rowNumber)) + 1;
-    setRows((current) => [
+    const nextRow = {
+      id: `local_${Date.now()}`,
+      rowNumber: nextNumber,
+      date: new Date().toISOString().slice(0, 10),
+      description: "NEW CSV ROW",
+      category: "Uncategorized",
+      amountMinor: -4218,
+      status: "needs_review" as ImportRowStatus,
+    };
+    hasLocalEdits.current = true;
+
+    if (dataSource === "database") {
+      const response = await fetch("/api/imports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          filename: `manual-stage-${Date.now()}.csv`,
+          rows: [
+            {
+              rowNumber: nextRow.rowNumber,
+              date: nextRow.date,
+              description: nextRow.description,
+              amount: "-42.18",
+              category: nextRow.category,
+              status: nextRow.status,
+            },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        setRows([nextRow]);
+        setBatches((current) => [
+          {
+            id: `local_batch_${Date.now()}`,
+            filename: "manual-stage.csv",
+            account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
+            status: "staged",
+            uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+            acceptedRows: 0,
+            rejectedRows: 0,
+          },
+          ...current,
+        ]);
+        setError(null);
+        return;
+      }
+    }
+
+    setRows((current) => [nextRow, ...current]);
+    setBatches((current) => [
       {
-        id: `local_${Date.now()}`,
-        rowNumber: nextNumber,
-        date: new Date().toISOString().slice(0, 10),
-        description: "NEW CSV ROW",
-        category: "Uncategorized",
-        amountMinor: -4218,
-        status: "needs_review",
+        id: `local_batch_${Date.now()}`,
+        filename: "manual-stage.csv",
+        account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
+        status: "staged",
+        uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+        acceptedRows: 0,
+        rejectedRows: 0,
       },
       ...current,
     ]);
+    setDataSource("demo");
+    setError(dataSource === "database" ? "Import stayed local because the API rejected the staged rows." : null);
   }
+
+  const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
 
   return (
     <div className="transactions-grid">
@@ -76,14 +188,15 @@ export function ImportsWorkbench() {
               <p className="panel-label">Staging</p>
               <h2 className="panel-title">Import review</h2>
             </div>
+            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />
                 <input aria-label="Search import rows" placeholder="Search rows" value={query} onChange={(event) => setQuery(event.target.value)} />
               </label>
-              <select aria-label="Import account" value={selectedAccount} onChange={(event) => setSelectedAccount(event.target.value)}>
-                {sampleAccounts.map((account) => (
-                  <option value={account.name} key={account.id}>
+              <select aria-label="Import account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
+                {accountOptions.map((account) => (
+                  <option value={account.id} key={account.id}>
                     {account.name}
                   </option>
                 ))}
@@ -141,7 +254,8 @@ export function ImportsWorkbench() {
           <div className="mt-6 grid gap-3 rounded-[8px] border border-dashed border-[rgba(214,226,217,0.22)] p-5 text-[var(--muted)]">
             <FileSpreadsheet size={26} />
             <p className="m-0 font-bold text-[var(--ink-strong)]">CSV staging area</p>
-            <span className="font-mono text-[11px]">{selectedAccount}</span>
+            <span className="font-mono text-[11px]">{selectedAccountName}</span>
+            {error ? <p className="form-error">{error}</p> : null}
             <button className="primary-action" type="button" onClick={stageMockFile}>
               <Upload size={16} />
               Add sample row
@@ -152,7 +266,7 @@ export function ImportsWorkbench() {
         <section className="panel account-form-panel">
           <p className="panel-label">Recent files</p>
           <div className="mt-5 grid gap-3">
-            {sampleImportBatches.map((batch) => (
+            {batches.map((batch) => (
               <div className="border-b border-[rgba(214,226,217,0.08)] pb-3 last:border-b-0 last:pb-0" key={batch.id}>
                 <strong className="block text-[13px] text-[var(--ink-strong)]">{batch.filename}</strong>
                 <span className="font-mono text-[11px] text-[var(--muted)]">
@@ -169,6 +283,16 @@ export function ImportsWorkbench() {
     </div>
   );
 }
+
+type DatabaseAccount = {
+  id: string;
+  name: string;
+};
+
+type AccountOption = {
+  id: string;
+  name: string;
+};
 
 function ImportMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" | "gold" }) {
   return (
