@@ -23,6 +23,7 @@ export async function GET() {
       merchant: transactions.displayName,
       notes: transactions.notes,
       status: transactions.reviewStatus,
+      transferStatus: transactions.transferStatus,
     })
     .from(transactions)
     .innerJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
         amountMinor: transaction.amountMinor,
         notes: transaction.notes,
         status: transaction.reviewStatus,
+        transferStatus: transaction.transferStatus,
       },
     },
     { status: 201 },
@@ -179,13 +181,16 @@ export async function PATCH(request: Request) {
         .limit(1)
     : [];
 
+  const transactionUpdate = {
+    ...(parsed.data.reviewStatus ? { reviewStatus: parsed.data.reviewStatus } : {}),
+    ...(parsed.data.transferStatus ? { transferStatus: parsed.data.transferStatus } : {}),
+    ...(parsed.data.categoryName ? { categoryId: category?.id ?? null } : {}),
+    updatedAt: new Date(),
+  };
+
   const [transaction] = await db
     .update(transactions)
-    .set({
-      reviewStatus: parsed.data.reviewStatus,
-      categoryId: parsed.data.categoryName ? category?.id ?? null : existingTransaction.categoryId,
-      updatedAt: new Date(),
-    })
+    .set(transactionUpdate)
     .where(and(eq(transactions.id, parsed.data.id), eq(transactions.ledgerId, context.ledger.id)))
     .returning();
 

@@ -43,6 +43,8 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await page.getByRole("button", { name: "Save transaction" }).click();
 
   await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Transfer status for Local Bookstore").selectOption("transfer");
+  await expect(page.getByLabel("Transfer status for Local Bookstore")).toHaveValue("transfer");
   await page.getByRole("button", { name: "Delete Local Bookstore" }).click();
   await expect(page.getByText("Local Bookstore deleted.")).toBeVisible();
   await expect(page.getByText("Local Bookstore", { exact: true })).toHaveCount(0);

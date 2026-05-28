@@ -15,6 +15,10 @@ const statuses = [
   { label: "Reviewed", value: "reviewed" },
   { label: "Excluded", value: "excluded" },
 ] satisfies { label: string; value: TransactionStatus }[];
+const transferStatuses = [
+  { label: "Operating", value: "none" },
+  { label: "Transfer", value: "transfer" },
+] satisfies { label: string; value: NonNullable<TransactionRow["transferStatus"]> }[];
 
 export function TransactionsWorkbench() {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
@@ -99,7 +103,7 @@ export function TransactionsWorkbench() {
   const totals = useMemo(() => {
     return transactions.reduce(
       (summary, transaction) => {
-        if (transaction.status === "excluded") {
+        if (transaction.status === "excluded" || transaction.transferStatus === "transfer") {
           return summary;
         }
 
@@ -134,6 +138,15 @@ export function TransactionsWorkbench() {
 
     if (dataSource === "database") {
       await persistTransactionPatch({ id, categoryName: category });
+    }
+  }
+
+  async function updateTransferStatus(id: string, transferStatus: NonNullable<TransactionRow["transferStatus"]>) {
+    hasLocalEdits.current = true;
+    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, transferStatus } : transaction)));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({ id, transferStatus });
     }
   }
 
@@ -220,6 +233,7 @@ export function TransactionsWorkbench() {
           category: formState.category,
           amountMinor,
           status: "needs_review",
+          transferStatus: "none",
         },
         ...current,
       ]);
@@ -280,7 +294,7 @@ export function TransactionsWorkbench() {
             <div className="transactions-table-head" role="row">
               <span>Merchant</span>
               <span>Category</span>
-              <span>Status</span>
+              <span>Status / transfer</span>
               <span>Amount</span>
             </div>
             {lastDeletedTransaction ? (
@@ -311,17 +325,30 @@ export function TransactionsWorkbench() {
                     </option>
                   ))}
                 </select>
-                <select
-                  aria-label={`Status for ${transaction.merchant}`}
-                  value={transaction.status}
-                  onChange={(event) => updateStatus(transaction.id, event.target.value as TransactionStatus)}
-                >
-                  {statuses.map((status) => (
-                    <option value={status.value} key={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="transaction-status-stack">
+                  <select
+                    aria-label={`Status for ${transaction.merchant}`}
+                    value={transaction.status}
+                    onChange={(event) => updateStatus(transaction.id, event.target.value as TransactionStatus)}
+                  >
+                    {statuses.map((status) => (
+                      <option value={status.value} key={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label={`Transfer status for ${transaction.merchant}`}
+                    value={transaction.transferStatus ?? "none"}
+                    onChange={(event) => updateTransferStatus(transaction.id, event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
+                  >
+                    {transferStatuses.map((status) => (
+                      <option value={status.value} key={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="transaction-amount-actions">
                   <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
                   <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={() => deleteTransaction(transaction.id)}>
@@ -440,7 +467,13 @@ function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Gr
   return options.find((category) => category.name === currentCategory)?.name ?? options.find((category) => category.name === "Groceries")?.name ?? options[0]?.name ?? "Groceries";
 }
 
-async function persistTransactionPatch(body: { id: string; reviewStatus?: TransactionStatus; categoryName?: string; action?: "delete" | "restore" }) {
+async function persistTransactionPatch(body: {
+  id: string;
+  reviewStatus?: TransactionStatus;
+  transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
+  categoryName?: string;
+  action?: "delete" | "restore";
+}) {
   try {
     await fetch("/api/transactions", {
       method: "PATCH",

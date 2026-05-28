@@ -2,6 +2,7 @@ import { z } from "zod";
 import { parseDollarAmount } from "./money";
 
 export const transactionStatusSchema = z.enum(["needs_review", "reviewed", "excluded"]);
+export const transactionTransferStatusSchema = z.enum(["none", "transfer"]);
 
 export const createManualTransactionSchema = z.object({
   date: z.string().date(),
@@ -26,9 +27,11 @@ export const createManualTransactionSchema = z.object({
 export const updateTransactionReviewSchema = z.object({
   id: z.string().uuid(),
   reviewStatus: transactionStatusSchema.optional(),
+  transferStatus: transactionTransferStatusSchema.optional(),
   categoryName: z.string().trim().min(1).max(120).optional(),
   action: z.enum(["delete", "restore"]).optional(),
 });
 
 export type CreateManualTransactionInput = z.infer<typeof createManualTransactionSchema>;
 export type UpdateTransactionReviewInput = z.infer<typeof updateTransactionReviewSchema>;
+export type TransactionTransferStatus = z.infer<typeof transactionTransferStatusSchema>;

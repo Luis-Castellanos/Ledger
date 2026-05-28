@@ -74,7 +74,7 @@ export default function Home() {
 
     const cashflow = transactionRows.reduce(
       (summary, transaction) => {
-        if (transaction.status === "excluded" || transaction.category === "Internal Transfer") {
+        if (isCashflowExcluded(transaction)) {
           return summary;
         }
 
@@ -129,7 +129,7 @@ export default function Home() {
 
   const cashflowTitle = useMemo(() => {
     const outflow = transactionRows.reduce((total, transaction) => {
-      if (transaction.status === "excluded" || transaction.category === "Internal Transfer" || transaction.amountMinor > 0) {
+      if (isCashflowExcluded(transaction) || transaction.amountMinor > 0) {
         return total;
       }
 
@@ -406,11 +406,15 @@ function StackedBarChart({ transactions }: { transactions: TransactionRow[] }) {
   );
 }
 
+function isCashflowExcluded(transaction: TransactionRow) {
+  return transaction.status === "excluded" || transaction.transferStatus === "transfer" || transaction.category === "Internal Transfer";
+}
+
 function buildCategoryShares(transactions: TransactionRow[]) {
   const byCategory = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (transaction.status === "excluded" || transaction.category === "Internal Transfer" || transaction.amountMinor >= 0) {
+    if (isCashflowExcluded(transaction) || transaction.amountMinor >= 0) {
       continue;
     }
 
@@ -437,7 +441,7 @@ function buildMonthlySpending(transactions: TransactionRow[]) {
   const byMonth = new Map<string, Map<string, number>>();
 
   for (const transaction of transactions) {
-    if (transaction.status === "excluded" || transaction.category === "Internal Transfer" || transaction.amountMinor >= 0) {
+    if (isCashflowExcluded(transaction) || transaction.amountMinor >= 0) {
       continue;
     }
 

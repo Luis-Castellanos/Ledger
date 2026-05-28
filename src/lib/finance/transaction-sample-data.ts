@@ -1,4 +1,5 @@
 export type TransactionStatus = "needs_review" | "reviewed" | "excluded";
+export type TransactionTransferStatus = "none" | "transfer";
 
 export type TransactionRow = {
   id: string;
@@ -9,6 +10,7 @@ export type TransactionRow = {
   merchant: string;
   notes?: string;
   status: TransactionStatus;
+  transferStatus?: TransactionTransferStatus;
 };
 
 export const sampleTransactionRows = [
@@ -65,5 +67,6 @@ export const sampleTransactionRows = [
     category: "Internal Transfer",
     amountMinor: -150000,
     status: "reviewed",
+    transferStatus: "transfer",
   },
 ] satisfies TransactionRow[];

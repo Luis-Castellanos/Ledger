@@ -44,7 +44,7 @@ export function CashflowWorkbench() {
   const summary = useMemo(() => {
     return transactions.reduce(
       (acc, transaction) => {
-        if (transaction.status === "excluded" || transaction.category === "Internal Transfer") {
+        if (transaction.status === "excluded" || transaction.transferStatus === "transfer" || transaction.category === "Internal Transfer") {
           acc.excluded += 1;
           return acc;
         }
