@@ -38,11 +38,21 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await expect(page.getByText("Register")).toBeVisible();
   await expect(page.getByRole("link", { name: "Export transactions" })).toHaveAttribute("href", "/api/exports?format=transactions_csv");
 
+  await page.getByLabel("Transfer filter").selectOption("transfer");
+  await expect(page.getByText("Internal transfer", { exact: true })).toBeVisible();
+  await page.getByLabel("Transfer filter").selectOption("all");
+
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");
   await page.getByRole("button", { name: "Save transaction" }).click();
 
   await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Account filter").selectOption("Operating Checking");
+  await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Category filter").selectOption("Groceries");
+  await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Account filter").selectOption("all");
+  await page.getByLabel("Category filter").selectOption("all");
   await page.getByLabel("Transfer status for Local Bookstore").selectOption("transfer");
   await expect(page.getByLabel("Transfer status for Local Bookstore")).toHaveValue("transfer");
   await page.getByRole("button", { name: "Delete Local Bookstore" }).click();

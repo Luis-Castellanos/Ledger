@@ -27,6 +27,9 @@ export function TransactionsWorkbench() {
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
+  const [accountFilter, setAccountFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>("all");
   const [error, setError] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
@@ -90,15 +93,18 @@ export function TransactionsWorkbench() {
 
     return transactions.filter((transaction) => {
       const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
+      const matchesAccount = accountFilter === "all" || transaction.account === accountFilter;
+      const matchesCategory = categoryFilter === "all" || transaction.category === categoryFilter;
+      const matchesTransfer = transferFilter === "all" || (transaction.transferStatus ?? "none") === transferFilter;
       const matchesQuery =
         !normalizedQuery ||
         [transaction.merchant, transaction.account, transaction.category, transaction.date].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
 
-      return matchesStatus && matchesQuery;
+      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesQuery;
     });
-  }, [query, statusFilter, transactions]);
+  }, [accountFilter, categoryFilter, query, statusFilter, transactions, transferFilter]);
 
   const totals = useMemo(() => {
     return transactions.reduce(
@@ -282,6 +288,34 @@ export function TransactionsWorkbench() {
               <select aria-label="Status filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
                 <option value="all">All statuses</option>
                 {statuses.map((status) => (
+                  <option value={status.value} key={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Account filter" value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}>
+                <option value="all">All accounts</option>
+                {accountOptions.map((account) => (
+                  <option value={account.name} key={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Category filter" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                <option value="all">All categories</option>
+                {categoryOptions.map((category) => (
+                  <option value={category.name} key={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Transfer filter"
+                value={transferFilter}
+                onChange={(event) => setTransferFilter(event.target.value as typeof transferFilter)}
+              >
+                <option value="all">All movement</option>
+                {transferStatuses.map((status) => (
                   <option value={status.value} key={status.value}>
                     {status.label}
                   </option>
