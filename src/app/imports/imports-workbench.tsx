@@ -33,6 +33,7 @@ const fallbackImportMappings: ImportMappingSummary[] = [
 export function ImportsWorkbench() {
   const [rows, setRows] = useState<ImportPreviewRow[]>(sampleImportRows);
   const [batches, setBatches] = useState<ImportBatch[]>(sampleImportBatches);
+  const [selectedBatchId, setSelectedBatchId] = useState(sampleImportBatches[0]?.id ?? "");
   const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
   const [importMappings, setImportMappings] = useState<ImportMappingSummary[]>(fallbackImportMappings);
   const [selectedMappingId, setSelectedMappingId] = useState(fallbackImportMappings[0]?.id ?? "none");
@@ -58,9 +59,10 @@ export function ImportsWorkbench() {
 
     async function loadImports() {
       try {
+        const importUrl = selectedBatchId ? `/api/imports?importId=${encodeURIComponent(selectedBatchId)}` : "/api/imports";
         const [accountsResponse, importsResponse] = await Promise.all([
           fetch("/api/accounts", { headers: { Accept: "application/json" } }),
-          fetch("/api/imports", { headers: { Accept: "application/json" } }),
+          fetch(importUrl, { headers: { Accept: "application/json" } }),
         ]);
         const mappingsResponse = await fetch("/api/import-mappings", { headers: { Accept: "application/json" } });
 
@@ -69,7 +71,7 @@ export function ImportsWorkbench() {
         }
 
         const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
-        const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+        const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
         const mappingsPayload = mappingsResponse.ok ? ((await mappingsResponse.json()) as { mappings: ImportMappingSummary[] }) : { mappings: [] };
         const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
 
@@ -79,6 +81,7 @@ export function ImportsWorkbench() {
           setImportMappings(mappingsPayload.mappings.length > 0 ? mappingsPayload.mappings : fallbackImportMappings);
           setSelectedMappingId(mappingsPayload.mappings[0]?.id ?? fallbackImportMappings[0]?.id ?? "none");
           setBatches(importsPayload.batches);
+          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
           setRows(importsPayload.rows);
           setDataSource("database");
         }
@@ -94,7 +97,7 @@ export function ImportsWorkbench() {
     return () => {
       isMounted = false;
     };
-  }, [selectedAccountId]);
+  }, [selectedAccountId, selectedBatchId]);
 
   const summary = useMemo(() => {
     return rows.reduce(
@@ -116,7 +119,7 @@ export function ImportsWorkbench() {
     return rows.filter((row) => [row.description, row.category, row.date, String(row.rowNumber)].some((value) => value.toLowerCase().includes(normalizedQuery)));
   }, [query, rows]);
 
-  const activeBatch = batches[0];
+  const activeBatch = batches.find((batch) => batch.id === selectedBatchId) ?? batches[0];
 
   async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
     hasLocalEdits.current = true;
@@ -175,8 +178,9 @@ export function ImportsWorkbench() {
         const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
 
         if (importsResponse.ok) {
-          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
           setBatches(importsPayload.batches);
+          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
           setRows(importsPayload.rows);
           setError(null);
           return;
@@ -195,24 +199,24 @@ export function ImportsWorkbench() {
           },
           ...current,
         ]);
+        setSelectedBatchId(stagedBatch.id);
         setError(null);
         return;
       }
     }
 
+    const batch = {
+      id: `local_batch_${Date.now()}`,
+      filename: "manual-stage.csv",
+      account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
+      status: "staged" as const,
+      uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+      acceptedRows: 0,
+      rejectedRows: 0,
+    };
     setRows((current) => [nextRow, ...current]);
-    setBatches((current) => [
-      {
-        id: `local_batch_${Date.now()}`,
-        filename: "manual-stage.csv",
-        account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-        status: "staged",
-        uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-        acceptedRows: 0,
-        rejectedRows: 0,
-      },
-      ...current,
-    ]);
+    setBatches((current) => [batch, ...current]);
+    setSelectedBatchId(batch.id);
     setDataSource("demo");
     setError(dataSource === "database" ? "Import stayed local because the API rejected the staged rows." : null);
   }
@@ -273,8 +277,9 @@ export function ImportsWorkbench() {
         const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
 
         if (importsResponse.ok) {
-          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
           setBatches(importsPayload.batches);
+          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
           setRows(rejectedRows.length > 0 ? [...rejectedRows.map(toPreviewRow), ...importsPayload.rows] : importsPayload.rows);
           setError(rejectedRows.length > 0 ? `${rejectedRows.length} rejected row${rejectedRows.length === 1 ? "" : "s"} stayed local for correction.` : null);
           return;
@@ -282,19 +287,18 @@ export function ImportsWorkbench() {
       }
     }
 
+    const batch = {
+      id: `local_batch_${Date.now()}`,
+      filename,
+      account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
+      status: "staged" as const,
+      uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+      acceptedRows: parsedRows.filter((row) => row.status === "accepted").length,
+      rejectedRows: rejectedRows.length,
+    };
     setRows(nextRows);
-    setBatches((current) => [
-      {
-        id: `local_batch_${Date.now()}`,
-        filename,
-        account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-        status: "staged",
-        uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-        acceptedRows: parsedRows.filter((row) => row.status === "accepted").length,
-        rejectedRows: rejectedRows.length,
-      },
-      ...current,
-    ]);
+    setBatches((current) => [batch, ...current]);
+    setSelectedBatchId(batch.id);
     setDataSource("demo");
     setError(
       dataSource === "database"
@@ -338,6 +342,30 @@ export function ImportsWorkbench() {
     setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
     setDataSource("demo");
     setIsImportActionPending(false);
+  }
+
+  async function selectBatch(batchId: string) {
+    setSelectedBatchId(batchId);
+
+    if (dataSource !== "database" || !isUuid(batchId)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/imports?importId=${encodeURIComponent(batchId)}`, { headers: { Accept: "application/json" } });
+
+      if (!response.ok) {
+        throw new Error("Import detail API unavailable");
+      }
+
+      const payload = (await response.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
+      setBatches(payload.batches);
+      setSelectedBatchId(payload.selectedImportId ?? batchId);
+      setRows(payload.rows);
+      setError(null);
+    } catch {
+      setError("Import detail stayed on the current preview because the API was unavailable.");
+    }
   }
 
   async function saveMappingProfile() {
@@ -552,15 +580,16 @@ export function ImportsWorkbench() {
           <p className="panel-label">Recent files</p>
           <div className="mt-5 grid gap-3">
             {batches.map((batch) => (
-              <div className="border-b border-[rgba(214,226,217,0.08)] pb-3 last:border-b-0 last:pb-0" key={batch.id}>
-                <strong className="block text-[13px] text-[var(--ink-strong)]">{batch.filename}</strong>
-                <span className="font-mono text-[11px] text-[var(--muted)]">
+              <button className="import-history-item" data-state={batch.id === activeBatch?.id ? "selected" : "idle"} type="button" key={batch.id} onClick={() => void selectBatch(batch.id)}>
+                <span className={batch.status === "committed" ? "status-chip status-chip-live" : "status-chip"}>{batch.status.replace("_", " ")}</span>
+                <strong>{batch.filename}</strong>
+                <span>
                   {batch.account} • {batch.uploadedAt}
                 </span>
-                <p className="m-0 mt-1 font-mono text-[11px] text-[var(--muted)]">
-                  {batch.acceptedRows} accepted / {batch.rejectedRows} rejected / {batch.status}
-                </p>
-              </div>
+                <small>
+                  {batch.acceptedRows} accepted / {batch.rejectedRows} rejected
+                </small>
+              </button>
             ))}
           </div>
         </section>

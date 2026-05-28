@@ -1284,6 +1284,36 @@ button {
   color: var(--ink-strong);
 }
 
+.import-history-item {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-bottom-color: rgba(214, 226, 217, 0.08);
+  background: transparent;
+  padding: 0 0 12px;
+  text-align: left;
+}
+
+.import-history-item[data-state="selected"] {
+  border-color: rgba(87, 184, 157, 0.34);
+  border-radius: 8px;
+  background: rgba(87, 184, 157, 0.08);
+  padding: 12px;
+}
+
+.import-history-item strong {
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+
+.import-history-item span,
+.import-history-item small {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--muted);

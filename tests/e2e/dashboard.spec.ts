@@ -111,6 +111,10 @@ test("imports page supports local staged row", async ({ page }) => {
   await page.getByRole("button", { name: "Add sample row" }).click();
 
   await expect(page.getByText("NEW CSV ROW")).toBeVisible();
+  await expect(page.getByRole("button", { name: /manual-stage.csv/ })).toHaveAttribute("data-state", "selected");
+  await page.getByRole("button", { name: /checking-import.csv/ }).click();
+  await expect(page.getByRole("button", { name: /checking-import.csv/ })).toHaveAttribute("data-state", "selected");
+  await expect(page.getByText("LOCAL CSV COFFEE")).toHaveCount(2);
   await expect(page.getByRole("button", { name: "Commit import" })).toBeVisible();
   await page.getByRole("button", { name: "Commit import" }).click();
   await expect(page.getByText(/committed/)).toBeVisible();

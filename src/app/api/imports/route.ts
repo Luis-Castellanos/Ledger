@@ -7,13 +7,15 @@ import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
-export async function GET() {
+export async function GET(request: Request) {
   const context = await getOrCreateCurrentLedger();
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const requestedImportId = url.searchParams.get("importId");
   const db = getDb();
   const batchRows = await db
     .select({
@@ -31,8 +33,8 @@ export async function GET() {
     .orderBy(desc(imports.createdAt))
     .limit(20);
 
-  const latestImportId = batchRows[0]?.id;
-  const stagedRows = latestImportId
+  const selectedImportId = requestedImportId && batchRows.some((batch) => batch.id === requestedImportId) ? requestedImportId : batchRows[0]?.id;
+  const stagedRows = selectedImportId
     ? await db
         .select({
           id: importRows.id,
@@ -45,11 +47,12 @@ export async function GET() {
         })
         .from(importRows)
         .leftJoin(categories, eq(importRows.proposedCategoryId, categories.id))
-        .where(eq(importRows.importId, latestImportId))
+        .where(eq(importRows.importId, selectedImportId))
         .orderBy(importRows.rowNumber)
     : [];
 
   return NextResponse.json({
+    selectedImportId: selectedImportId ?? null,
     batches: batchRows.map((batch) => ({
       ...batch,
       uploadedAt: batch.uploadedAt.toISOString().slice(0, 16).replace("T", " "),
