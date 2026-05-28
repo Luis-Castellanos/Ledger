@@ -29,3 +29,31 @@ export function buildExportFilename(format: ExportFormat, createdAt = new Date()
   const extension = format === "transactions_csv" ? "csv" : "json";
   return `vault-${format}-${date}.${extension}`;
 }
+
+export type BackupPackageInput = {
+  ledger: {
+    id: string;
+    name: string;
+    defaultCurrency: string;
+  };
+  exportedAt?: Date;
+  appVersion?: string;
+  data: Record<string, unknown[]>;
+};
+
+export function buildBackupPackage({ ledger, exportedAt = new Date(), appVersion = "0.1.0", data }: BackupPackageInput) {
+  const tableCounts = Object.fromEntries(Object.entries(data).map(([tableName, rows]) => [tableName, rows.length]));
+
+  return {
+    manifest: {
+      formatVersion: 1,
+      exportedAt: exportedAt.toISOString(),
+      appVersion,
+      ledgerId: ledger.id,
+      ledgerName: ledger.name,
+      defaultCurrency: ledger.defaultCurrency,
+      tableCounts,
+    },
+    data,
+  };
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExportFilename, isExportFormat, toCsv } from "./export";
+import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "./export";
 
 describe("isExportFormat", () => {
   it("accepts supported export formats", () => {
@@ -23,5 +23,38 @@ describe("buildExportFilename", () => {
 
     expect(buildExportFilename("transactions_csv", date)).toBe("vault-transactions_csv-2026-05-27.csv");
     expect(buildExportFilename("backup_package", date)).toBe("vault-backup_package-2026-05-27.json");
+  });
+});
+
+describe("buildBackupPackage", () => {
+  it("creates a stable manifest with ledger identity and table counts", () => {
+    const backup = buildBackupPackage({
+      ledger: {
+        id: "ledger_123",
+        name: "Personal ledger",
+        defaultCurrency: "USD",
+      },
+      exportedAt: new Date("2026-05-27T12:00:00.000Z"),
+      appVersion: "0.1.0-test",
+      data: {
+        accounts: [{ id: "account_1" }],
+        transactions: [{ id: "transaction_1" }, { id: "transaction_2" }],
+        auditEvents: [],
+      },
+    });
+
+    expect(backup.manifest).toEqual({
+      formatVersion: 1,
+      exportedAt: "2026-05-27T12:00:00.000Z",
+      appVersion: "0.1.0-test",
+      ledgerId: "ledger_123",
+      ledgerName: "Personal ledger",
+      defaultCurrency: "USD",
+      tableCounts: {
+        accounts: 1,
+        transactions: 2,
+        auditEvents: 0,
+      },
+    });
   });
 });

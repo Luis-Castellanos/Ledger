@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, exportJobs, importRows, imports, transactions } from "@/lib/db/schema";
-import { buildExportFilename, isExportFormat, toCsv } from "@/lib/finance/export";
+import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "@/lib/finance/export";
+import packageJson from "../../../../package.json";
 
 export async function GET(request: Request) {
   const context = await getOrCreateCurrentLedger();
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     const response =
       format === "transactions_csv"
         ? await buildTransactionsCsvResponse({ ledgerId: context.ledger.id, filename })
-        : await buildBackupPackageResponse({ ledgerId: context.ledger.id, filename });
+        : await buildBackupPackageResponse({ ledger: context.ledger, filename });
 
     await db
       .update(exportJobs)
@@ -99,7 +100,7 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
     .from(transactions)
     .innerJoin(accounts, eq(transactions.accountId, accounts.id))
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(eq(transactions.ledgerId, ledgerId))
+    .where(and(eq(transactions.ledgerId, ledgerId), isNull(transactions.deletedAt)))
     .orderBy(desc(transactions.date), desc(transactions.createdAt));
 
   const csv = toCsv(
@@ -144,13 +145,23 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
   });
 }
 
-async function buildBackupPackageResponse({ ledgerId, filename }: { ledgerId: string; filename: string }) {
+async function buildBackupPackageResponse({
+  ledger,
+  filename,
+}: {
+  ledger: {
+    id: string;
+    name: string;
+    defaultCurrency: string;
+  };
+  filename: string;
+}) {
   const db = getDb();
   const [accountRows, categoryRows, transactionRows, importBatchRows, importPreviewRows, auditRows] = await Promise.all([
-    db.select().from(accounts).where(eq(accounts.ledgerId, ledgerId)).orderBy(asc(accounts.name)),
-    db.select().from(categories).where(eq(categories.ledgerId, ledgerId)).orderBy(asc(categories.sortOrder), asc(categories.name)),
-    db.select().from(transactions).where(eq(transactions.ledgerId, ledgerId)).orderBy(desc(transactions.date), desc(transactions.createdAt)),
-    db.select().from(imports).where(eq(imports.ledgerId, ledgerId)).orderBy(desc(imports.createdAt)),
+    db.select().from(accounts).where(eq(accounts.ledgerId, ledger.id)).orderBy(asc(accounts.name)),
+    db.select().from(categories).where(eq(categories.ledgerId, ledger.id)).orderBy(asc(categories.sortOrder), asc(categories.name)),
+    db.select().from(transactions).where(eq(transactions.ledgerId, ledger.id)).orderBy(desc(transactions.date), desc(transactions.createdAt)),
+    db.select().from(imports).where(eq(imports.ledgerId, ledger.id)).orderBy(desc(imports.createdAt)),
     db
       .select({
         id: importRows.id,
@@ -168,25 +179,15 @@ async function buildBackupPackageResponse({ ledgerId, filename }: { ledgerId: st
       })
       .from(importRows)
       .innerJoin(imports, eq(importRows.importId, imports.id))
-      .where(eq(imports.ledgerId, ledgerId))
+      .where(eq(imports.ledgerId, ledger.id))
       .orderBy(asc(importRows.rowNumber)),
-    db.select().from(auditEvents).where(eq(auditEvents.ledgerId, ledgerId)).orderBy(asc(auditEvents.createdAt)),
+    db.select().from(auditEvents).where(eq(auditEvents.ledgerId, ledger.id)).orderBy(asc(auditEvents.createdAt)),
   ]);
-  const exportedAt = new Date().toISOString();
+
   const body = JSON.stringify(
-    {
-      manifest: {
-        version: 1,
-        exportedAt,
-        counts: {
-          accounts: accountRows.length,
-          categories: categoryRows.length,
-          transactions: transactionRows.length,
-          imports: importBatchRows.length,
-          importRows: importPreviewRows.length,
-          auditEvents: auditRows.length,
-        },
-      },
+    buildBackupPackage({
+      ledger,
+      appVersion: packageJson.version,
       data: {
         accounts: accountRows,
         categories: categoryRows,
@@ -195,7 +196,7 @@ async function buildBackupPackageResponse({ ledgerId, filename }: { ledgerId: st
         importRows: importPreviewRows,
         auditEvents: auditRows,
       },
-    },
+    }),
     null,
     2,
   );
