@@ -14,6 +14,7 @@ export function ReviewWorkbench() {
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
   const [query, setQuery] = useState("");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -73,11 +74,24 @@ export function ReviewWorkbench() {
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
 
     if (dataSource === "database") {
-      await fetch("/api/transactions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ id, reviewStatus: status }),
-      });
+      try {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ id, reviewStatus: status }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Review update failed");
+        }
+
+        setMessage("Review decision saved.");
+      } catch {
+        setDataSource("demo");
+        setMessage("Review decision stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(null);
     }
   }
 
@@ -85,11 +99,24 @@ export function ReviewWorkbench() {
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
 
     if (dataSource === "database") {
-      await fetch("/api/transactions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ id, categoryName: category }),
-      });
+      try {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ id, categoryName: category }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Category update failed");
+        }
+
+        setMessage("Category change saved.");
+      } catch {
+        setDataSource("demo");
+        setMessage("Category change stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(null);
     }
   }
 
@@ -114,6 +141,7 @@ export function ReviewWorkbench() {
               <input aria-label="Search unresolved transactions" placeholder="Search queue" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
           </div>
+          {message ? <p className={message.endsWith("saved.") ? "form-success" : "form-error"}>{message}</p> : null}
 
           <div className="transactions-table" role="table" aria-label="Review queue">
             <div className="transactions-table-head" role="row">
