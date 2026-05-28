@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
+import { Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
+import type { SetupStatus } from "@/lib/setup/status";
 
 type SettingsState = {
   user: {
@@ -26,10 +27,20 @@ const fallbackSettings: SettingsState = {
   },
 };
 
+const fallbackSetupStatus: SetupStatus = {
+  appUrlConfigured: false,
+  clerkConfigured: false,
+  databaseConfigured: false,
+  nodeEnv: "development",
+  vercelDetected: false,
+  vercelEnvironment: null,
+};
+
 export function SettingsWorkbench() {
   const [settings, setSettings] = useState<SettingsState>(fallbackSettings);
   const [formState, setFormState] = useState(fallbackSettings.ledger);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -38,23 +49,36 @@ export function SettingsWorkbench() {
 
     async function loadSettings() {
       try {
-        const response = await fetch("/api/me", { headers: { Accept: "application/json" } });
+        const [meResponse, setupResponse] = await Promise.all([
+          fetch("/api/me", { headers: { Accept: "application/json" } }),
+          fetch("/api/setup/status", { headers: { Accept: "application/json" } }),
+        ]);
 
-        if (!response.ok) {
+        if (!meResponse.ok) {
           throw new Error("Settings API unavailable");
         }
 
-        const payload = (await response.json()) as SettingsState;
+        const payload = (await meResponse.json()) as SettingsState;
+        const setupPayload = setupResponse.ok ? ((await setupResponse.json()) as { status: SetupStatus }) : { status: fallbackSetupStatus };
 
         if (isMounted) {
           setSettings(payload);
           setFormState(payload.ledger);
+          setSetupStatus(setupPayload.status);
           setDataSource("database");
         }
       } catch {
         if (isMounted) {
           setSettings(fallbackSettings);
           setFormState(fallbackSettings.ledger);
+          void fetch("/api/setup/status", { headers: { Accept: "application/json" } })
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload: { status: SetupStatus } | null) => {
+              if (payload && isMounted) {
+                setSetupStatus(payload.status);
+              }
+            })
+            .catch(() => undefined);
           setDataSource("demo");
         }
       }
@@ -110,7 +134,7 @@ export function SettingsWorkbench() {
         <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
           <SettingsMetric label="Identity" value={settings.user.displayName ?? "Signed in user"} icon={<UserRound size={17} />} />
           <SettingsMetric label="Persistence" value={dataSource === "database" ? "Database backed" : "Demo mode"} icon={<Database size={17} />} />
-          <SettingsMetric label="Authorization" value="Server derived ledger" icon={<ShieldCheck size={17} />} />
+          <SettingsMetric label="Deployment" value={setupStatus.vercelDetected ? setupStatus.vercelEnvironment ?? "Vercel" : "Local runtime"} icon={<Cloud size={17} />} />
         </div>
 
         <section className="panel settings-panel">
@@ -176,7 +200,37 @@ export function SettingsWorkbench() {
             </div>
           </div>
         </section>
+
+        <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Setup</p>
+              <h2 className="panel-title">Production readiness</h2>
+            </div>
+            <div className="summary-icon">
+              <ShieldCheck size={17} />
+            </div>
+          </div>
+          <div className="settings-facts">
+            <SetupFact label="Clerk" ready={setupStatus.clerkConfigured} readyText="Configured" missingText="Missing keys" />
+            <SetupFact label="Neon" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
+            <SetupFact label="App URL" ready={setupStatus.appUrlConfigured} readyText="Configured" missingText="Missing app URL" />
+            <div>
+              <span>Runtime</span>
+              <strong>{setupStatus.nodeEnv}</strong>
+            </div>
+          </div>
+        </section>
       </aside>
+    </div>
+  );
+}
+
+function SetupFact({ label, ready, readyText, missingText }: { label: string; ready: boolean; readyText: string; missingText: string }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong className={ready ? "setup-ready" : "setup-missing"}>{ready ? readyText : missingText}</strong>
     </div>
   );
 }
