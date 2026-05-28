@@ -26,7 +26,7 @@ export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
 }
 
 export function getSetupReadiness(status: SetupStatus) {
-  const required = [status.appUrlConfigured, status.clerkConfigured, status.databaseConfigured];
+  const required = [status.appUrlConfigured, status.clerkConfigured, status.clerkKeyMode === "live", status.databaseConfigured];
   const readyCount = required.filter(Boolean).length;
 
   return {

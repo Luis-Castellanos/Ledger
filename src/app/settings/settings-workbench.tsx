@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
-import type { SetupStatus } from "@/lib/setup/status";
+import { getSetupReadiness, type SetupStatus } from "@/lib/setup/status";
 
 type SettingsState = {
   user: {
@@ -44,6 +44,7 @@ export function SettingsWorkbench() {
   const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const setupReadiness = getSetupReadiness(setupStatus);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,7 +136,7 @@ export function SettingsWorkbench() {
         <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
           <SettingsMetric label="Identity" value={settings.user.displayName ?? "Signed in user"} icon={<UserRound size={17} />} />
           <SettingsMetric label="Persistence" value={dataSource === "database" ? "Database backed" : "Demo mode"} icon={<Database size={17} />} />
-          <SettingsMetric label="Deployment" value={setupStatus.vercelDetected ? setupStatus.vercelEnvironment ?? "Vercel" : "Local runtime"} icon={<Cloud size={17} />} />
+          <SettingsMetric label="Release gate" value={`${setupReadiness.readyCount}/${setupReadiness.requiredCount} ready`} icon={<Cloud size={17} />} />
         </div>
 
         <section className="panel settings-panel">
@@ -218,8 +219,13 @@ export function SettingsWorkbench() {
               <span>Clerk keys</span>
               <strong className={setupStatus.clerkKeyMode === "live" ? "setup-ready" : "setup-missing"}>{getClerkKeyModeLabel(setupStatus.clerkKeyMode)}</strong>
             </div>
+            <SetupFact label="Production auth" ready={setupStatus.clerkKeyMode === "live"} readyText="Live keys set" missingText="Needs Clerk live keys" />
             <SetupFact label="Neon" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
             <SetupFact label="App URL" ready={setupStatus.appUrlConfigured} readyText="Configured" missingText="Missing app URL" />
+            <div>
+              <span>Vercel</span>
+              <strong>{setupStatus.vercelDetected ? setupStatus.vercelEnvironment ?? "Detected" : "Local runtime"}</strong>
+            </div>
             <div>
               <span>Runtime</span>
               <strong>{setupStatus.nodeEnv}</strong>
