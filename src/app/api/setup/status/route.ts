@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSetupReadiness, getSetupStatus } from "@/lib/setup/status";
+import { getDeploymentHealthReport } from "@/lib/setup/health";
 
 export async function GET() {
-  const status = getSetupStatus();
+  const report = await getDeploymentHealthReport();
 
   return NextResponse.json({
-    status,
-    readiness: getSetupReadiness(status),
+    status: report.status,
+    readiness: report.readiness,
+    checkedAt: report.checkedAt,
   });
 }

@@ -3,13 +3,22 @@ export type SetupStatus = {
   clerkConfigured: boolean;
   clerkKeyMode: "missing" | "test" | "live" | "mixed" | "unknown";
   databaseConfigured: boolean;
+  databaseReachable: boolean | null;
   nodeEnv: string;
   vercelDetected: boolean;
   vercelEnvironment: string | null;
 };
 
 export type SetupReadinessCheck = {
-  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database" | "securityHeaders" | "rateLimits" | "observability";
+  key:
+    | "appUrl"
+    | "clerkKeys"
+    | "clerkLiveKeys"
+    | "database"
+    | "databaseConnection"
+    | "securityHeaders"
+    | "rateLimits"
+    | "observability";
   label: string;
   ready: boolean;
 };
@@ -39,6 +48,7 @@ export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
     clerkConfigured: Boolean(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && env.CLERK_SECRET_KEY),
     clerkKeyMode: getClerkKeyMode(clerkPublishableKeyMode, clerkSecretKeyMode),
     databaseConfigured: Boolean(env.DATABASE_URL),
+    databaseReachable: null,
     nodeEnv: env.NODE_ENV ?? "development",
     vercelDetected: Boolean(env.VERCEL),
     vercelEnvironment: env.VERCEL_ENV ?? null,
@@ -78,6 +88,11 @@ export function getSetupReadinessChecks(status: SetupStatus): SetupReadinessChec
       key: "database",
       label: "Neon database URL",
       ready: status.databaseConfigured,
+    },
+    {
+      key: "databaseConnection",
+      label: "Neon connection verified",
+      ready: status.databaseReachable === true,
     },
     {
       key: "securityHeaders",

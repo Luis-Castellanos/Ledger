@@ -18,6 +18,7 @@ describe("getSetupStatus", () => {
       clerkConfigured: true,
       clerkKeyMode: "live",
       databaseConfigured: true,
+      databaseReachable: null,
       nodeEnv: "production",
       vercelDetected: true,
       vercelEnvironment: "preview",
@@ -33,13 +34,14 @@ describe("getSetupStatus", () => {
         { key: "clerkKeys", label: "Clerk authentication keys", ready: false },
         { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
         { key: "database", label: "Neon database URL", ready: false },
+        { key: "databaseConnection", label: "Neon connection verified", ready: false },
         { key: "securityHeaders", label: "Security headers", ready: true },
         { key: "rateLimits", label: "Import and export rate limits", ready: true },
         { key: "observability", label: "Redacted server error logging", ready: true },
       ],
       ready: false,
       readyCount: 3,
-      requiredCount: 7,
+      requiredCount: 8,
     });
   });
 
@@ -57,13 +59,14 @@ describe("getSetupStatus", () => {
         { key: "clerkKeys", label: "Clerk authentication keys", ready: true },
         { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
         { key: "database", label: "Neon database URL", ready: true },
+        { key: "databaseConnection", label: "Neon connection verified", ready: false },
         { key: "securityHeaders", label: "Security headers", ready: true },
         { key: "rateLimits", label: "Import and export rate limits", ready: true },
         { key: "observability", label: "Redacted server error logging", ready: true },
       ],
       ready: false,
       readyCount: 6,
-      requiredCount: 7,
+      requiredCount: 8,
     });
   });
 
@@ -102,7 +105,7 @@ describe("getSetupStatus", () => {
 
     expect(report).toEqual({
       service: "ledger",
-      ok: true,
+      ok: false,
       checkedAt: "2026-05-28T12:00:00.000Z",
       environment: "production",
       vercelEnvironment: "production",
@@ -112,13 +115,14 @@ describe("getSetupStatus", () => {
           { key: "clerkKeys", label: "Clerk authentication keys", ready: true },
           { key: "clerkLiveKeys", label: "Clerk production instance", ready: true },
           { key: "database", label: "Neon database URL", ready: true },
+          { key: "databaseConnection", label: "Neon connection verified", ready: false },
           { key: "securityHeaders", label: "Security headers", ready: true },
           { key: "rateLimits", label: "Import and export rate limits", ready: true },
           { key: "observability", label: "Redacted server error logging", ready: true },
         ],
-        ready: true,
+        ready: false,
         readyCount: 7,
-        requiredCount: 7,
+        requiredCount: 8,
       },
     });
 

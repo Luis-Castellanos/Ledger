@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Archive, Cloud, Database, KeyRound, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
 import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
@@ -94,6 +94,7 @@ const fallbackSetupStatus: SetupStatus = {
   clerkConfigured: false,
   clerkKeyMode: "missing",
   databaseConfigured: false,
+  databaseReachable: null,
   nodeEnv: "development",
   vercelDetected: false,
   vercelEnvironment: null,
@@ -108,6 +109,7 @@ export function SettingsWorkbench() {
   const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const hasUserEditedSettings = useRef(false);
   const setupReadiness = getSetupReadiness(setupStatus);
   const releaseTasks = getReleaseTasks(setupStatus);
 
@@ -138,7 +140,9 @@ export function SettingsWorkbench() {
 
         if (isMounted) {
           setSettings(payload);
-          setFormState(payload.ledger);
+          if (!hasUserEditedSettings.current) {
+            setFormState(payload.ledger);
+          }
           setSetupStatus(setupPayload.status);
           setExportHistory(exportJobsPayload.exportJobs);
           setAuditTrail(auditEventsPayload.auditEvents);
@@ -147,7 +151,9 @@ export function SettingsWorkbench() {
       } catch {
         if (isMounted) {
           setSettings(fallbackSettings);
-          setFormState(fallbackSettings.ledger);
+          if (!hasUserEditedSettings.current) {
+            setFormState(fallbackSettings.ledger);
+          }
           setExportHistory(fallbackExportJobs);
           setAuditTrail(fallbackAuditEvents);
           void fetch("/api/setup/status", { headers: { Accept: "application/json" } })
@@ -200,6 +206,7 @@ export function SettingsWorkbench() {
       setMessage("Settings saved.");
     } catch {
       setSettings((current) => ({ ...current, ledger: parsed.data }));
+      setFormState(parsed.data);
       setDataSource("demo");
       setMessage("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist settings.");
     } finally {
@@ -231,7 +238,10 @@ export function SettingsWorkbench() {
               <input
                 required
                 value={formState.name}
-                onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) => {
+                  hasUserEditedSettings.current = true;
+                  setFormState((current) => ({ ...current, name: event.target.value }));
+                }}
                 placeholder="Personal ledger"
               />
             </label>
@@ -241,7 +251,10 @@ export function SettingsWorkbench() {
                 required
                 maxLength={3}
                 value={formState.defaultCurrency}
-                onChange={(event) => setFormState((current) => ({ ...current, defaultCurrency: event.target.value.toUpperCase() }))}
+                onChange={(event) => {
+                  hasUserEditedSettings.current = true;
+                  setFormState((current) => ({ ...current, defaultCurrency: event.target.value.toUpperCase() }));
+                }}
               />
             </label>
             {message ? <p className={message.startsWith("Settings saved") ? "form-success" : "form-error"}>{message}</p> : null}
@@ -372,7 +385,13 @@ export function SettingsWorkbench() {
               <strong className={setupStatus.clerkKeyMode === "live" ? "setup-ready" : "setup-missing"}>{getClerkKeyModeLabel(setupStatus.clerkKeyMode)}</strong>
             </div>
             <SetupFact label="Production auth" ready={setupStatus.clerkKeyMode === "live"} readyText="Live keys set" missingText="Needs Clerk live keys" />
-            <SetupFact label="Neon" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
+            <SetupFact label="Neon URL" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
+            <SetupFact
+              label="Neon connection"
+              ready={setupStatus.databaseReachable === true}
+              readyText="Reachable"
+              missingText={getDatabaseReachabilityLabel(setupStatus)}
+            />
             <SetupFact label="App URL" ready={setupStatus.appUrlConfigured} readyText="Configured" missingText="Missing app URL" />
             <div>
               <span>Vercel</span>
@@ -412,8 +431,12 @@ function getReleaseTaskDetail(check: SetupReadinessCheck) {
       missing: "Configure Clerk production and deploy live keys.",
     },
     database: {
-      ready: "Server routes can persist ledger data.",
+      ready: "Database URL is available to server routes.",
       missing: "Add DATABASE_URL before DB-backed production use.",
+    },
+    databaseConnection: {
+      ready: "Server routes can reach Neon with the configured connection.",
+      missing: "Verify Neon connectivity before DB-backed production use.",
     },
     securityHeaders: {
       ready: "CSP, frame, content type, referrer, permissions, and HSTS headers are configured.",
@@ -430,6 +453,18 @@ function getReleaseTaskDetail(check: SetupReadinessCheck) {
   };
 
   return check.ready ? details[check.key].ready : details[check.key].missing;
+}
+
+function getDatabaseReachabilityLabel(status: SetupStatus) {
+  if (!status.databaseConfigured) {
+    return "Missing DATABASE_URL";
+  }
+
+  if (status.databaseReachable === false) {
+    return "Connection failed";
+  }
+
+  return "Not checked";
 }
 
 function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {

@@ -15,7 +15,8 @@ describe("getDeploymentHealthReport", () => {
     const report = await buildHealthReport(readyEnv, new Date("2026-05-28T12:00:00.000Z"), async () => undefined);
 
     expect(report.ok).toBe(true);
-    expect(report.databaseReachable).toBe(true);
+    expect(report.status.databaseReachable).toBe(true);
+    expect(report.readiness.checks).toContainEqual({ key: "databaseConnection", label: "Neon connection verified", ready: true });
   });
 
   it("marks the deployment unhealthy when database ping fails", async () => {
@@ -24,7 +25,8 @@ describe("getDeploymentHealthReport", () => {
     });
 
     expect(report.ok).toBe(false);
-    expect(report.databaseReachable).toBe(false);
+    expect(report.status.databaseReachable).toBe(false);
+    expect(report.readiness.checks).toContainEqual({ key: "databaseConnection", label: "Neon connection verified", ready: false });
     expect(JSON.stringify(report)).not.toContain("postgres://example");
   });
 
@@ -35,7 +37,7 @@ describe("getDeploymentHealthReport", () => {
     });
 
     expect(report.ok).toBe(false);
-    expect(report.databaseReachable).toBeNull();
+    expect(report.status.databaseReachable).toBeNull();
     expect(pinged).toBe(false);
   });
 });
