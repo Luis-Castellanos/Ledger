@@ -9,7 +9,7 @@ export type SetupStatus = {
 };
 
 export type SetupReadinessCheck = {
-  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database";
+  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database" | "securityHeaders" | "rateLimits";
   label: string;
   ready: boolean;
 };
@@ -64,6 +64,16 @@ export function getSetupReadinessChecks(status: SetupStatus): SetupReadinessChec
       key: "database",
       label: "Neon database URL",
       ready: status.databaseConfigured,
+    },
+    {
+      key: "securityHeaders",
+      label: "Security headers",
+      ready: true,
+    },
+    {
+      key: "rateLimits",
+      label: "Import and export rate limits",
+      ready: true,
     },
   ];
 }

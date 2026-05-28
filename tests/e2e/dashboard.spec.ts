@@ -100,6 +100,8 @@ test("settings page supports ledger settings edits", async ({ page }) => {
   await expect(page.getByText("Production readiness")).toBeVisible();
   await expect(page.getByLabel("Release checklist")).toBeVisible();
   await expect(page.getByText("Clerk production instance")).toBeVisible();
+  await expect(page.getByText("Security headers")).toBeVisible();
+  await expect(page.getByText("Import and export rate limits")).toBeVisible();
 
   await page.getByPlaceholder("Personal ledger").fill("Forensic Ledger");
   await page.getByRole("button", { name: /Save settings|Saving/ }).click();

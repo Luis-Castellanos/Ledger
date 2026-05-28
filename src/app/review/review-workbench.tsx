@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, CircleSlash, ListChecks, Search, Tag } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
@@ -15,6 +15,7 @@ export function ReviewWorkbench() {
   const [query, setQuery] = useState("");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [message, setMessage] = useState<string | null>(null);
+  const hasLocalEdits = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,13 +35,13 @@ export function ReviewWorkbench() {
         const categoriesPayload = (await categoriesResponse.json()) as { categories: DatabaseCategory[] };
         const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
 
-        if (isMounted) {
+        if (isMounted && !hasLocalEdits.current) {
           setTransactions(transactionsPayload.transactions);
           setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
           setDataSource("database");
         }
       } catch {
-        if (isMounted) {
+        if (isMounted && !hasLocalEdits.current) {
           setTransactions(sampleTransactionRows);
           setDataSource("demo");
         }
@@ -71,6 +72,7 @@ export function ReviewWorkbench() {
   const excludedCount = transactions.filter((transaction) => transaction.status === "excluded").length;
 
   async function updateReview(id: string, status: "reviewed" | "excluded") {
+    hasLocalEdits.current = true;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
 
     if (dataSource === "database") {
@@ -96,6 +98,7 @@ export function ReviewWorkbench() {
   }
 
   async function updateCategory(id: string, category: string) {
+    hasLocalEdits.current = true;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
 
     if (dataSource === "database") {

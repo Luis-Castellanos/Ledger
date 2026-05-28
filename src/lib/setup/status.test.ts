@@ -33,10 +33,12 @@ describe("getSetupStatus", () => {
         { key: "clerkKeys", label: "Clerk authentication keys", ready: false },
         { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
         { key: "database", label: "Neon database URL", ready: false },
+        { key: "securityHeaders", label: "Security headers", ready: true },
+        { key: "rateLimits", label: "Import and export rate limits", ready: true },
       ],
       ready: false,
-      readyCount: 0,
-      requiredCount: 4,
+      readyCount: 2,
+      requiredCount: 6,
     });
   });
 
@@ -54,10 +56,12 @@ describe("getSetupStatus", () => {
         { key: "clerkKeys", label: "Clerk authentication keys", ready: true },
         { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
         { key: "database", label: "Neon database URL", ready: true },
+        { key: "securityHeaders", label: "Security headers", ready: true },
+        { key: "rateLimits", label: "Import and export rate limits", ready: true },
       ],
       ready: false,
-      readyCount: 3,
-      requiredCount: 4,
+      readyCount: 5,
+      requiredCount: 6,
     });
   });
 

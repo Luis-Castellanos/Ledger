@@ -274,6 +274,14 @@ function getReleaseTaskDetail(check: SetupReadinessCheck) {
       ready: "Server routes can persist ledger data.",
       missing: "Add DATABASE_URL before DB-backed production use.",
     },
+    securityHeaders: {
+      ready: "CSP, frame, content type, referrer, permissions, and HSTS headers are configured.",
+      missing: "Configure release security headers before private beta.",
+    },
+    rateLimits: {
+      ready: "Import mutations and export generation have server-side request limits.",
+      missing: "Add server-side rate limits for import and export paths.",
+    },
   };
 
   return check.ready ? details[check.key].ready : details[check.key].missing;
