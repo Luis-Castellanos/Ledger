@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, Save, Search } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
+import { createManualTransactionSchema } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
@@ -16,16 +17,58 @@ const statuses = [
 
 export function TransactionsWorkbench() {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+  const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [isSaving, setIsSaving] = useState(false);
   const [formState, setFormState] = useState({
     date: new Date().toISOString().slice(0, 10),
     merchant: "",
-    account: sampleAccounts[0]?.name ?? "",
+    accountId: sampleAccounts[0]?.name ?? "",
     category: "Groceries",
     amount: "",
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDatabaseData() {
+      try {
+        const [accountsResponse, transactionsResponse] = await Promise.all([
+          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
+          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
+        ]);
+
+        if (!accountsResponse.ok || !transactionsResponse.ok) {
+          throw new Error("Transaction API unavailable");
+        }
+
+        const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
+        const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
+        const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
+
+        if (isMounted && !hasLocalEdits.current) {
+          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+          setTransactions(transactionsPayload.transactions);
+          setFormState((current) => ({ ...current, accountId: nextAccounts[0]?.id ?? current.accountId }));
+          setDataSource("database");
+        }
+      } catch {
+        if (isMounted) {
+          setDataSource("demo");
+        }
+      }
+    }
+
+    void loadDatabaseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredTransactions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -65,41 +108,81 @@ export function TransactionsWorkbench() {
     );
   }, [transactions]);
 
-  function updateStatus(id: string, status: TransactionStatus) {
+  async function updateStatus(id: string, status: TransactionStatus) {
+    hasLocalEdits.current = true;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({ id, reviewStatus: status });
+    }
   }
 
-  function updateCategory(id: string, category: string) {
+  async function updateCategory(id: string, category: string) {
+    hasLocalEdits.current = true;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({ id, categoryName: category });
+    }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     try {
-      const amountMinor = parseDollarAmount(formState.amount);
+      const parsed = createManualTransactionSchema.parse({
+        date: formState.date,
+        accountId: formState.accountId,
+        merchant: formState.merchant,
+        categoryName: formState.category,
+        amount: formState.amount,
+      });
+      const accountName = accountOptions.find((account) => account.id === formState.accountId)?.name ?? formState.accountId;
 
-      if (!formState.merchant.trim() || !formState.account || !formState.category) {
+      if (!formState.merchant.trim() || !formState.accountId || !formState.category) {
         setError("Merchant, account, category, and amount are required.");
         return;
       }
 
+      setIsSaving(true);
+      hasLocalEdits.current = true;
+
+      if (dataSource === "database") {
+        const response = await fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ ...parsed, amount: formState.amount }),
+        });
+
+        if (response.ok) {
+          const payload = (await response.json()) as { transaction: TransactionRow };
+          setTransactions((current) => [payload.transaction, ...current]);
+          setFormState({ date: new Date().toISOString().slice(0, 10), merchant: "", accountId: formState.accountId, category: "Groceries", amount: "" });
+          setError(null);
+          return;
+        }
+      }
+
+      const amountMinor = parseDollarAmount(formState.amount);
       setTransactions((current) => [
         {
           id: `local_${Date.now()}`,
           date: formState.date,
           merchant: formState.merchant.trim(),
-          account: formState.account,
+          account: accountName,
           category: formState.category,
           amountMinor,
           status: "needs_review",
         },
         ...current,
       ]);
-      setFormState({ date: new Date().toISOString().slice(0, 10), merchant: "", account: sampleAccounts[0]?.name ?? "", category: "Groceries", amount: "" });
-      setError(null);
+      setDataSource("demo");
+      setFormState({ date: new Date().toISOString().slice(0, 10), merchant: "", accountId: accountOptions[0]?.id ?? "", category: "Groceries", amount: "" });
+      setError(dataSource === "database" ? "Saved in local demo mode because the transaction API rejected the write." : null);
     } catch {
       setError("Enter a valid signed dollar amount.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -118,6 +201,7 @@ export function TransactionsWorkbench() {
               <p className="panel-label">Transactions</p>
               <h2 className="panel-title">Register</h2>
             </div>
+            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />
@@ -211,9 +295,9 @@ export function TransactionsWorkbench() {
             </label>
             <label>
               <span>Account</span>
-              <select value={formState.account} onChange={(event) => setFormState((current) => ({ ...current, account: event.target.value }))}>
-                {sampleAccounts.map((account) => (
-                  <option value={account.name} key={account.id}>
+              <select value={formState.accountId} onChange={(event) => setFormState((current) => ({ ...current, accountId: event.target.value }))}>
+                {accountOptions.map((account) => (
+                  <option value={account.id} key={account.id}>
                     {account.name}
                   </option>
                 ))}
@@ -241,7 +325,7 @@ export function TransactionsWorkbench() {
             {error ? <p className="form-error">{error}</p> : null}
             <button className="primary-action" type="submit">
               <Save size={16} />
-              Save transaction
+              {isSaving ? "Saving" : "Save transaction"}
             </button>
           </form>
         </section>
@@ -263,6 +347,28 @@ export function TransactionsWorkbench() {
       </aside>
     </div>
   );
+}
+
+type DatabaseAccount = {
+  id: string;
+  name: string;
+};
+
+type AccountOption = {
+  id: string;
+  name: string;
+};
+
+async function persistTransactionPatch(body: { id: string; reviewStatus?: TransactionStatus; categoryName?: string }) {
+  try {
+    await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // The optimistic UI remains usable in demo or temporarily offline states.
+  }
 }
 
 function TransactionMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
