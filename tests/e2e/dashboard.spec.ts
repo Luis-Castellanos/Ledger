@@ -17,7 +17,7 @@ test("accounts page supports local account entry", async ({ page }) => {
   await page.getByPlaceholder("Operating Checking").fill("Vacation Reserve");
   await page.getByPlaceholder("Bank or brokerage").fill("Ally");
   await page.getByPlaceholder("1842").fill("7777");
-  await page.getByRole("button", { name: "Save account" }).click();
+  await page.getByRole("button", { name: /Save account|Saving/ }).click();
 
   await expect(page.getByText("Vacation Reserve")).toBeVisible();
 });
@@ -44,4 +44,16 @@ test("imports page supports local staged row", async ({ page }) => {
   await page.getByRole("button", { name: "Add sample row" }).click();
 
   await expect(page.getByText("NEW CSV ROW")).toBeVisible();
+});
+
+test("settings page supports ledger settings edits", async ({ page }) => {
+  await page.goto("/settings");
+
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.getByText("Ownership boundary")).toBeVisible();
+
+  await page.getByPlaceholder("Personal ledger").fill("Forensic Ledger");
+  await page.getByRole("button", { name: /Save settings|Saving/ }).click();
+
+  await expect(page.getByText("Forensic Ledger")).toBeVisible();
 });

@@ -20,7 +20,7 @@ const nav = [
   { label: "Cashflow", href: "#", icon: BadgeDollarSign },
   { label: "Net Worth", href: "#", icon: Landmark },
   { label: "Accounts", href: "/accounts", icon: WalletCards },
-  { label: "Settings", href: "#", icon: Settings },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function AppShell({ active, children }: { active: string; children: React.ReactNode }) {

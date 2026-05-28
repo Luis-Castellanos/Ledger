@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -36,6 +36,7 @@ const assetClasses = [
 
 export function AccountsWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
+  const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [formState, setFormState] = useState({
     name: "",
@@ -46,6 +47,40 @@ export function AccountsWorkbench() {
     currency: "USD",
   });
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAccounts() {
+      try {
+        const response = await fetch("/api/accounts", { headers: { Accept: "application/json" } });
+
+        if (!response.ok) {
+          throw new Error("Account API unavailable");
+        }
+
+        const payload = (await response.json()) as { accounts: DatabaseAccount[] };
+        const nextAccounts = payload.accounts.map(toAccountRow);
+
+        if (isMounted && !hasLocalEdits.current) {
+          setAccounts(nextAccounts);
+          setDataSource("database");
+        }
+      } catch {
+        if (isMounted) {
+          setDataSource("demo");
+        }
+      }
+    }
+
+    void loadAccounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredAccounts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -74,7 +109,7 @@ export function AccountsWorkbench() {
     );
   }, [accounts]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const parsed = createAccountSchema.safeParse({
@@ -88,22 +123,46 @@ export function AccountsWorkbench() {
       return;
     }
 
-    const nextAccount: AccountRow = {
-      id: `local_${Date.now()}`,
-      name: parsed.data.name,
-      institution: parsed.data.institution ?? "Manual",
-      mask: parsed.data.mask ?? "0000",
-      type: parsed.data.type,
-      assetClass: parsed.data.assetClass,
-      currency: parsed.data.currency,
-      balanceMinor: 0,
-      lastActivity: "Just now",
-      status: parsed.data.isHidden ? "hidden" : "active",
-    };
+    setIsSaving(true);
+    hasLocalEdits.current = true;
 
-    setAccounts((current) => [nextAccount, ...current]);
-    setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
-    setError(null);
+    try {
+      const response = await fetch("/api/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Account API unavailable");
+      }
+
+      const payload = (await response.json()) as { account: DatabaseAccount };
+      setAccounts((current) => [toAccountRow(payload.account), ...current]);
+      setDataSource("database");
+      setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
+      setError(null);
+    } catch {
+      const nextAccount: AccountRow = {
+        id: `local_${Date.now()}`,
+        name: parsed.data.name,
+        institution: parsed.data.institution ?? "Manual",
+        mask: parsed.data.mask ?? "0000",
+        type: parsed.data.type,
+        assetClass: parsed.data.assetClass,
+        currency: parsed.data.currency,
+        balanceMinor: 0,
+        lastActivity: "Just now",
+        status: parsed.data.isHidden ? "hidden" : "active",
+      };
+
+      setAccounts((current) => [nextAccount, ...current]);
+      setDataSource("demo");
+      setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
+      setError("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist accounts.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -121,6 +180,7 @@ export function AccountsWorkbench() {
               <p className="panel-label">Accounts</p>
               <h2 className="panel-title">Balance control file</h2>
             </div>
+            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
             <label className="search-field">
               <Search size={16} />
               <input aria-label="Search accounts" placeholder="Search accounts" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -230,7 +290,7 @@ export function AccountsWorkbench() {
             {error ? <p className="form-error">{error}</p> : null}
             <button className="primary-action" type="submit">
               <Save size={16} />
-              Save account
+              {isSaving ? "Saving" : "Save account"}
             </button>
           </form>
         </section>
@@ -252,6 +312,33 @@ export function AccountsWorkbench() {
       </aside>
     </div>
   );
+}
+
+type DatabaseAccount = {
+  id: string;
+  name: string;
+  institution: string | null;
+  mask: string | null;
+  type: string;
+  assetClass: "asset" | "liability";
+  currency: string;
+  isHidden: boolean;
+  updatedAt?: string | Date;
+};
+
+function toAccountRow(account: DatabaseAccount): AccountRow {
+  return {
+    id: account.id,
+    name: account.name,
+    institution: account.institution ?? "Manual",
+    mask: account.mask ?? "0000",
+    type: account.type,
+    assetClass: account.assetClass,
+    currency: account.currency,
+    balanceMinor: 0,
+    lastActivity: account.updatedAt ? "Updated" : "No activity",
+    status: account.isHidden ? "hidden" : "active",
+  };
 }
 
 function AccountMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
