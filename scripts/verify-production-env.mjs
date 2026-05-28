@@ -13,11 +13,24 @@ const requiredEnv = [
 ];
 
 const failures = [];
+const clerkKeyMode = getClerkKeyMode(
+  classifyClerkKey(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY),
+  classifyClerkKey(process.env.CLERK_SECRET_KEY),
+);
+const isProductionTarget = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {
     failures.push(`Missing ${key}`);
   }
+}
+
+if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("sk_")) {
+  failures.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY appears to contain a secret key.");
+}
+
+if (isProductionTarget && clerkKeyMode !== "live") {
+  failures.push(`Production Clerk keys must both be live keys. Current mode: ${clerkKeyMode}.`);
 }
 
 if (!existsSync(".vercel/project.json")) {
@@ -45,4 +58,36 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("Production setup inputs are present. Run `npm run db:migrate` before production deploy.");
+console.log(`Production setup inputs are present. Clerk key mode: ${clerkKeyMode}. Run \`npm run db:migrate\` before production deploy.`);
+
+function classifyClerkKey(value) {
+  if (!value) {
+    return "missing";
+  }
+
+  if (value.startsWith("pk_test_") || value.startsWith("sk_test_")) {
+    return "test";
+  }
+
+  if (value.startsWith("pk_live_") || value.startsWith("sk_live_")) {
+    return "live";
+  }
+
+  return "unknown";
+}
+
+function getClerkKeyMode(publishableKeyMode, secretKeyMode) {
+  if (publishableKeyMode === "missing" || secretKeyMode === "missing") {
+    return "missing";
+  }
+
+  if (publishableKeyMode === secretKeyMode) {
+    return publishableKeyMode;
+  }
+
+  if (publishableKeyMode === "unknown" || secretKeyMode === "unknown") {
+    return "unknown";
+  }
+
+  return "mixed";
+}

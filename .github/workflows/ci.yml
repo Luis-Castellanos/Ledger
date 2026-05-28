@@ -41,6 +41,12 @@ jobs:
       - name: Unit tests
         run: npm run test
 
+      - name: Migration check
+        run: npm run db:check
+
+      - name: Production dependency audit
+        run: npm run audit:prod
+
       - name: Build
         run: npm run build
 
