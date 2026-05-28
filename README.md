@@ -62,6 +62,7 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the GitHub, Vercel, Clerk, an
 ## Verification
 
 ```bash
+npm run setup:check
 npm run typecheck
 npm run lint
 npm run test

@@ -23,6 +23,7 @@ NEXT_PUBLIC_APP_URL=""
 
 ```bash
 npm ci
+npm run setup:check
 npm run db:migrate
 npm run typecheck
 npm run lint
@@ -31,6 +32,7 @@ npm run build
 npm run test:e2e
 ```
 
+`npm run setup:check` verifies required env vars, local Vercel linking, and checked-in SQL migrations.
 `npm run db:migrate` requires `DATABASE_URL`. Do not use `db:push` for production data.
 
 ## Vercel Setup
@@ -39,7 +41,21 @@ npm run test:e2e
 2. Add environment variables separately for Preview and Production.
 3. Set `NEXT_PUBLIC_APP_URL` to the deployed app URL for each environment.
 4. Run migrations against the target Neon database before promoting a deployment.
-5. Open `/settings` after deploy and confirm Production readiness shows Clerk, Neon, and App URL configured.
+5. Run `npm run setup:check` with the same env vars used by the deployment.
+6. Open `/settings` after deploy and confirm Production readiness shows Clerk, Neon, and App URL configured.
+
+Current Vercel project:
+
+- Project: `ledger`
+- Scope: `luis-castellanos-projects-253c5aa7`
+
+Useful commands:
+
+```bash
+npx vercel env ls --scope luis-castellanos-projects-253c5aa7
+npx vercel --yes --scope luis-castellanos-projects-253c5aa7
+npx vercel deploy --prod --scope luis-castellanos-projects-253c5aa7
+```
 
 ## GitHub Setup
 
