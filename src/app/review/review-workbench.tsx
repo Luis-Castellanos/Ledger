@@ -7,9 +7,11 @@ import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transa
 import { formatMoney } from "@/lib/finance/money";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
+const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
 
 export function ReviewWorkbench() {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
   const [query, setQuery] = useState("");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
 
@@ -18,16 +20,22 @@ export function ReviewWorkbench() {
 
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions", { headers: { Accept: "application/json" } });
+        const [transactionsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
+          fetch("/api/categories", { headers: { Accept: "application/json" } }),
+        ]);
 
-        if (!response.ok) {
+        if (!transactionsResponse.ok || !categoriesResponse.ok) {
           throw new Error("Transaction API unavailable");
         }
 
-        const payload = (await response.json()) as { transactions: TransactionRow[] };
+        const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
+        const categoriesPayload = (await categoriesResponse.json()) as { categories: DatabaseCategory[] };
+        const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
 
         if (isMounted) {
-          setTransactions(payload.transactions);
+          setTransactions(transactionsPayload.transactions);
+          setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
           setDataSource("database");
         }
       } catch {
@@ -127,9 +135,9 @@ export function ReviewWorkbench() {
                   value={transaction.category}
                   onChange={(event) => updateCategory(transaction.id, event.target.value)}
                 >
-                  {categories.map((category) => (
-                    <option value={category} key={category}>
-                      {category}
+                  {categoryOptions.map((category) => (
+                    <option value={category.name} key={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
@@ -176,6 +184,16 @@ export function ReviewWorkbench() {
     </div>
   );
 }
+
+type DatabaseCategory = {
+  id: string;
+  name: string;
+};
+
+type CategoryOption = {
+  id: string;
+  name: string;
+};
 
 function ReviewMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
   return (

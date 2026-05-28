@@ -9,6 +9,7 @@ import { createManualTransactionSchema } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
+const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
 const statuses = [
   { label: "Needs review", value: "needs_review" },
   { label: "Reviewed", value: "reviewed" },
@@ -18,6 +19,7 @@ const statuses = [
 export function TransactionsWorkbench() {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
   const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
@@ -38,23 +40,31 @@ export function TransactionsWorkbench() {
 
     async function loadDatabaseData() {
       try {
-        const [accountsResponse, transactionsResponse] = await Promise.all([
+        const [accountsResponse, transactionsResponse, categoriesResponse] = await Promise.all([
           fetch("/api/accounts", { headers: { Accept: "application/json" } }),
           fetch("/api/transactions", { headers: { Accept: "application/json" } }),
+          fetch("/api/categories", { headers: { Accept: "application/json" } }),
         ]);
 
-        if (!accountsResponse.ok || !transactionsResponse.ok) {
+        if (!accountsResponse.ok || !transactionsResponse.ok || !categoriesResponse.ok) {
           throw new Error("Transaction API unavailable");
         }
 
         const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
         const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
+        const categoriesPayload = (await categoriesResponse.json()) as { categories: DatabaseCategory[] };
         const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
+        const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
 
         if (isMounted && !hasLocalEdits.current) {
           setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+          setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
           setTransactions(transactionsPayload.transactions);
-          setFormState((current) => ({ ...current, accountId: nextAccounts[0]?.id ?? current.accountId }));
+          setFormState((current) => ({
+            ...current,
+            accountId: nextAccounts[0]?.id ?? current.accountId,
+            category: getDefaultCategoryName(nextCategories, current.category),
+          }));
           setDataSource("database");
         }
       } catch {
@@ -188,7 +198,13 @@ export function TransactionsWorkbench() {
         if (response.ok) {
           const payload = (await response.json()) as { transaction: TransactionRow };
           setTransactions((current) => [payload.transaction, ...current]);
-          setFormState({ date: new Date().toISOString().slice(0, 10), merchant: "", accountId: formState.accountId, category: "Groceries", amount: "" });
+          setFormState({
+            date: new Date().toISOString().slice(0, 10),
+            merchant: "",
+            accountId: formState.accountId,
+            category: getDefaultCategoryName(categoryOptions, formState.category),
+            amount: "",
+          });
           setError(null);
           return;
         }
@@ -208,7 +224,13 @@ export function TransactionsWorkbench() {
         ...current,
       ]);
       setDataSource("demo");
-      setFormState({ date: new Date().toISOString().slice(0, 10), merchant: "", accountId: accountOptions[0]?.id ?? "", category: "Groceries", amount: "" });
+      setFormState({
+        date: new Date().toISOString().slice(0, 10),
+        merchant: "",
+        accountId: accountOptions[0]?.id ?? "",
+        category: getDefaultCategoryName(categoryOptions, formState.category),
+        amount: "",
+      });
       setError(dataSource === "database" ? "Saved in local demo mode because the transaction API rejected the write." : null);
     } catch {
       setError("Enter a valid signed dollar amount.");
@@ -283,9 +305,9 @@ export function TransactionsWorkbench() {
                   value={transaction.category}
                   onChange={(event) => updateCategory(transaction.id, event.target.value)}
                 >
-                  {categories.map((category) => (
-                    <option value={category} key={category}>
-                      {category}
+                  {categoryOptions.map((category) => (
+                    <option value={category.name} key={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
@@ -351,9 +373,9 @@ export function TransactionsWorkbench() {
             <label>
               <span>Category</span>
               <select value={formState.category} onChange={(event) => setFormState((current) => ({ ...current, category: event.target.value }))}>
-                {categories.map((category) => (
-                  <option value={category} key={category}>
-                    {category}
+                {categoryOptions.map((category) => (
+                  <option value={category.name} key={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -399,10 +421,24 @@ type DatabaseAccount = {
   name: string;
 };
 
+type DatabaseCategory = {
+  id: string;
+  name: string;
+};
+
 type AccountOption = {
   id: string;
   name: string;
 };
+
+type CategoryOption = {
+  id: string;
+  name: string;
+};
+
+function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Groceries") {
+  return options.find((category) => category.name === currentCategory)?.name ?? options.find((category) => category.name === "Groceries")?.name ?? options[0]?.name ?? "Groceries";
+}
 
 async function persistTransactionPatch(body: { id: string; reviewStatus?: TransactionStatus; categoryName?: string; action?: "delete" | "restore" }) {
   try {
