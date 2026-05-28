@@ -78,6 +78,8 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await page.getByPlaceholder("APPLE.COM/BILL").fill("LOCAL BOOKSTORE");
   await page.getByRole("button", { name: "Save rule" }).click();
   await expect(page.getByText("Bookstore rule")).toBeVisible();
+  await page.getByRole("button", { name: "Apply rules" }).click();
+  await expect(page.getByText(/transactions|Demo preview/)).toBeVisible();
 
   await page.goto("/cashflow");
   await expect(page.getByRole("heading", { name: "Cashflow" })).toBeVisible();

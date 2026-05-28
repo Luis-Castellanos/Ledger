@@ -39,4 +39,15 @@ describe("rule helpers", () => {
     expect(findMatchingMerchantRule("Payroll Deposit", rules)?.categoryId).toBe("income");
     expect(findMatchingMerchantRule("Payroll Deposit Extra", rules)?.categoryId).toBeUndefined();
   });
+
+  it("respects account-scoped rules", () => {
+    const rules = [
+      { accountId: "account_1", categoryId: "subscriptions", matchType: "contains", normalizedMatchValue: "apple.com" },
+      { accountId: null, categoryId: "shopping", matchType: "contains", normalizedMatchValue: "costco" },
+    ];
+
+    expect(findMatchingMerchantRule("APPLE.COM/BILL", rules, "account_1")?.categoryId).toBe("subscriptions");
+    expect(findMatchingMerchantRule("APPLE.COM/BILL", rules, "account_2")?.categoryId).toBeUndefined();
+    expect(findMatchingMerchantRule("COSTCO WHSE", rules, "account_2")?.categoryId).toBe("shopping");
+  });
 });

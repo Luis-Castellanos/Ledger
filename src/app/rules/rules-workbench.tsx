@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, GitBranch, Plus, Save, Search, Tags } from "lucide-react";
+import { BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { createCategorySchema, createMerchantRuleSchema, type CreateCategoryInput } from "@/lib/finance/rules";
 
@@ -70,6 +70,8 @@ export function RulesWorkbench() {
   const [query, setQuery] = useState("");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [error, setError] = useState<string | null>(null);
+  const [applyMessage, setApplyMessage] = useState<string | null>(null);
+  const [isApplyingRules, setIsApplyingRules] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ name: "", flowType: "expense" as CreateCategoryInput["flowType"], color: "#57b89d" });
   const [ruleForm, setRuleForm] = useState({
     name: "",
@@ -224,6 +226,32 @@ export function RulesWorkbench() {
     setRuleForm((current) => ({ ...current, name: "", matchValue: "", priority: 100 }));
   }
 
+  async function applyRulesToTransactions() {
+    hasLocalEdits.current = true;
+    setIsApplyingRules(true);
+
+    try {
+      const response = await fetch("/api/merchant-rules/apply", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Rule application API unavailable");
+      }
+
+      const payload = (await response.json()) as { appliedCount: number };
+      setApplyMessage(`${payload.appliedCount} unreviewed transactions updated.`);
+      setError(null);
+      setDataSource("database");
+    } catch {
+      setApplyMessage("Demo preview only. Configure Clerk and DATABASE_URL to apply rules to transactions.");
+      setDataSource("demo");
+    } finally {
+      setIsApplyingRules(false);
+    }
+  }
+
   return (
     <div className="accounts-grid">
       <section className="accounts-main">
@@ -244,7 +272,12 @@ export function RulesWorkbench() {
               <Search size={16} />
               <input aria-label="Search rules" placeholder="Search rules" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
+            <button className="secondary-action" type="button" onClick={applyRulesToTransactions} disabled={isApplyingRules}>
+              <Play size={16} />
+              {isApplyingRules ? "Applying" : "Apply rules"}
+            </button>
           </div>
+          {applyMessage ? <p className="form-success">{applyMessage}</p> : null}
 
           <div className="accounts-table" role="table" aria-label="Merchant rules">
             <div className="accounts-table-head" role="row">

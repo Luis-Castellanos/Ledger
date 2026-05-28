@@ -23,6 +23,7 @@ export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type CreateMerchantRuleInput = z.infer<typeof createMerchantRuleSchema>;
 
 export type MerchantRuleMatcher = {
+  accountId?: string | null;
   categoryId: string;
   matchType: z.infer<typeof merchantRuleMatchTypeSchema> | string;
   normalizedMatchValue: string;
@@ -42,10 +43,14 @@ export function normalizeRuleMatchValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-export function findMatchingMerchantRule(description: string, rules: MerchantRuleMatcher[]) {
+export function findMatchingMerchantRule(description: string, rules: MerchantRuleMatcher[], accountId?: string) {
   const normalizedDescription = normalizeRuleMatchValue(description);
 
   return rules.find((rule) => {
+    if (rule.accountId && rule.accountId !== accountId) {
+      return false;
+    }
+
     if (rule.matchType === "exact") {
       return normalizedDescription === rule.normalizedMatchValue;
     }
