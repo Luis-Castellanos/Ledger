@@ -80,6 +80,7 @@ A deployment is not ready for private beta unless:
 - Vercel build passes.
 - Drizzle migration check passes.
 - Production dependency audit has no high or critical findings.
+- Security headers are present on app responses.
 - Clerk sign-in/sign-up works.
 - Neon migrations have been applied.
 - `/settings` reports Clerk, Neon, and App URL configured.
