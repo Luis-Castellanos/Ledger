@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, BadgeDollarSign, Landmark, ReceiptText } from "lucide-react";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
+import { buildCashflowSummary } from "@/lib/finance/reports";
 
 export function CashflowWorkbench() {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
@@ -41,26 +42,7 @@ export function CashflowWorkbench() {
     };
   }, []);
 
-  const summary = useMemo(() => {
-    return transactions.reduce(
-      (acc, transaction) => {
-        if (transaction.status === "excluded" || transaction.transferStatus === "transfer" || transaction.category === "Internal Transfer") {
-          acc.excluded += 1;
-          return acc;
-        }
-
-        if (transaction.amountMinor > 0) {
-          acc.inflow += transaction.amountMinor;
-        } else {
-          acc.outflow += Math.abs(transaction.amountMinor);
-        }
-
-        acc.byCategory.set(transaction.category, (acc.byCategory.get(transaction.category) ?? 0) + transaction.amountMinor);
-        return acc;
-      },
-      { inflow: 0, outflow: 0, excluded: 0, byCategory: new Map<string, number>() },
-    );
-  }, [transactions]);
+  const summary = useMemo(() => buildCashflowSummary(transactions), [transactions]);
 
   const categoryRows = [...summary.byCategory.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 8);
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays, Landmark, ShieldCheck, WalletCards } from "lucide-react";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { formatMoney } from "@/lib/finance/money";
+import { buildNetWorthSummary } from "@/lib/finance/reports";
 
 export function NetWorthWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
@@ -63,20 +64,7 @@ export function NetWorthWorkbench() {
     return latest;
   }, [snapshots]);
 
-  const summary = useMemo(() => {
-    return accounts.reduce(
-      (acc, account) => {
-        if (account.assetClass === "liability") {
-          acc.liabilities += Math.abs(account.balanceMinor);
-        } else {
-          acc.assets += account.balanceMinor;
-        }
-
-        return acc;
-      },
-      { assets: 0, liabilities: 0 },
-    );
-  }, [accounts]);
+  const summary = useMemo(() => buildNetWorthSummary(accounts), [accounts]);
 
   const recentSnapshots = useMemo(() => {
     return [...snapshots]
@@ -94,7 +82,7 @@ export function NetWorthWorkbench() {
         <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
           <NetWorthMetric label="Assets" value={formatMoney(summary.assets)} icon={<ArrowUpRight size={17} />} tone="green" />
           <NetWorthMetric label="Liabilities" value={formatMoney(-summary.liabilities)} icon={<ArrowDownLeft size={17} />} tone="coral" />
-          <NetWorthMetric label="Net worth" value={formatMoney(summary.assets - summary.liabilities)} icon={<ShieldCheck size={17} />} tone="violet" />
+          <NetWorthMetric label="Net worth" value={formatMoney(summary.netWorth)} icon={<ShieldCheck size={17} />} tone="violet" />
         </div>
 
         <section className="panel accounts-table-panel">
