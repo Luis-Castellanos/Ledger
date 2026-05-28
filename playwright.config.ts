@@ -7,13 +7,13 @@ export default defineConfig({
     timeout: 5_000,
   },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3100",
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    command: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= CLERK_SECRET_KEY= npm run dev -- -p 3100",
+    url: "http://localhost:3100",
+    reuseExistingServer: false,
   },
   projects: [
     {
