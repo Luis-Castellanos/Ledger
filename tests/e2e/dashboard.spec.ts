@@ -124,6 +124,10 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByText("Costco marked reviewed.")).toBeVisible();
   await page.getByRole("button", { name: "Undo review" }).click();
   await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Create rule from Costco" }).click();
+  await expect(page.getByText(/Rule preview created for Costco|Rule created for Costco|Rule creation stayed local/)).toBeVisible();
+  await page.getByRole("button", { name: "Apply Costco to similar" }).click();
+  await expect(page.getByText(/similar Costco transactions reviewed|Similar review stayed local/)).toBeVisible();
 
   await page.goto("/rules");
   await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();

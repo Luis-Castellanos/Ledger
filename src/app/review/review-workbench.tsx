@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, CircleSlash, ListChecks, Search, Tag } from "lucide-react";
+import { CheckCircle2, CircleSlash, GitBranch, ListChecks, Search, Tags, Wand2 } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
@@ -81,9 +81,8 @@ export function ReviewWorkbench() {
     }
 
     setLastReviewAction({
-      id,
+      transactions: [{ id, previousStatus: previousTransaction.status }],
       merchant: previousTransaction.merchant,
-      previousStatus: previousTransaction.status,
       nextStatus: status,
     });
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
@@ -100,13 +99,110 @@ export function ReviewWorkbench() {
           throw new Error("Review update failed");
         }
 
-        setMessage("Review decision saved.");
+        setMessage(`${previousTransaction.merchant} marked ${getReviewStatusLabel(status)}.`);
       } catch {
         setDataSource("demo");
         setMessage("Review decision stayed local because the API was unavailable.");
       }
     } else {
-      setMessage(null);
+      setMessage(`${previousTransaction.merchant} marked ${getReviewStatusLabel(status)}.`);
+    }
+  }
+
+  async function applyToSimilar(id: string) {
+    hasLocalEdits.current = true;
+    const sourceTransaction = transactions.find((transaction) => transaction.id === id);
+
+    if (!sourceTransaction) {
+      return;
+    }
+
+    const normalizedMerchant = normalizeMerchant(sourceTransaction.merchant);
+    const similarTransactions = transactions.filter(
+      (transaction) => transaction.status === "needs_review" && normalizeMerchant(transaction.merchant) === normalizedMerchant,
+    );
+
+    if (similarTransactions.length === 0) {
+      setMessage(`No similar unreviewed ${sourceTransaction.merchant} transactions found.`);
+      return;
+    }
+
+    const nextStatus = "reviewed";
+    setLastReviewAction({
+      transactions: similarTransactions.map((transaction) => ({ id: transaction.id, previousStatus: transaction.status })),
+      merchant: sourceTransaction.merchant,
+      nextStatus,
+    });
+    setTransactions((current) =>
+      current.map((transaction) =>
+        similarTransactions.some((similarTransaction) => similarTransaction.id === transaction.id)
+          ? { ...transaction, category: sourceTransaction.category, status: nextStatus }
+          : transaction,
+      ),
+    );
+
+    if (dataSource === "database") {
+      try {
+        await Promise.all(
+          similarTransactions.map((transaction) =>
+            fetch("/api/transactions", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ id: transaction.id, categoryName: sourceTransaction.category, reviewStatus: nextStatus }),
+            }).then((response) => {
+              if (!response.ok) {
+                throw new Error("Similar review update failed");
+              }
+            }),
+          ),
+        );
+
+        setMessage(`${similarTransactions.length} similar ${sourceTransaction.merchant} transactions reviewed.`);
+      } catch {
+        setDataSource("demo");
+        setMessage("Similar review stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(`${similarTransactions.length} similar ${sourceTransaction.merchant} transactions reviewed.`);
+    }
+  }
+
+  async function createRuleFromTransaction(id: string) {
+    hasLocalEdits.current = true;
+    const transaction = transactions.find((row) => row.id === id);
+    const category = transaction ? categoryOptions.find((option) => option.name === transaction.category) : null;
+
+    if (!transaction || !category) {
+      setMessage("Choose a category before creating a rule.");
+      return;
+    }
+
+    if (dataSource !== "database") {
+      setMessage(`Rule preview created for ${transaction.merchant}. Configure Clerk and DATABASE_URL to persist rules.`);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/merchant-rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          name: `${transaction.merchant} rule`,
+          matchType: "contains",
+          matchValue: transaction.merchant,
+          categoryId: category.id,
+          priority: 100,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Rule creation failed");
+      }
+
+      setMessage(`Rule created for ${transaction.merchant}.`);
+    } catch {
+      setDataSource("demo");
+      setMessage("Rule creation stayed local because the API was unavailable.");
     }
   }
 
@@ -119,20 +215,27 @@ export function ReviewWorkbench() {
     const action = lastReviewAction;
     setLastReviewAction(null);
     setTransactions((current) =>
-      current.map((transaction) => (transaction.id === action.id ? { ...transaction, status: action.previousStatus } : transaction)),
+      current.map((transaction) => {
+        const previous = action.transactions.find((item) => item.id === transaction.id);
+        return previous ? { ...transaction, status: previous.previousStatus } : transaction;
+      }),
     );
 
     if (dataSource === "database") {
       try {
-        const response = await fetch("/api/transactions", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ id: action.id, reviewStatus: action.previousStatus }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Review undo failed");
-        }
+        await Promise.all(
+          action.transactions.map((transaction) =>
+            fetch("/api/transactions", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ id: transaction.id, reviewStatus: transaction.previousStatus }),
+            }).then((response) => {
+              if (!response.ok) {
+                throw new Error("Review undo failed");
+              }
+            }),
+          ),
+        );
 
         setMessage("Review decision undone.");
       } catch {
@@ -191,11 +294,11 @@ export function ReviewWorkbench() {
               <input aria-label="Search unresolved transactions" placeholder="Search queue" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
           </div>
-          {message ? <p className={message.endsWith("saved.") ? "form-success" : "form-error"}>{message}</p> : null}
+          {message ? <p className={isReviewSuccessMessage(message) ? "form-success" : "form-error"}>{message}</p> : null}
           {lastReviewAction ? (
             <div className="transaction-undo-banner">
               <span>
-                {lastReviewAction.merchant} marked {getReviewStatusLabel(lastReviewAction.nextStatus)}.
+                Last review action: {lastReviewAction.merchant} {getReviewStatusLabel(lastReviewAction.nextStatus)}.
               </span>
               <button type="button" onClick={undoLastReviewAction}>
                 Undo review
@@ -236,6 +339,12 @@ export function ReviewWorkbench() {
                   <button type="button" aria-label={`Exclude ${transaction.merchant}`} onClick={() => updateReview(transaction.id, "excluded")}>
                     <CircleSlash size={15} />
                   </button>
+                  <button type="button" aria-label={`Apply ${transaction.merchant} to similar`} onClick={() => applyToSimilar(transaction.id)}>
+                    <Wand2 size={15} />
+                  </button>
+                  <button type="button" aria-label={`Create rule from ${transaction.merchant}`} onClick={() => createRuleFromTransaction(transaction.id)}>
+                    <GitBranch size={15} />
+                  </button>
                 </div>
                 <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
               </div>
@@ -252,7 +361,7 @@ export function ReviewWorkbench() {
               <h2 className="panel-title">Review policy</h2>
             </div>
             <div className="summary-icon">
-              <Tag size={17} />
+              <Tags size={17} />
             </div>
           </div>
           <div className="account-checklist-item">
@@ -284,14 +393,32 @@ type CategoryOption = {
 };
 
 type ReviewUndoAction = {
-  id: string;
   merchant: string;
-  previousStatus: TransactionRow["status"];
+  transactions: Array<{
+    id: string;
+    previousStatus: TransactionRow["status"];
+  }>;
   nextStatus: "reviewed" | "excluded";
 };
 
 function getReviewStatusLabel(status: ReviewUndoAction["nextStatus"]) {
   return status === "reviewed" ? "reviewed" : "excluded";
+}
+
+function normalizeMerchant(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isReviewSuccessMessage(message: string) {
+  return (
+    message.endsWith("saved.") ||
+    message.endsWith("reviewed.") ||
+    message.endsWith("excluded.") ||
+    message.endsWith("undone.") ||
+    message.endsWith("persist rules.") ||
+    message.startsWith("Rule preview created") ||
+    message.startsWith("Rule created")
+  );
 }
 
 function ReviewMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
