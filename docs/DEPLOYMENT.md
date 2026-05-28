@@ -41,6 +41,10 @@ For production targets, `setup:check` also requires live Clerk keys and fails if
 `npm run audit:prod` fails on high or critical production dependency advisories.
 Current known advisory: `npm audit` reports a moderate PostCSS advisory through Next.js. It is below the private-beta release gate and should be rechecked when the fixed Next.js release path is available without a breaking downgrade.
 
+## Backup Package
+
+Backup package exports are documented in [BACKUP_PACKAGE.md](./BACKUP_PACKAGE.md). Private beta deployments must verify that `/api/exports?format=backup_package` returns a JSON package with manifest counts before relying on the deployment for real financial data.
+
 ## Rate Limiting
 
 V1 includes in-process, per-user rate limits for import mutations and export generation. This is an initial private-beta safeguard against accidental abuse on a single deployment instance. Before public beta or horizontal scaling, replace it with a durable shared counter such as Vercel KV, Upstash Redis, or another server-side store.

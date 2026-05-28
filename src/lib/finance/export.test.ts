@@ -57,4 +57,25 @@ describe("buildBackupPackage", () => {
       },
     });
   });
+
+  it("keeps the documented V1 table set stable", () => {
+    const backup = buildBackupPackage({
+      ledger: {
+        id: "ledger_123",
+        name: "Personal ledger",
+        defaultCurrency: "USD",
+      },
+      data: {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        imports: [],
+        importRows: [],
+        auditEvents: [],
+      },
+    });
+
+    expect(Object.keys(backup.data)).toEqual(["accounts", "categories", "transactions", "imports", "importRows", "auditEvents"]);
+    expect(Object.keys(backup.manifest.tableCounts)).toEqual(["accounts", "categories", "transactions", "imports", "importRows", "auditEvents"]);
+  });
 });

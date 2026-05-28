@@ -1,0 +1,67 @@
+# Backup Package Format
+
+Vault V1 backup exports are JSON files generated from `/api/exports?format=backup_package`.
+
+The format is intended for data portability and future restore tooling. Full restore is deferred, so consumers should treat this as an append-only export contract, not as an import API.
+
+## Filename
+
+```text
+vault-backup_package-YYYY-MM-DD.json
+```
+
+## Top-Level Shape
+
+```ts
+type BackupPackageV1 = {
+  manifest: {
+    formatVersion: 1;
+    exportedAt: string;
+    appVersion: string;
+    ledgerId: string;
+    ledgerName: string;
+    defaultCurrency: string;
+    tableCounts: Record<string, number>;
+  };
+  data: {
+    accounts: unknown[];
+    categories: unknown[];
+    transactions: unknown[];
+    imports: unknown[];
+    importRows: unknown[];
+    auditEvents: unknown[];
+  };
+};
+```
+
+## Manifest Rules
+
+- `formatVersion` is the compatibility marker. Breaking changes require a new version.
+- `exportedAt` is an ISO timestamp from the server.
+- `appVersion` is the app package version used to generate the file.
+- `ledgerId`, `ledgerName`, and `defaultCurrency` identify the source ledger.
+- `tableCounts` must match the number of rows in each `data` table.
+
+## Included Tables
+
+- `accounts`
+- `categories`
+- `transactions`
+- `imports`
+- `importRows`
+- `auditEvents`
+
+Audit events are included by default because source traceability is part of the V1 trust model.
+
+## Privacy Notes
+
+Backup packages contain sensitive financial data. Store them like bank statements:
+
+- Do not attach them to support tickets or issue trackers.
+- Do not commit them to Git.
+- Prefer encrypted local storage or a password manager file vault.
+- Delete stale local copies after testing export behavior.
+
+## Restore Status
+
+V1 does not implement restore from backup. Before restore ships, it needs validation, duplicate handling, ID remapping, malicious-file handling, and rollback semantics.

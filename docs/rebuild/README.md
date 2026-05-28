@@ -11,6 +11,7 @@ The existing app is treated as a research prototype: it proved the core product 
 - [V1_DATA_MODEL.md](./V1_DATA_MODEL.md) — first-release relational model, ledger ownership boundary, constraints, indexes, and backup shape.
 - [V1_BUILD_PLAN.md](./V1_BUILD_PLAN.md) — implementation milestones, CI gates, QA flow, and private beta hardening plan.
 - [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) — accepted ADRs and open naming decisions for the production rebuild.
+- [../BACKUP_PACKAGE.md](../BACKUP_PACKAGE.md) — V1 backup export shape, manifest contract, privacy notes, and restore status.
 - [UX_UI_PRINCIPLES.md](./UX_UI_PRINCIPLES.md) — information architecture, screen-level UX direction, interaction standards, and visual design rules.
 - [ARCHITECTURE_ENGINEERING.md](./ARCHITECTURE_ENGINEERING.md) — system architecture, database principles, coding standards, testing, deployment, and operations.
 - [SECURITY_PRIVACY.md](./SECURITY_PRIVACY.md) — security posture, multi-user access control, secrets, AI usage, file handling, and release gates.
