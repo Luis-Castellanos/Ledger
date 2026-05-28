@@ -8,6 +8,18 @@ export const createCategorySchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).default("#57b89d"),
 });
 
+export const updateCategorySchema = z
+  .object({
+    id: z.string().trim().min(1),
+    name: z.string().trim().min(1).max(120).optional(),
+    flowType: categoryFlowTypeSchema.optional(),
+    color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    isArchived: z.boolean().optional(),
+  })
+  .refine((value) => value.name !== undefined || value.flowType !== undefined || value.color !== undefined || value.isArchived !== undefined, {
+    message: "At least one category field is required.",
+  });
+
 export const merchantRuleMatchTypeSchema = z.enum(["contains", "exact", "starts_with"]);
 
 export const createMerchantRuleSchema = z.object({
@@ -20,6 +32,7 @@ export const createMerchantRuleSchema = z.object({
 });
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateMerchantRuleInput = z.infer<typeof createMerchantRuleSchema>;
 
 export type MerchantRuleMatcher = {

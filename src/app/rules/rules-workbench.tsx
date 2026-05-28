@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
+import { Archive, BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { createCategorySchema, createMerchantRuleSchema, type CreateCategoryInput } from "@/lib/finance/rules";
+import { createCategorySchema, createMerchantRuleSchema, updateCategorySchema, type CreateCategoryInput } from "@/lib/finance/rules";
 
 const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
   {
@@ -13,6 +13,7 @@ const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
     flowType: parent.flowType,
     color: parent.color,
     isSystem: true,
+    isArchived: false,
   },
   ...(parent.children ?? []).map((child) => ({
     id: child.slug,
@@ -21,6 +22,7 @@ const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
     flowType: child.flowType,
     color: child.color,
     isSystem: true,
+    isArchived: false,
   })),
 ]);
 
@@ -73,6 +75,7 @@ export function RulesWorkbench() {
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [isApplyingRules, setIsApplyingRules] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ name: "", flowType: "expense" as CreateCategoryInput["flowType"], color: "#57b89d" });
+  const [categoryEdits, setCategoryEdits] = useState<Record<string, CategoryEditState>>({});
   const [ruleForm, setRuleForm] = useState({
     name: "",
     matchType: "contains",
@@ -130,6 +133,8 @@ export function RulesWorkbench() {
     );
   }, [query, rules]);
 
+  const customCategories = useMemo(() => categories.filter((category) => !category.isSystem), [categories]);
+
   async function handleCategorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = createCategorySchema.safeParse(categoryForm);
@@ -165,6 +170,7 @@ export function RulesWorkbench() {
         flowType: parsed.data.flowType,
         color: parsed.data.color,
         isSystem: false,
+        isArchived: false,
       };
 
       setCategories((current) => [localCategory, ...current]);
@@ -174,6 +180,62 @@ export function RulesWorkbench() {
     }
 
     setCategoryForm({ name: "", flowType: "expense", color: "#57b89d" });
+  }
+
+  async function updateCategory(id: string, patch: Partial<CategoryEditState> & { isArchived?: boolean }) {
+    const currentCategory = categories.find((category) => category.id === id);
+    const currentEdit = categoryEdits[id];
+
+    if (!currentCategory) {
+      return;
+    }
+
+    const payload = {
+      id,
+      name: patch.name ?? currentEdit?.name ?? currentCategory.name,
+      flowType: patch.flowType ?? currentEdit?.flowType ?? currentCategory.flowType,
+      color: patch.color ?? currentEdit?.color ?? currentCategory.color ?? "#57b89d",
+      isArchived: patch.isArchived ?? currentCategory.isArchived,
+    };
+    const parsed = updateCategorySchema.safeParse(payload);
+
+    if (!parsed.success) {
+      setError("Category update needs a name, flow type, and valid hex color.");
+      return;
+    }
+
+    hasLocalEdits.current = true;
+
+    try {
+      const response = await fetch("/api/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Category update API unavailable");
+      }
+
+      const result = (await response.json()) as { category: CategoryRow };
+      setCategories((current) => current.map((category) => (category.id === result.category.id ? result.category : category)));
+      setCategoryEdits((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      setDataSource("database");
+      setError(null);
+    } catch {
+      setCategories((current) => current.map((category) => (category.id === id ? { ...category, ...parsed.data } : category)));
+      setCategoryEdits((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      setDataSource("demo");
+      setError("Category update stayed local. Configure Clerk and DATABASE_URL to persist category edits.");
+    }
   }
 
   async function handleRuleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -401,6 +463,69 @@ export function RulesWorkbench() {
             </button>
           </form>
         </section>
+
+        <section className="panel account-form-panel" aria-label="Custom categories">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Categories</p>
+              <h2 className="panel-title">Custom buckets</h2>
+            </div>
+            <div className="summary-icon">
+              <Tags size={17} />
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {customCategories.length > 0 ? (
+              customCategories.map((category) => {
+                const edit = categoryEdits[category.id] ?? {
+                  color: category.color ?? "#57b89d",
+                  flowType: category.flowType,
+                  name: category.name,
+                };
+
+                return (
+                  <div className="category-edit-row" key={category.id}>
+                    <input
+                      aria-label={`Name for ${category.name}`}
+                      value={edit.name}
+                      onChange={(event) => setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, name: event.target.value } }))}
+                    />
+                    <select
+                      aria-label={`Flow for ${category.name}`}
+                      value={edit.flowType}
+                      onChange={(event) =>
+                        setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, flowType: event.target.value as CategoryEditState["flowType"] } }))
+                      }
+                    >
+                      {flowTypes.map((flowType) => (
+                        <option value={flowType.value} key={flowType.value}>
+                          {flowType.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label={`Color for ${category.name}`}
+                      value={edit.color}
+                      onChange={(event) => setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, color: event.target.value } }))}
+                    />
+                    <div className="flex gap-2">
+                      <button className="secondary-action" type="button" onClick={() => updateCategory(category.id, edit)}>
+                        <Save size={16} />
+                        Save
+                      </button>
+                      <button className="secondary-action" type="button" onClick={() => updateCategory(category.id, { ...edit, isArchived: !category.isArchived })}>
+                        <Archive size={16} />
+                        {category.isArchived ? "Restore" : "Archive"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="empty-copy">Custom categories you create will appear here for edit and archive controls.</p>
+            )}
+          </div>
+        </section>
       </aside>
     </div>
   );
@@ -410,9 +535,16 @@ type CategoryRow = {
   color: string | null;
   flowType: "expense" | "income" | "transfer";
   id: string;
+  isArchived: boolean;
   isSystem: boolean;
   name: string;
   slug: string;
+};
+
+type CategoryEditState = {
+  color: string;
+  flowType: CreateCategoryInput["flowType"];
+  name: string;
 };
 
 type MerchantRuleRow = {

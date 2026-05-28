@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, categories } from "@/lib/db/schema";
-import { createCategorySchema, slugifyCategoryName } from "@/lib/finance/rules";
+import { createCategorySchema, slugifyCategoryName, updateCategorySchema } from "@/lib/finance/rules";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -21,6 +21,7 @@ export async function GET() {
       flowType: categories.flowType,
       color: categories.color,
       isSystem: categories.isSystem,
+      isArchived: categories.isArchived,
     })
     .from(categories)
     .where(and(eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
@@ -67,4 +68,57 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ category }, { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  const context = await getOrCreateCurrentLedger();
+
+  if (!context) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const parsed = updateCategorySchema.safeParse(await request.json());
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid category update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+
+  const db = getDb();
+  const [existingCategory] = await db
+    .select()
+    .from(categories)
+    .where(and(eq(categories.id, parsed.data.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
+    .limit(1);
+
+  if (!existingCategory) {
+    return NextResponse.json({ error: "Category not found" }, { status: 404 });
+  }
+
+  if (existingCategory.isSystem) {
+    return NextResponse.json({ error: "System categories cannot be edited in V1." }, { status: 409 });
+  }
+
+  const nextName = parsed.data.name ?? existingCategory.name;
+  const update = {
+    name: nextName,
+    slug: parsed.data.name ? `${slugifyCategoryName(nextName)}-${Date.now().toString(36)}` : existingCategory.slug,
+    flowType: parsed.data.flowType ?? existingCategory.flowType,
+    color: parsed.data.color ?? existingCategory.color,
+    isArchived: parsed.data.isArchived ?? existingCategory.isArchived,
+    updatedAt: new Date(),
+  };
+
+  const [category] = await db.update(categories).set(update).where(eq(categories.id, parsed.data.id)).returning();
+
+  await db.insert(auditEvents).values({
+    ledgerId: context.ledger.id,
+    actorUserId: context.user.id,
+    action: "category.updated",
+    entityType: "category",
+    entityId: category.id,
+    before: existingCategory,
+    after: category,
+  });
+
+  return NextResponse.json({ category });
 }

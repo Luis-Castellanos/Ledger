@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { createCategorySchema, createMerchantRuleSchema, findMatchingMerchantRule, normalizeRuleMatchValue, slugifyCategoryName } from "./rules";
+import {
+  createCategorySchema,
+  createMerchantRuleSchema,
+  findMatchingMerchantRule,
+  normalizeRuleMatchValue,
+  slugifyCategoryName,
+  updateCategorySchema,
+} from "./rules";
 
 describe("createCategorySchema", () => {
   it("defaults new categories to expense flow", () => {
     const parsed = createCategorySchema.parse({ name: "Professional Dues" });
 
     expect(parsed.flowType).toBe("expense");
+  });
+});
+
+describe("updateCategorySchema", () => {
+  it("requires at least one editable category field", () => {
+    expect(updateCategorySchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000" }).success).toBe(false);
+    expect(updateCategorySchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", isArchived: true }).success).toBe(true);
   });
 });
 

@@ -158,6 +158,15 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await page.goto("/rules");
   await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();
   await expect(page.getByText("Classification control file")).toBeVisible();
+  await page.getByPlaceholder("Professional Dues").fill("Professional Dues");
+  await page.getByRole("button", { name: "Add category" }).click();
+  const customCategories = page.getByLabel("Custom categories");
+  await expect(customCategories.getByLabel("Name for Professional Dues")).toBeVisible();
+  await customCategories.getByLabel("Name for Professional Dues").fill("Professional Fees");
+  await customCategories.getByRole("button", { name: "Save" }).click();
+  await expect(customCategories.getByLabel("Name for Professional Fees")).toBeVisible();
+  await customCategories.getByRole("button", { name: "Archive" }).click();
+  await expect(customCategories.getByRole("button", { name: "Restore" })).toBeVisible();
   await page.getByPlaceholder("Apple subscriptions").fill("Bookstore rule");
   await page.getByPlaceholder("APPLE.COM/BILL").fill("LOCAL BOOKSTORE");
   await page.getByRole("button", { name: "Save rule" }).click();
