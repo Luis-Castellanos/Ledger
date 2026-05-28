@@ -114,6 +114,8 @@ test("settings page supports ledger settings edits", async ({ page }) => {
   await expect(page.getByText("Redacted server error logging")).toBeVisible();
   await expect(page.getByLabel("Export history")).toBeVisible();
   await expect(page.getByText("Backup and portability log")).toBeVisible();
+  await expect(page.getByLabel("Audit trail")).toBeVisible();
+  await expect(page.getByText("Recent control events")).toBeVisible();
 
   await page.getByPlaceholder("Personal ledger").fill("Forensic Ledger");
   await page.getByRole("button", { name: /Save settings|Saving/ }).click();

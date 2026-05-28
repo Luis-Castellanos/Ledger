@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Archive, Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
+import { Archive, Cloud, Database, KeyRound, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
 import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
 
@@ -25,6 +25,15 @@ type ExportJobSummary = {
   errorMessage: string | null;
   createdAt: string;
   completedAt: string | null;
+};
+
+type AuditEventSummary = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  actorEmail: string | null;
+  createdAt: string;
 };
 
 const fallbackSettings: SettingsState = {
@@ -61,6 +70,25 @@ const fallbackExportJobs: ExportJobSummary[] = [
   },
 ];
 
+const fallbackAuditEvents: AuditEventSummary[] = [
+  {
+    id: "demo-audit-import",
+    action: "import.committed",
+    entityType: "import",
+    entityId: "demo-import",
+    actorEmail: "local-demo@vault.local",
+    createdAt: "2026-05-27T16:05:00.000Z",
+  },
+  {
+    id: "demo-audit-export",
+    action: "export.created",
+    entityType: "export_job",
+    entityId: "demo-export",
+    actorEmail: "local-demo@vault.local",
+    createdAt: "2026-05-27T14:30:01.000Z",
+  },
+];
+
 const fallbackSetupStatus: SetupStatus = {
   appUrlConfigured: false,
   clerkConfigured: false,
@@ -76,6 +104,7 @@ export function SettingsWorkbench() {
   const [formState, setFormState] = useState(fallbackSettings.ledger);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [exportHistory, setExportHistory] = useState<ExportJobSummary[]>(fallbackExportJobs);
+  const [auditTrail, setAuditTrail] = useState<AuditEventSummary[]>(fallbackAuditEvents);
   const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,10 +116,11 @@ export function SettingsWorkbench() {
 
     async function loadSettings() {
       try {
-        const [meResponse, setupResponse, exportJobsResponse] = await Promise.all([
+        const [meResponse, setupResponse, exportJobsResponse, auditEventsResponse] = await Promise.all([
           fetch("/api/me", { headers: { Accept: "application/json" } }),
           fetch("/api/setup/status", { headers: { Accept: "application/json" } }),
           fetch("/api/export-jobs", { headers: { Accept: "application/json" } }),
+          fetch("/api/audit-events", { headers: { Accept: "application/json" } }),
         ]);
 
         if (!meResponse.ok) {
@@ -102,12 +132,16 @@ export function SettingsWorkbench() {
         const exportJobsPayload = exportJobsResponse.ok
           ? ((await exportJobsResponse.json()) as { exportJobs: ExportJobSummary[] })
           : { exportJobs: [] };
+        const auditEventsPayload = auditEventsResponse.ok
+          ? ((await auditEventsResponse.json()) as { auditEvents: AuditEventSummary[] })
+          : { auditEvents: [] };
 
         if (isMounted) {
           setSettings(payload);
           setFormState(payload.ledger);
           setSetupStatus(setupPayload.status);
           setExportHistory(exportJobsPayload.exportJobs);
+          setAuditTrail(auditEventsPayload.auditEvents);
           setDataSource("database");
         }
       } catch {
@@ -115,6 +149,7 @@ export function SettingsWorkbench() {
           setSettings(fallbackSettings);
           setFormState(fallbackSettings.ledger);
           setExportHistory(fallbackExportJobs);
+          setAuditTrail(fallbackAuditEvents);
           void fetch("/api/setup/status", { headers: { Accept: "application/json" } })
             .then((response) => (response.ok ? response.json() : null))
             .then((payload: { status: SetupStatus } | null) => {
@@ -259,6 +294,38 @@ export function SettingsWorkbench() {
             )}
           </div>
         </section>
+
+        <section className="panel settings-panel" aria-label="Audit trail">
+          <div className="panel-header accounts-toolbar">
+            <div>
+              <p className="panel-label">Audit trail</p>
+              <h2 className="panel-title">Recent control events</h2>
+            </div>
+            <div className="summary-icon">
+              <ScrollText size={17} />
+            </div>
+          </div>
+
+          <div className="export-history-list">
+            {auditTrail.length > 0 ? (
+              auditTrail.map((event) => (
+                <article className="export-history-item" key={event.id}>
+                  <div>
+                    <span className="status-chip status-chip-live">{formatAuditAction(event.action)}</span>
+                    <strong>{event.entityType.replace("_", " ")}</strong>
+                    <p>{formatExportTimestamp(event.createdAt)}</p>
+                  </div>
+                  <div>
+                    <span>{event.actorEmail ?? "System"}</span>
+                    <strong>{event.entityId ?? "No entity id"}</strong>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="empty-state">No audit events yet. Meaningful ledger changes will appear here.</p>
+            )}
+          </div>
+        </section>
       </section>
 
       <aside className="accounts-side">
@@ -399,6 +466,13 @@ function formatExportTimestamp(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatAuditAction(action: string) {
+  return action
+    .split(".")
+    .map((part) => part.replace("_", " "))
+    .join(" ");
 }
 
 function SetupFact({ label, ready, readyText, missingText }: { label: string; ready: boolean; readyText: string; missingText: string }) {
