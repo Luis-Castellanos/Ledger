@@ -8,6 +8,13 @@
       "when": 1779929810290,
       "tag": "0000_harsh_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779951862575,
+      "tag": "0001_curved_shooting_star",
+      "breakpoints": true
     }
   ]
 }

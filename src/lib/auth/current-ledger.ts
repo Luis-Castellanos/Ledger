@@ -1,7 +1,7 @@
 import "server-only";
 
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, categories, ledgers, users } from "@/lib/db/schema";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
@@ -43,19 +43,35 @@ export async function getOrCreateCurrentLedger() {
     })
     .returning();
 
-  const [existingLedger] = await db.select().from(ledgers).where(eq(ledgers.ownerUserId, user.id)).limit(1);
+  const [existingLedger] = await db.select().from(ledgers).where(and(eq(ledgers.ownerUserId, user.id), isNull(ledgers.deletedAt))).limit(1);
 
   if (existingLedger) {
     return { user, ledger: existingLedger };
   }
 
-  const [ledger] = await db
+  const [insertedLedger] = await db
     .insert(ledgers)
     .values({
       ownerUserId: user.id,
       name: "Personal ledger",
     })
+    .onConflictDoNothing({
+      target: ledgers.ownerUserId,
+      where: sql`${ledgers.deletedAt} is null`,
+    })
     .returning();
+
+  const ledger =
+    insertedLedger ??
+    (await db.select().from(ledgers).where(and(eq(ledgers.ownerUserId, user.id), isNull(ledgers.deletedAt))).limit(1))[0];
+
+  if (!ledger) {
+    throw new Error("Unable to create or load the current user's ledger.");
+  }
+
+  if (!insertedLedger) {
+    return { user, ledger };
+  }
 
   await seedDefaultLedgerData({ actorUserId: user.id, ledgerId: ledger.id });
 

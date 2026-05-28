@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable(
@@ -32,6 +32,7 @@ export const ledgers = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
+    ownerActiveUnique: uniqueIndex("ledgers_owner_active_unique").on(table.ownerUserId).where(sql`${table.deletedAt} is null`),
     ownerIdx: index("ledgers_owner_user_idx").on(table.ownerUserId),
   }),
 );

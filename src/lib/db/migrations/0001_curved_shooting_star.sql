@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "ledgers_owner_active_unique" ON "ledgers" USING btree ("owner_user_id") WHERE "ledgers"."deleted_at" is null;
