@@ -8,6 +8,11 @@ test("dashboard shell renders", async ({ page }) => {
   await expect(page.getByText("Net cashflow")).toBeVisible();
   await expect(page.getByRole("heading", { name: /spent$/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Export backup package" })).toHaveAttribute("href", "/api/exports?format=backup_package");
+  await expect(page.getByRole("link", { name: "View all" })).toHaveAttribute("href", "/transactions");
+
+  await page.getByLabel("Search ledger").fill("Costco");
+  await expect(page.getByText("Costco")).toBeVisible();
+  await expect(page.getByText("Apple Music")).toHaveCount(0);
 });
 
 test("accounts page supports local account entry", async ({ page }) => {

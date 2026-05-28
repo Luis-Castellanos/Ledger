@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
@@ -13,6 +14,7 @@ export default function Home() {
   const [transactionRows, setTransactionRows] = useState<TransactionRow[]>(sampleTransactionRows);
   const [snapshotRows, setSnapshotRows] = useState<DatabaseSnapshot[]>([]);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -113,19 +115,27 @@ export default function Home() {
   }, [accountRows, dataSource, snapshotRows, transactionRows]);
 
   const recentTransactions = useMemo(() => {
-    if (dataSource === "demo") {
-      return sampleDashboardTransactions;
+    const normalizedQuery = query.trim().toLowerCase();
+    const rows =
+      dataSource === "demo"
+        ? sampleDashboardTransactions
+        : transactionRows.slice(0, 8).map((transaction) => ({
+            merchant: transaction.merchant,
+            time: `${transaction.date} • ${transaction.account}`,
+            amount: transaction.amountMinor,
+            category: transaction.category,
+            direction: transaction.amountMinor > 0 ? "in" : "out",
+            color: transaction.amountMinor > 0 ? "#57b89d" : "#d76b64",
+          }));
+
+    if (!normalizedQuery) {
+      return rows;
     }
 
-    return transactionRows.slice(0, 8).map((transaction) => ({
-      merchant: transaction.merchant,
-      time: `${transaction.date} • ${transaction.account}`,
-      amount: transaction.amountMinor,
-      category: transaction.category,
-      direction: transaction.amountMinor > 0 ? "in" : "out",
-      color: transaction.amountMinor > 0 ? "#57b89d" : "#d76b64",
-    }));
-  }, [dataSource, transactionRows]);
+    return rows.filter((transaction) =>
+      [transaction.merchant, transaction.time, transaction.category].some((value) => value.toLowerCase().includes(normalizedQuery)),
+    );
+  }, [dataSource, query, transactionRows]);
 
   const cashflowTitle = useMemo(() => {
     const outflow = transactionRows.reduce((total, transaction) => {
@@ -151,7 +161,7 @@ export default function Home() {
               <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
               <label className="search-field">
                 <Search size={16} />
-                <input aria-label="Search transactions" placeholder="Search ledger" />
+                <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
               </label>
               <a className="icon-button" aria-label="Export backup package" href="/api/exports?format=backup_package">
                 <Download size={17} />
@@ -182,7 +192,9 @@ export default function Home() {
                     <p className="panel-label">Transactions</p>
                     <h2 className="panel-title">Recent ledger activity</h2>
                   </div>
-                  <button className="text-button">View all</button>
+                  <Link className="text-button" href="/transactions">
+                    View all
+                  </Link>
                 </div>
                 <div className="transaction-list">
                   {recentTransactions.map((transaction) => (
