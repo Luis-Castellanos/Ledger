@@ -55,6 +55,10 @@ Open Drizzle Studio:
 npm run db:studio
 ```
 
+## Deployment
+
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the GitHub, Vercel, Clerk, and Neon release checklist.
+
 ## Verification
 
 ```bash
