@@ -600,6 +600,11 @@ button {
   align-items: center;
 }
 
+.net-worth-table .accounts-table-head,
+.net-worth-table .accounts-table-row {
+  grid-template-columns: minmax(210px, 1.4fr) 100px 95px 150px 140px;
+}
+
 .accounts-table-head {
   border-bottom: 1px solid var(--line);
   padding: 0 10px 12px;

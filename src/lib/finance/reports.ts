@@ -17,6 +17,13 @@ export type NetWorthSummary = {
   netWorth: number;
 };
 
+export type BalanceEvidenceSource = "manual_snapshot" | "imported_snapshot" | "transaction_derived" | "missing_snapshot";
+
+export type BalanceSnapshotEvidence = {
+  balanceMinor: number;
+  source: string;
+};
+
 const defaultCategoryFlowByName = buildCategoryFlowMap(defaultCategoryTree);
 
 export function buildCashflowSummary(transactions: TransactionRow[], categoryFlowByName = defaultCategoryFlowByName): CashflowSummary {
@@ -68,6 +75,14 @@ export function buildNetWorthSummary(accounts: AccountRow[]): NetWorthSummary {
     ...summary,
     netWorth: summary.assets - summary.liabilities,
   };
+}
+
+export function getBalanceEvidenceSource(account: AccountRow, latestSnapshot?: BalanceSnapshotEvidence | null): BalanceEvidenceSource {
+  if (latestSnapshot) {
+    return latestSnapshot.source === "manual" ? "manual_snapshot" : "imported_snapshot";
+  }
+
+  return account.balanceMinor === 0 ? "missing_snapshot" : "transaction_derived";
 }
 
 export function buildCategoryFlowMap(categories: DefaultCategorySeed[]) {

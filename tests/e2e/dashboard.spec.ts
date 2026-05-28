@@ -235,6 +235,7 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Net Worth" })).toBeVisible();
   await expect(page.getByText("Account position")).toBeVisible();
   await expect(page.getByText("Position evidence")).toBeVisible();
+  await expect(page.getByText("Transaction-derived").first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Rewards Card/ })).toHaveAttribute("href", "/accounts?account=Rewards%20Card");
   await page.getByRole("link", { name: /Rewards Card/ }).click();
   await expect(page.getByRole("heading", { name: "Rewards Card" })).toBeVisible();

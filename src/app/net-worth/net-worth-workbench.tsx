@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays, Landmark, ShieldCheck, WalletCards } from "lucide-react";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { formatMoney } from "@/lib/finance/money";
-import { buildNetWorthSummary } from "@/lib/finance/reports";
+import { buildNetWorthSummary, getBalanceEvidenceSource, type BalanceEvidenceSource } from "@/lib/finance/reports";
 
 export function NetWorthWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
@@ -93,14 +93,18 @@ export function NetWorthWorkbench() {
             </div>
             <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
           </div>
-          <div className="accounts-table" role="table" aria-label="Net worth accounts">
+          <div className="accounts-table net-worth-table" role="table" aria-label="Net worth accounts">
             <div className="accounts-table-head" role="row">
               <span>Account</span>
               <span>Type</span>
               <span>Class</span>
+              <span>Evidence</span>
               <span>Balance</span>
             </div>
-            {accounts.map((account) => (
+            {accounts.map((account) => {
+              const evidenceSource = getBalanceEvidenceSource(account, latestSnapshotByAccount.get(account.id));
+
+              return (
               <div className="accounts-table-row" role="row" key={account.id}>
                 <a className="account-name-cell report-drilldown" href={`/accounts?account=${encodeURIComponent(account.name)}`}>
                   <div className="account-icon">
@@ -118,9 +122,11 @@ export function NetWorthWorkbench() {
                   {account.assetClass}
                   {account.status === "closed" ? " / closed" : ""}
                 </span>
+                <span className="account-pill">{getBalanceEvidenceLabel(evidenceSource)}</span>
                 <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </section>
@@ -235,6 +241,22 @@ function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = 
     lastActivity: latestSnapshot ? `Snapshot ${latestSnapshot.asOfDate}` : account.updatedAt ? "Updated" : "No snapshot",
     status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
   };
+}
+
+function getBalanceEvidenceLabel(source: BalanceEvidenceSource) {
+  if (source === "manual_snapshot") {
+    return "Manual snapshot";
+  }
+
+  if (source === "imported_snapshot") {
+    return "Imported snapshot";
+  }
+
+  if (source === "missing_snapshot") {
+    return "Missing evidence";
+  }
+
+  return "Transaction-derived";
 }
 
 function NetWorthMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {

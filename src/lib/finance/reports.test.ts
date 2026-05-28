@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCashflowSummary, buildCategoryFlowMap, buildNetWorthSummary } from "./reports";
+import { buildCashflowSummary, buildCategoryFlowMap, buildNetWorthSummary, getBalanceEvidenceSource } from "./reports";
 import type { AccountRow } from "./account-sample-data";
 import type { TransactionRow } from "./transaction-sample-data";
 
@@ -74,6 +74,13 @@ describe("buildNetWorthSummary", () => {
     expect(summary.assets).toBe(250_00);
     expect(summary.liabilities).toBe(100_00);
     expect(summary.netWorth).toBe(150_00);
+  });
+
+  it("labels balance evidence source", () => {
+    expect(getBalanceEvidenceSource(account({ balanceMinor: 250_00 }), null)).toBe("transaction_derived");
+    expect(getBalanceEvidenceSource(account({ balanceMinor: 0 }), null)).toBe("missing_snapshot");
+    expect(getBalanceEvidenceSource(account({ balanceMinor: 250_00 }), { balanceMinor: 250_00, source: "manual" })).toBe("manual_snapshot");
+    expect(getBalanceEvidenceSource(account({ balanceMinor: 250_00 }), { balanceMinor: 250_00, source: "csv_import" })).toBe("imported_snapshot");
   });
 });
 
