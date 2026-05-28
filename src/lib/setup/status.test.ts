@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSetupReadiness, getSetupStatus } from "./status";
+import { getHealthReport, getSetupReadiness, getSetupStatus } from "./status";
 
 describe("getSetupStatus", () => {
   it("reports required production integrations without exposing values", () => {
@@ -85,5 +85,44 @@ describe("getSetupStatus", () => {
 
     expect(status.clerkConfigured).toBe(true);
     expect(status.clerkKeyMode).toBe("mixed");
+  });
+
+  it("builds a redacted health report for deployment smoke checks", () => {
+    const report = getHealthReport(
+      {
+        NEXT_PUBLIC_APP_URL: "https://ledger.example.com",
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_example",
+        CLERK_SECRET_KEY: "sk_live_example",
+        DATABASE_URL: "postgres://example",
+        NODE_ENV: "production",
+        VERCEL_ENV: "production",
+      },
+      new Date("2026-05-28T12:00:00.000Z"),
+    );
+
+    expect(report).toEqual({
+      service: "ledger",
+      ok: true,
+      checkedAt: "2026-05-28T12:00:00.000Z",
+      environment: "production",
+      vercelEnvironment: "production",
+      readiness: {
+        checks: [
+          { key: "appUrl", label: "Canonical app URL", ready: true },
+          { key: "clerkKeys", label: "Clerk authentication keys", ready: true },
+          { key: "clerkLiveKeys", label: "Clerk production instance", ready: true },
+          { key: "database", label: "Neon database URL", ready: true },
+          { key: "securityHeaders", label: "Security headers", ready: true },
+          { key: "rateLimits", label: "Import and export rate limits", ready: true },
+          { key: "observability", label: "Redacted server error logging", ready: true },
+        ],
+        ready: true,
+        readyCount: 7,
+        requiredCount: 7,
+      },
+    });
+
+    expect(JSON.stringify(report)).not.toContain("sk_live_example");
+    expect(JSON.stringify(report)).not.toContain("postgres://example");
   });
 });

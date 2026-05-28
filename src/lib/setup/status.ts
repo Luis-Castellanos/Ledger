@@ -16,6 +16,20 @@ export type SetupReadinessCheck = {
 
 type SetupEnv = Partial<Record<string, string | undefined>>;
 
+export function getHealthReport(env: SetupEnv = process.env, now = new Date()) {
+  const status = getSetupStatus(env);
+  const readiness = getSetupReadiness(status);
+
+  return {
+    service: "ledger",
+    ok: readiness.ready,
+    checkedAt: now.toISOString(),
+    environment: status.nodeEnv,
+    vercelEnvironment: status.vercelEnvironment,
+    readiness,
+  };
+}
+
 export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
   const clerkPublishableKeyMode = classifyClerkKey(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   const clerkSecretKeyMode = classifyClerkKey(env.CLERK_SECRET_KEY);

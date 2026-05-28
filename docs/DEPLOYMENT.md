@@ -41,6 +41,18 @@ For production targets, `setup:check` also requires live Clerk keys and fails if
 `npm run audit:prod` fails on high or critical production dependency advisories.
 Current known advisory: `npm audit` reports a moderate PostCSS advisory through Next.js. It is below the private-beta release gate and should be rechecked when the fixed Next.js release path is available without a breaking downgrade.
 
+## Health Check
+
+`GET /api/health` is the deployment smoke endpoint. It returns a redacted JSON readiness report and never includes secret values or connection strings. A ready deployment returns HTTP 200. Missing required release inputs return HTTP 503 with failed readiness checks.
+
+Example smoke check:
+
+```bash
+curl -fsS https://<deployment-url>/api/health
+```
+
+If Vercel Deployment Protection is enabled, run this check from an authenticated browser session or with an approved protection bypass token.
+
 ## Backup Package
 
 Backup package exports are documented in [BACKUP_PACKAGE.md](./BACKUP_PACKAGE.md). Private beta deployments must verify that `/api/exports?format=backup_package` returns a JSON package with manifest counts before relying on the deployment for real financial data.
@@ -89,6 +101,7 @@ A deployment is not ready for private beta unless:
 - Drizzle migration check passes.
 - Production dependency audit has no high or critical findings.
 - Security headers are present on app responses.
+- `/api/health` returns HTTP 200.
 - Clerk sign-in/sign-up works.
 - Neon migrations have been applied.
 - `/settings` reports Clerk, Neon, and App URL configured.

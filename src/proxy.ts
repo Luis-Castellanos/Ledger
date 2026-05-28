@@ -4,8 +4,13 @@ import { NextResponse } from "next/server";
 const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
 const isProduction = process.env.NODE_ENV === "production";
 const isProtectedRoute = createRouteMatcher(["/", "/api(.*)"]);
+const isHealthRoute = (pathname: string) => pathname === "/api/health";
 
-const missingAuthProxy = () => {
+const missingAuthProxy = (request: Request) => {
+  if (isHealthRoute(new URL(request.url).pathname)) {
+    return NextResponse.next();
+  }
+
   if (!isProduction) {
     return NextResponse.next();
   }
@@ -15,6 +20,10 @@ const missingAuthProxy = () => {
 
 export default hasClerkConfig
   ? clerkMiddleware(async (auth, request) => {
+      if (isHealthRoute(request.nextUrl.pathname)) {
+        return NextResponse.next();
+      }
+
       if (isProtectedRoute(request)) {
         await auth.protect();
       }
