@@ -1111,6 +1111,48 @@ button {
   color: var(--coral);
 }
 
+.export-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.export-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  border-bottom: 1px solid rgba(214, 226, 217, 0.08);
+  padding: 15px 0;
+}
+
+.export-history-item:first-child {
+  padding-top: 0;
+}
+
+.export-history-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.export-history-item strong,
+.export-history-item span {
+  display: block;
+}
+
+.export-history-item strong {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.export-history-item p,
+.export-history-item span:not(.status-chip) {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 .primary-action {
   display: inline-flex;
   height: 42px;
@@ -1409,6 +1451,10 @@ button {
   }
 
   .release-checklist {
+    grid-template-columns: 1fr;
+  }
+
+  .export-history-item {
     grid-template-columns: 1fr;
   }
 

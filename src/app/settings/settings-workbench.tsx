@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
+import { Archive, Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
 import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
 
@@ -16,6 +16,17 @@ type SettingsState = {
   };
 };
 
+type ExportJobSummary = {
+  id: string;
+  status: string;
+  format: string;
+  includeAuditEvents: boolean;
+  artifactUrl: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
 const fallbackSettings: SettingsState = {
   user: {
     email: "local-demo@vault.local",
@@ -26,6 +37,29 @@ const fallbackSettings: SettingsState = {
     defaultCurrency: "USD",
   },
 };
+
+const fallbackExportJobs: ExportJobSummary[] = [
+  {
+    id: "demo-export-transactions",
+    status: "succeeded",
+    format: "transactions_csv",
+    includeAuditEvents: true,
+    artifactUrl: "vault-transactions_csv-demo.csv",
+    errorMessage: null,
+    createdAt: "2026-05-27T14:30:00.000Z",
+    completedAt: "2026-05-27T14:30:01.000Z",
+  },
+  {
+    id: "demo-export-backup",
+    status: "succeeded",
+    format: "backup_package",
+    includeAuditEvents: true,
+    artifactUrl: "vault-backup_package-demo.json",
+    errorMessage: null,
+    createdAt: "2026-05-26T18:15:00.000Z",
+    completedAt: "2026-05-26T18:15:02.000Z",
+  },
+];
 
 const fallbackSetupStatus: SetupStatus = {
   appUrlConfigured: false,
@@ -41,6 +75,7 @@ export function SettingsWorkbench() {
   const [settings, setSettings] = useState<SettingsState>(fallbackSettings);
   const [formState, setFormState] = useState(fallbackSettings.ledger);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [exportHistory, setExportHistory] = useState<ExportJobSummary[]>(fallbackExportJobs);
   const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,9 +87,10 @@ export function SettingsWorkbench() {
 
     async function loadSettings() {
       try {
-        const [meResponse, setupResponse] = await Promise.all([
+        const [meResponse, setupResponse, exportJobsResponse] = await Promise.all([
           fetch("/api/me", { headers: { Accept: "application/json" } }),
           fetch("/api/setup/status", { headers: { Accept: "application/json" } }),
+          fetch("/api/export-jobs", { headers: { Accept: "application/json" } }),
         ]);
 
         if (!meResponse.ok) {
@@ -63,17 +99,22 @@ export function SettingsWorkbench() {
 
         const payload = (await meResponse.json()) as SettingsState;
         const setupPayload = setupResponse.ok ? ((await setupResponse.json()) as { status: SetupStatus }) : { status: fallbackSetupStatus };
+        const exportJobsPayload = exportJobsResponse.ok
+          ? ((await exportJobsResponse.json()) as { exportJobs: ExportJobSummary[] })
+          : { exportJobs: [] };
 
         if (isMounted) {
           setSettings(payload);
           setFormState(payload.ledger);
           setSetupStatus(setupPayload.status);
+          setExportHistory(exportJobsPayload.exportJobs);
           setDataSource("database");
         }
       } catch {
         if (isMounted) {
           setSettings(fallbackSettings);
           setFormState(fallbackSettings.ledger);
+          setExportHistory(fallbackExportJobs);
           void fetch("/api/setup/status", { headers: { Accept: "application/json" } })
             .then((response) => (response.ok ? response.json() : null))
             .then((payload: { status: SetupStatus } | null) => {
@@ -183,6 +224,39 @@ export function SettingsWorkbench() {
                 <p>{task.detail}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="panel settings-panel" aria-label="Export history">
+          <div className="panel-header accounts-toolbar">
+            <div>
+              <p className="panel-label">Export history</p>
+              <h2 className="panel-title">Backup and portability log</h2>
+            </div>
+            <a className="secondary-action" href="/api/exports?format=backup_package">
+              <Archive size={16} />
+              New backup
+            </a>
+          </div>
+
+          <div className="export-history-list">
+            {exportHistory.length > 0 ? (
+              exportHistory.map((job) => (
+                <article className="export-history-item" key={job.id}>
+                  <div>
+                    <span className={job.status === "succeeded" ? "status-chip status-chip-live" : "status-chip"}>{job.status}</span>
+                    <strong>{formatExportFormat(job.format)}</strong>
+                    <p>{formatExportTimestamp(job.createdAt)}</p>
+                  </div>
+                  <div>
+                    <span>{job.includeAuditEvents ? "Audit included" : "Audit excluded"}</span>
+                    <strong>{job.artifactUrl ?? job.errorMessage ?? "Pending artifact"}</strong>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="empty-state">No exports yet. Generate a backup package to create the first export job.</p>
+            )}
           </div>
         </section>
       </section>
@@ -300,6 +374,27 @@ function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {
     case "missing":
       return "Missing keys";
   }
+}
+
+function formatExportFormat(format: string) {
+  switch (format) {
+    case "transactions_csv":
+      return "Transactions CSV";
+    case "backup_package":
+      return "Backup package";
+    default:
+      return format;
+  }
+}
+
+function formatExportTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function SetupFact({ label, ready, readyText, missingText }: { label: string; ready: boolean; readyText: string; missingText: string }) {
