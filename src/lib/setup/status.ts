@@ -14,7 +14,7 @@ export type SetupReadinessCheck = {
   ready: boolean;
 };
 
-type SetupEnv = Partial<Record<string, string | undefined>>;
+export type SetupEnv = Partial<Record<string, string | undefined>>;
 
 export function getHealthReport(env: SetupEnv = process.env, now = new Date()) {
   const status = getSetupStatus(env);

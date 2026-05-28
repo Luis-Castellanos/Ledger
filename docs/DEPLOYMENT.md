@@ -43,7 +43,7 @@ Current known advisory: `npm audit` reports a moderate PostCSS advisory through 
 
 ## Health Check
 
-`GET /api/health` is the deployment smoke endpoint. It returns a redacted JSON readiness report and never includes secret values or connection strings. A ready deployment returns HTTP 200. Missing required release inputs return HTTP 503 with failed readiness checks.
+`GET /api/health` is the deployment smoke endpoint. It returns a redacted JSON readiness report and never includes secret values or connection strings. A ready deployment returns HTTP 200. Missing required release inputs or failed database connectivity return HTTP 503.
 
 Example smoke check:
 
