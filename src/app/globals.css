@@ -840,6 +840,11 @@ button {
   grid-template-columns: 28px minmax(150px, 1.2fr) 145px 126px 128px;
 }
 
+.import-preview-table .transactions-table-head,
+.import-preview-table .transactions-table-row {
+  grid-template-columns: 28px minmax(150px, 1.2fr) 145px 126px 128px;
+}
+
 .imports-table-head,
 .imports-table-row {
   display: grid;

@@ -130,6 +130,17 @@ test("imports page supports local staged row", async ({ page }) => {
   await expect(page.getByText("LOCAL CSV COFFEE")).toHaveCount(2);
   await expect(page.getByText("checking-import.csv")).toHaveCount(2);
   await expect(page.getByLabel("Status for row 3")).toHaveValue("duplicate");
+  await page.getByLabel("Select row 2").check();
+  await page.getByLabel("Select row 3").check();
+  await page.getByLabel("Bulk import category").selectOption("Groceries");
+  await page.getByRole("button", { name: "Set category" }).click();
+  await expect(page.getByText("2 selected import rows recategorized.")).toBeVisible();
+  await page.getByLabel("Select row 2").check();
+  await page.getByLabel("Select row 3").check();
+  await page.getByLabel("Bulk import status").selectOption("accepted");
+  await page.getByRole("button", { name: "Set status" }).click();
+  await expect(page.getByText("2 selected import rows marked accepted.")).toBeVisible();
+  await expect(page.getByLabel("Status for row 3")).toHaveValue("accepted");
 
   await page.getByRole("button", { name: "Add sample row" }).click();
 

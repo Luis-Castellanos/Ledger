@@ -51,8 +51,12 @@ export function ImportsWorkbench() {
   const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [error, setError] = useState<string | null>(null);
+  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isImportActionPending, setIsImportActionPending] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [bulkCategory, setBulkCategory] = useState("Uncategorized");
+  const [bulkStatus, setBulkStatus] = useState<ImportRowStatus>("accepted");
 
   useEffect(() => {
     let isMounted = true;
@@ -120,10 +124,14 @@ export function ImportsWorkbench() {
   }, [query, rows]);
 
   const activeBatch = batches.find((batch) => batch.id === selectedBatchId) ?? batches[0];
+  const selectedVisibleRows = filteredRows.filter((row) => selectedRowIds.includes(row.id));
+  const selectedVisibleCount = selectedVisibleRows.length;
+  const allVisibleRowsSelected = filteredRows.length > 0 && selectedVisibleCount === filteredRows.length;
 
   async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
     hasLocalEdits.current = true;
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setMutationMessage(null);
 
     if (dataSource === "database") {
       try {
@@ -136,6 +144,51 @@ export function ImportsWorkbench() {
         setError("Import row update stayed local because the API was unavailable.");
       }
     }
+  }
+
+  function toggleRowSelection(id: string) {
+    setSelectedRowIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleAllVisibleRows() {
+    setSelectedRowIds(allVisibleRowsSelected ? [] : filteredRows.map((row) => row.id));
+  }
+
+  async function updateSelectedRows(patch: Partial<Pick<ImportPreviewRow, "category" | "status">>, successMessage: string) {
+    if (selectedVisibleRows.length === 0) {
+      return;
+    }
+
+    const selectedIds = selectedVisibleRows.map((row) => row.id);
+    hasLocalEdits.current = true;
+    setRows((current) => current.map((row) => (selectedIds.includes(row.id) ? { ...row, ...patch } : row)));
+    setMutationMessage(null);
+
+    if (dataSource === "database") {
+      try {
+        await Promise.all(
+          selectedIds.map((id) =>
+            fetch("/api/imports", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ id, category: patch.category, status: patch.status }),
+            }).then((response) => {
+              if (!response.ok) {
+                throw new Error("Import row update failed");
+              }
+            }),
+          ),
+        );
+      } catch {
+        setDataSource("demo");
+        setError("Bulk import row update stayed local because the API was unavailable.");
+        return;
+      }
+    }
+
+    setSelectedRowIds([]);
+    setError(null);
+    setMutationMessage(successMessage);
   }
 
   async function stageMockFile() {
@@ -458,9 +511,45 @@ export function ImportsWorkbench() {
               </select>
             </div>
           </div>
+          {mutationMessage ? <p className="form-success">{mutationMessage}</p> : null}
 
-          <div className="transactions-table" role="table" aria-label="Import rows">
+          <div className="transaction-undo-banner review-bulk-bar">
+            <span>{selectedVisibleCount} selected</span>
+            <select aria-label="Bulk import category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
+              {categories.map((category) => (
+                <option value={category} key={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => updateSelectedRows({ category: bulkCategory }, `${selectedVisibleCount} selected import rows recategorized.`)}
+              disabled={selectedVisibleCount === 0}
+            >
+              Set category
+            </button>
+            <select aria-label="Bulk import status" value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as ImportRowStatus)}>
+              {statuses.map((status) => (
+                <option value={status.value} key={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => updateSelectedRows({ status: bulkStatus }, `${selectedVisibleCount} selected import rows marked ${bulkStatus.replace("_", " ")}.`)}
+              disabled={selectedVisibleCount === 0}
+            >
+              Set status
+            </button>
+          </div>
+
+          <div className="transactions-table import-preview-table" role="table" aria-label="Import rows">
             <div className="transactions-table-head" role="row">
+              <span>
+                <input aria-label="Select all import rows" checked={allVisibleRowsSelected} onChange={toggleAllVisibleRows} type="checkbox" />
+              </span>
               <span>Description</span>
               <span>Category</span>
               <span>Status</span>
@@ -468,6 +557,12 @@ export function ImportsWorkbench() {
             </div>
             {filteredRows.map((row) => (
               <div className="transactions-table-row" role="row" key={row.id}>
+                <input
+                  aria-label={`Select row ${row.rowNumber}`}
+                  checked={selectedRowIds.includes(row.id)}
+                  onChange={() => toggleRowSelection(row.id)}
+                  type="checkbox"
+                />
                 <div className="transaction-register-name">
                   <p>{row.description || "Missing description"}</p>
                   <span>
