@@ -1,5 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import nextEnv from "@next/env";
+
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
 const requiredEnv = [
   "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
