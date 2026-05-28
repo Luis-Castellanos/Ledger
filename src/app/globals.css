@@ -766,14 +766,21 @@ button {
 
 .transaction-controls {
   display: flex;
-  width: min(100%, 520px);
+  width: 100%;
+  flex: 1 1 620px;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
 .transaction-controls .search-field {
-  min-width: 0;
-  flex: 1;
+  min-width: 220px;
+  flex: 1 1 240px;
+}
+
+.transaction-controls select {
+  flex: 1 1 136px;
 }
 
 .transaction-controls select,

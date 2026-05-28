@@ -59,6 +59,11 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await expect(page.getByText("Apple Music")).toBeVisible();
   await expect(page.getByText("Costco")).toHaveCount(0);
   await page.getByLabel("Tag filter").selectOption("all");
+  await page.getByLabel("Sort transactions").selectOption("merchant_asc");
+  await expect(page.locator(".transactions-table-row").first()).toContainText("Ally Interest");
+  await page.getByLabel("Sort transactions").selectOption("amount_asc");
+  await expect(page.locator(".transactions-table-row").first()).toContainText("Mortgage payment");
+  await page.getByLabel("Sort transactions").selectOption("date_desc");
 
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");

@@ -35,6 +35,7 @@ function buildInitialFilters(params: Record<string, string | string[] | undefine
   const status = singleValue(params.status);
   const transfer = singleValue(params.transfer);
   const direction = singleValue(params.direction);
+  const sort = singleValue(params.sort);
 
   return {
     query: singleValue(params.q) ?? defaultTransactionFilters.query,
@@ -44,6 +45,9 @@ function buildInitialFilters(params: Record<string, string | string[] | undefine
     tag: singleValue(params.tag) ?? defaultTransactionFilters.tag,
     transfer: isOneOf(transfer, ["none", "transfer"]) ? transfer : defaultTransactionFilters.transfer,
     direction: isOneOf(direction, ["all", "inflow", "outflow"]) ? direction : defaultTransactionFilters.direction,
+    sort: isOneOf(sort, ["date_desc", "date_asc", "amount_desc", "amount_asc", "merchant_asc", "category_asc"])
+      ? sort
+      : defaultTransactionFilters.sort,
   };
 }
 

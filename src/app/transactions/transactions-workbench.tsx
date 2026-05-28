@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState } from "@/lib/finance/transaction-filters";
+import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState, type TransactionSortMode } from "@/lib/finance/transaction-filters";
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
 import { createManualTransactionSchema, parseTagList } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
@@ -25,6 +25,14 @@ const directionFilters = [
   { label: "Inflows", value: "inflow" },
   { label: "Outflows", value: "outflow" },
 ] satisfies { label: string; value: DirectionFilter }[];
+const sortOptions = [
+  { label: "Newest first", value: "date_desc" },
+  { label: "Oldest first", value: "date_asc" },
+  { label: "Largest amount", value: "amount_desc" },
+  { label: "Smallest amount", value: "amount_asc" },
+  { label: "Merchant A-Z", value: "merchant_asc" },
+  { label: "Category A-Z", value: "category_asc" },
+] satisfies { label: string; value: TransactionSortMode }[];
 
 export function TransactionsWorkbench({ initialFilters = defaultTransactionFilters }: { initialFilters?: TransactionFilterState }) {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
@@ -38,6 +46,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const [tagFilter, setTagFilter] = useState(initialFilters.tag);
   const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>(initialFilters.transfer);
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(initialFilters.direction);
+  const [sortMode, setSortMode] = useState<TransactionSortMode>(initialFilters.sort);
   const [error, setError] = useState<string | null>(null);
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
@@ -128,6 +137,10 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
       return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesDirection && matchesTag && matchesQuery;
     });
   }, [accountFilter, categoryFilter, directionFilter, query, statusFilter, tagFilter, transactions, transferFilter]);
+
+  const sortedTransactions = useMemo(() => {
+    return [...filteredTransactions].sort((left, right) => compareTransactions(left, right, sortMode));
+  }, [filteredTransactions, sortMode]);
 
   const tagOptions = useMemo(() => {
     return Array.from(new Set(transactions.flatMap((transaction) => transaction.tags ?? []))).sort((left, right) => left.localeCompare(right));
@@ -466,6 +479,13 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                   </option>
                 ))}
               </select>
+              <select aria-label="Sort transactions" value={sortMode} onChange={(event) => setSortMode(event.target.value as TransactionSortMode)}>
+                {sortOptions.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           {mutationMessage ? <p className="form-error">{mutationMessage}</p> : null}
@@ -486,7 +506,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                 </button>
               </div>
             ) : null}
-            {filteredTransactions.map((transaction) => (
+            {sortedTransactions.map((transaction) => (
               <div className="transactions-table-row" role="row" key={transaction.id}>
                 <div className="transaction-register-name">
                   <p>{transaction.merchant}</p>
@@ -719,6 +739,30 @@ function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Gr
 
 function formatSignedAmount(amountMinor: number) {
   return `${amountMinor < 0 ? "-" : ""}${(Math.abs(amountMinor) / 100).toFixed(2)}`;
+}
+
+function compareTransactions(left: TransactionRow, right: TransactionRow, sortMode: TransactionSortMode) {
+  if (sortMode === "date_asc") {
+    return left.date.localeCompare(right.date) || left.merchant.localeCompare(right.merchant);
+  }
+
+  if (sortMode === "amount_desc") {
+    return right.amountMinor - left.amountMinor || right.date.localeCompare(left.date);
+  }
+
+  if (sortMode === "amount_asc") {
+    return left.amountMinor - right.amountMinor || right.date.localeCompare(left.date);
+  }
+
+  if (sortMode === "merchant_asc") {
+    return left.merchant.localeCompare(right.merchant) || right.date.localeCompare(left.date);
+  }
+
+  if (sortMode === "category_asc") {
+    return left.category.localeCompare(right.category) || right.date.localeCompare(left.date);
+  }
+
+  return right.date.localeCompare(left.date) || left.merchant.localeCompare(right.merchant);
 }
 
 async function persistTransactionPatch({
