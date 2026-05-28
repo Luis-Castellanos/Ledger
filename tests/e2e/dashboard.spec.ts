@@ -20,6 +20,8 @@ test("accounts page supports local account entry", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Accounts" })).toBeVisible();
   await expect(page.getByText("Balance control file")).toBeVisible();
+  await expect(page.getByLabel("Account detail reporting")).toBeVisible();
+  await expect(page.getByRole("link", { name: "View register" })).toHaveAttribute("href", /\/transactions\?account=/);
 
   await page.getByPlaceholder("Operating Checking").fill("Vacation Reserve");
   await page.getByPlaceholder("Bank or brokerage").fill("Ally");
@@ -27,6 +29,9 @@ test("accounts page supports local account entry", async ({ page }) => {
   await page.getByRole("button", { name: /Save account|Saving/ }).click();
 
   await expect(page.getByLabel("Accounts", { exact: true }).getByText("Vacation Reserve")).toBeVisible();
+  await page.getByRole("button", { name: "View Vacation Reserve detail" }).click();
+  await expect(page.getByRole("heading", { name: "Vacation Reserve" })).toBeVisible();
+  await expect(page.getByText("Current position")).toBeVisible();
   await page.getByPlaceholder("1250.42").fill("125.50");
   await page.getByRole("button", { name: /Save snapshot|Saving/ }).click();
   await expect(page.getByLabel("Accounts", { exact: true }).getByText("$125.50")).toBeVisible();

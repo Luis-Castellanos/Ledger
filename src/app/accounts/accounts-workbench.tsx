@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  BarChart3,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -20,6 +21,7 @@ import {
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { createAccountSchema, createBalanceSnapshotSchema } from "@/lib/finance/account";
 import { formatMoney } from "@/lib/finance/money";
+import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 
 const accountTypes = [
   { label: "Checking", value: "checking" },
@@ -40,8 +42,10 @@ const assetClasses = [
 export function AccountsWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
   const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.id ?? "");
   const [formState, setFormState] = useState({
     name: "",
     institution: "",
@@ -65,18 +69,24 @@ export function AccountsWorkbench() {
 
     async function loadAccounts() {
       try {
-        const [accountsResponse, snapshotsResponse] = await Promise.all([
+        const [accountsResponse, snapshotsResponse, transactionsResponse] = await Promise.all([
           fetch("/api/accounts", { headers: { Accept: "application/json" } }),
           fetch("/api/balance-snapshots", { headers: { Accept: "application/json" } }),
+          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
         ]);
 
-        if (!accountsResponse.ok || !snapshotsResponse.ok) {
+        if (!accountsResponse.ok || !snapshotsResponse.ok || !transactionsResponse.ok) {
           throw new Error("Account API unavailable");
         }
 
-        const [accountPayload, snapshotPayload] = (await Promise.all([accountsResponse.json(), snapshotsResponse.json()])) as [
+        const [accountPayload, snapshotPayload, transactionPayload] = (await Promise.all([
+          accountsResponse.json(),
+          snapshotsResponse.json(),
+          transactionsResponse.json(),
+        ])) as [
           { accounts: DatabaseAccount[] },
           { snapshots: DatabaseSnapshot[] },
+          { transactions: TransactionRow[] },
         ];
         const nextSnapshots = snapshotPayload.snapshots;
         const nextAccounts = accountPayload.accounts.map((account) => toAccountRow(account, nextSnapshots));
@@ -84,11 +94,14 @@ export function AccountsWorkbench() {
         if (isMounted && !hasLocalEdits.current) {
           setAccounts(nextAccounts);
           setSnapshots(nextSnapshots);
+          setTransactions(transactionPayload.transactions);
+          setSelectedAccountId((current) => (nextAccounts.some((account) => account.id === current) ? current : nextAccounts[0]?.id ?? ""));
           setSnapshotForm((current) => ({ ...current, accountId: nextAccounts[0]?.id ?? current.accountId }));
           setDataSource("database");
         }
       } catch {
         if (isMounted) {
+          setTransactions(sampleTransactionRows);
           setDataSource("demo");
         }
       }
@@ -136,6 +149,38 @@ export function AccountsWorkbench() {
     );
   }, [accounts]);
 
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === selectedAccountId) ?? accounts[0] ?? null,
+    [accounts, selectedAccountId],
+  );
+
+  const accountDetail = useMemo(() => {
+    if (!selectedAccount) {
+      return null;
+    }
+
+    const accountTransactions = transactions.filter((transaction) => transaction.account === selectedAccount.name);
+    const accountSnapshots = snapshots
+      .filter((snapshot) => snapshot.accountId === selectedAccount.id || snapshot.accountName === selectedAccount.name)
+      .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate) || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+    const operatingTransactions = accountTransactions.filter(
+      (transaction) => transaction.status !== "excluded" && transaction.transferStatus !== "transfer",
+    );
+    const inflow = operatingTransactions.reduce((total, transaction) => (transaction.amountMinor > 0 ? total + transaction.amountMinor : total), 0);
+    const outflow = operatingTransactions.reduce(
+      (total, transaction) => (transaction.amountMinor < 0 ? total + Math.abs(transaction.amountMinor) : total),
+      0,
+    );
+
+    return {
+      inflow,
+      outflow,
+      latestSnapshot: accountSnapshots[0] ?? null,
+      snapshotCount: accountSnapshots.length,
+      transactionCount: accountTransactions.length,
+    };
+  }, [selectedAccount, snapshots, transactions]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -165,7 +210,9 @@ export function AccountsWorkbench() {
       }
 
       const payload = (await response.json()) as { account: DatabaseAccount };
-      setAccounts((current) => [toAccountRow(payload.account), ...current]);
+      const nextAccount = toAccountRow(payload.account);
+      setAccounts((current) => [nextAccount, ...current]);
+      setSelectedAccountId(nextAccount.id);
       setSnapshotForm((current) => ({ ...current, accountId: payload.account.id }));
       setDataSource("database");
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
@@ -185,6 +232,7 @@ export function AccountsWorkbench() {
       };
 
       setAccounts((current) => [nextAccount, ...current]);
+      setSelectedAccountId(nextAccount.id);
       setSnapshotForm((current) => ({ ...current, accountId: nextAccount.id }));
       setDataSource("demo");
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
@@ -333,6 +381,9 @@ export function AccountsWorkbench() {
                 </span>
                 <div className="account-row-actions">
                   <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
+                  <button type="button" aria-label={`View ${account.name} detail`} onClick={() => setSelectedAccountId(account.id)}>
+                    <BarChart3 size={15} />
+                  </button>
                   {account.status === "closed" ? (
                     <button type="button" aria-label={`Reopen ${account.name}`} onClick={() => updateAccountLifecycle(account.id, "reopen")}>
                       <CheckCircle2 size={15} />
@@ -347,6 +398,29 @@ export function AccountsWorkbench() {
             ))}
           </div>
         </section>
+
+        {selectedAccount && accountDetail ? (
+          <section className="panel account-detail-panel" aria-label="Account detail reporting">
+            <div className="panel-header accounts-toolbar">
+              <div>
+                <p className="panel-label">Account detail</p>
+                <h2 className="panel-title">{selectedAccount.name}</h2>
+              </div>
+              <a className="secondary-action" href={`/transactions?account=${encodeURIComponent(selectedAccount.name)}`}>
+                <BarChart3 size={16} />
+                View register
+              </a>
+            </div>
+            <div className="account-detail-grid">
+              <AccountDetailFact label="Current position" value={formatMoney(selectedAccount.balanceMinor, selectedAccount.currency)} />
+              <AccountDetailFact label="Operating inflow" value={formatMoney(accountDetail.inflow, selectedAccount.currency)} />
+              <AccountDetailFact label="Operating outflow" value={formatMoney(-accountDetail.outflow, selectedAccount.currency)} />
+              <AccountDetailFact label="Transactions" value={`${accountDetail.transactionCount} rows`} />
+              <AccountDetailFact label="Snapshots" value={`${accountDetail.snapshotCount} records`} />
+              <AccountDetailFact label="Latest evidence" value={accountDetail.latestSnapshot?.asOfDate ?? "No snapshot"} />
+            </div>
+          </section>
+        ) : null}
       </section>
 
       <aside className="accounts-side">
@@ -577,5 +651,14 @@ function AccountMetric({ label, value, icon, tone }: { label: string; value: str
       <p className="panel-label">{label}</p>
       <p className="panel-title">{value}</p>
     </article>
+  );
+}
+
+function AccountDetailFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
