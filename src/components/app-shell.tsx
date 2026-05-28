@@ -8,6 +8,7 @@ import {
   PanelLeft,
   ReceiptText,
   Settings,
+  SlidersHorizontal,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ const nav = [
   { label: "Transactions", href: "/transactions", icon: ReceiptText },
   { label: "Review", href: "/review", icon: ListChecks },
   { label: "Imports", href: "/imports", icon: FileUp },
+  { label: "Rules", href: "/rules", icon: SlidersHorizontal },
   { label: "Cashflow", href: "/cashflow", icon: BadgeDollarSign },
   { label: "Net Worth", href: "/net-worth", icon: Landmark },
   { label: "Accounts", href: "/accounts", icon: WalletCards },

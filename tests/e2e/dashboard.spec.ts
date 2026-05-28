@@ -71,6 +71,14 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
   await expect(page.getByText("Unresolved transactions")).toBeVisible();
 
+  await page.goto("/rules");
+  await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();
+  await expect(page.getByText("Classification control file")).toBeVisible();
+  await page.getByPlaceholder("Apple subscriptions").fill("Bookstore rule");
+  await page.getByPlaceholder("APPLE.COM/BILL").fill("LOCAL BOOKSTORE");
+  await page.getByRole("button", { name: "Save rule" }).click();
+  await expect(page.getByText("Bookstore rule")).toBeVisible();
+
   await page.goto("/cashflow");
   await expect(page.getByRole("heading", { name: "Cashflow" })).toBeVisible();
   await expect(page.getByText("Category movement")).toBeVisible();

@@ -1,0 +1,31 @@
+import { Download, Filter, Plus } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { RulesWorkbench } from "./rules-workbench";
+
+export default function RulesPage() {
+  return (
+    <AppShell active="Rules">
+      <section className="min-w-0">
+        <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
+          <div>
+            <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Classification controls</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Rules</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="icon-button" aria-label="Filter rules">
+              <Filter size={17} />
+            </button>
+            <button className="icon-button" aria-label="Add rule shortcut">
+              <Plus size={17} />
+            </button>
+            <a className="icon-button" aria-label="Export rules" href="/api/exports?format=backup_package">
+              <Download size={17} />
+            </a>
+          </div>
+        </header>
+
+        <RulesWorkbench />
+      </section>
+    </AppShell>
+  );
+}
