@@ -24,6 +24,10 @@ export function toCsv(headers: string[], rows: unknown[][]) {
   return [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
 }
 
+export function formatTagsForCsv(tags: string[] | null | undefined) {
+  return tags?.join("; ") ?? "";
+}
+
 export function buildExportFilename(format: ExportFormat, createdAt = new Date()) {
   const date = createdAt.toISOString().slice(0, 10);
   const extension = format === "transactions_csv" ? "csv" : "json";

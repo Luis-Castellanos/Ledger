@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, exportJobs, importRows, imports, transactions } from "@/lib/db/schema";
-import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "@/lib/finance/export";
+import { buildBackupPackage, buildExportFilename, formatTagsForCsv, isExportFormat, toCsv } from "@/lib/finance/export";
 import { logServerError } from "@/lib/observability/server-logger";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 import packageJson from "../../../../package.json";
@@ -111,6 +111,7 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
       reviewStatus: transactions.reviewStatus,
       transferStatus: transactions.transferStatus,
       source: transactions.source,
+      tags: transactions.tags,
       notes: transactions.notes,
       createdAt: transactions.createdAt,
       updatedAt: transactions.updatedAt,
@@ -135,6 +136,7 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
       "review_status",
       "transfer_status",
       "source",
+      "tags",
       "notes",
       "created_at",
       "updated_at",
@@ -152,6 +154,7 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
       row.reviewStatus,
       row.transferStatus,
       row.source,
+      formatTagsForCsv(row.tags),
       row.notes,
       row.createdAt.toISOString(),
       row.updatedAt.toISOString(),

@@ -53,6 +53,8 @@ type BackupPackageV1 = {
 
 Audit events are included by default because source traceability is part of the V1 trust model.
 
+Transaction rows include the V1 `tags` array when present. Transactions CSV exports serialize tags in a `tags` column using `; ` between tag values.
+
 ## Privacy Notes
 
 Backup packages contain sensitive financial data. Store them like bank statements:

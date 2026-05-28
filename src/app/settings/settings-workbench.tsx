@@ -139,8 +139,8 @@ export function SettingsWorkbench() {
           : { auditEvents: [] };
 
         if (isMounted) {
-          setSettings(payload);
           if (!hasUserEditedSettings.current) {
+            setSettings(payload);
             setFormState(payload.ledger);
           }
           setSetupStatus(setupPayload.status);
@@ -150,8 +150,8 @@ export function SettingsWorkbench() {
         }
       } catch {
         if (isMounted) {
-          setSettings(fallbackSettings);
           if (!hasUserEditedSettings.current) {
+            setSettings(fallbackSettings);
             setFormState(fallbackSettings.ledger);
           }
           setExportHistory(fallbackExportJobs);

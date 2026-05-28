@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "./export";
+import { buildBackupPackage, buildExportFilename, formatTagsForCsv, isExportFormat, toCsv } from "./export";
 
 describe("isExportFormat", () => {
   it("accepts supported export formats", () => {
@@ -14,6 +14,14 @@ describe("toCsv", () => {
     const csv = toCsv(["merchant", "notes"], [["Coffee, Inc.", 'said "hello"\nagain']]);
 
     expect(csv).toBe('merchant,notes\n"Coffee, Inc.","said ""hello""\nagain"');
+  });
+});
+
+describe("formatTagsForCsv", () => {
+  it("serializes transaction tags without changing CSV column count", () => {
+    expect(formatTagsForCsv(["tax", "reimbursable"])).toBe("tax; reimbursable");
+    expect(formatTagsForCsv([])).toBe("");
+    expect(formatTagsForCsv(null)).toBe("");
   });
 });
 
