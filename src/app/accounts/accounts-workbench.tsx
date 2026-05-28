@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Building2,
+  CalendarDays,
   CheckCircle2,
   CircleSlash,
   CreditCard,
@@ -17,7 +18,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
-import { createAccountSchema } from "@/lib/finance/account";
+import { createAccountSchema, createBalanceSnapshotSchema } from "@/lib/finance/account";
 import { formatMoney } from "@/lib/finance/money";
 
 const accountTypes = [
@@ -38,6 +39,7 @@ const assetClasses = [
 
 export function AccountsWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
+  const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [formState, setFormState] = useState({
@@ -48,26 +50,41 @@ export function AccountsWorkbench() {
     assetClass: "asset",
     currency: "USD",
   });
+  const [snapshotForm, setSnapshotForm] = useState({
+    accountId: sampleAccounts[0]?.id ?? "",
+    asOfDate: new Date().toISOString().slice(0, 10),
+    balance: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadAccounts() {
       try {
-        const response = await fetch("/api/accounts", { headers: { Accept: "application/json" } });
+        const [accountsResponse, snapshotsResponse] = await Promise.all([
+          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
+          fetch("/api/balance-snapshots", { headers: { Accept: "application/json" } }),
+        ]);
 
-        if (!response.ok) {
+        if (!accountsResponse.ok || !snapshotsResponse.ok) {
           throw new Error("Account API unavailable");
         }
 
-        const payload = (await response.json()) as { accounts: DatabaseAccount[] };
-        const nextAccounts = payload.accounts.map(toAccountRow);
+        const [accountPayload, snapshotPayload] = (await Promise.all([accountsResponse.json(), snapshotsResponse.json()])) as [
+          { accounts: DatabaseAccount[] },
+          { snapshots: DatabaseSnapshot[] },
+        ];
+        const nextSnapshots = snapshotPayload.snapshots;
+        const nextAccounts = accountPayload.accounts.map((account) => toAccountRow(account, nextSnapshots));
 
         if (isMounted && !hasLocalEdits.current) {
           setAccounts(nextAccounts);
+          setSnapshots(nextSnapshots);
+          setSnapshotForm((current) => ({ ...current, accountId: nextAccounts[0]?.id ?? current.accountId }));
           setDataSource("database");
         }
       } catch {
@@ -83,6 +100,14 @@ export function AccountsWorkbench() {
       isMounted = false;
     };
   }, []);
+
+  const accountOptions = useMemo(() => accounts.filter((account) => account.status !== "closed"), [accounts]);
+
+  const recentSnapshots = useMemo(() => {
+    return [...snapshots]
+      .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate) || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 6);
+  }, [snapshots]);
 
   const filteredAccounts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -141,6 +166,7 @@ export function AccountsWorkbench() {
 
       const payload = (await response.json()) as { account: DatabaseAccount };
       setAccounts((current) => [toAccountRow(payload.account), ...current]);
+      setSnapshotForm((current) => ({ ...current, accountId: payload.account.id }));
       setDataSource("database");
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
       setError(null);
@@ -159,6 +185,7 @@ export function AccountsWorkbench() {
       };
 
       setAccounts((current) => [nextAccount, ...current]);
+      setSnapshotForm((current) => ({ ...current, accountId: nextAccount.id }));
       setDataSource("demo");
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
       setError("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist accounts.");
@@ -183,6 +210,79 @@ export function AccountsWorkbench() {
         setError("Account lifecycle update stayed local because the API was unavailable.");
       }
     }
+  }
+
+  async function handleSnapshotSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const parsed = createBalanceSnapshotSchema.safeParse(snapshotForm);
+
+    if (!parsed.success) {
+      setError("Use an account, ISO date, and valid balance amount.");
+      return;
+    }
+
+    const account = accounts.find((candidate) => candidate.id === parsed.data.accountId);
+
+    if (!account) {
+      setError("Choose an account before saving a balance snapshot.");
+      return;
+    }
+
+    setIsSavingSnapshot(true);
+    hasLocalEdits.current = true;
+
+    try {
+      const response = await fetch("/api/balance-snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(snapshotForm),
+      });
+
+      if (!response.ok) {
+        throw new Error("Balance snapshot API unavailable");
+      }
+
+      const payload = (await response.json()) as { snapshot: DatabaseSnapshot };
+      upsertSnapshot(payload.snapshot);
+      setDataSource("database");
+      setSnapshotForm((current) => ({ ...current, balance: "" }));
+      setError(null);
+    } catch {
+      const snapshot: DatabaseSnapshot = {
+        id: `local_snapshot_${account.id}_${parsed.data.asOfDate}`,
+        ledgerId: "local",
+        accountId: account.id,
+        accountName: account.name,
+        asOfDate: parsed.data.asOfDate,
+        balanceMinor: parsed.data.balance,
+        currency: account.currency,
+        source: "manual",
+        createdAt: `${parsed.data.asOfDate}T00:00:00.000Z`,
+      };
+
+      upsertSnapshot(snapshot);
+      setDataSource("demo");
+      setSnapshotForm((current) => ({ ...current, balance: "" }));
+      setError("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist balance snapshots.");
+    } finally {
+      setIsSavingSnapshot(false);
+    }
+  }
+
+  function upsertSnapshot(snapshot: DatabaseSnapshot) {
+    setSnapshots((current) => [snapshot, ...current.filter((item) => !(item.accountId === snapshot.accountId && item.asOfDate === snapshot.asOfDate))]);
+    setAccounts((current) =>
+      current.map((account) =>
+        account.id === snapshot.accountId
+          ? {
+              ...account,
+              balanceMinor: snapshot.balanceMinor,
+              lastActivity: `Snapshot ${snapshot.asOfDate}`,
+            }
+          : account,
+      ),
+    );
   }
 
 
@@ -331,6 +431,82 @@ export function AccountsWorkbench() {
         </section>
 
         <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Balance snapshot</p>
+              <h2 className="panel-title">Manual position</h2>
+            </div>
+            <div className="summary-icon">
+              <CalendarDays size={17} />
+            </div>
+          </div>
+
+          <form className="account-form" onSubmit={handleSnapshotSubmit}>
+            <label>
+              <span>Account</span>
+              <select
+                required
+                value={snapshotForm.accountId}
+                onChange={(event) => setSnapshotForm((current) => ({ ...current, accountId: event.target.value }))}
+              >
+                {accountOptions.map((account) => (
+                  <option value={account.id} key={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>As of date</span>
+              <input
+                required
+                type="date"
+                value={snapshotForm.asOfDate}
+                onChange={(event) => setSnapshotForm((current) => ({ ...current, asOfDate: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Balance</span>
+              <input
+                required
+                inputMode="decimal"
+                value={snapshotForm.balance}
+                onChange={(event) => setSnapshotForm((current) => ({ ...current, balance: event.target.value }))}
+                placeholder="1250.42"
+              />
+            </label>
+            <button className="primary-action" type="submit" disabled={accountOptions.length === 0}>
+              <Save size={16} />
+              {isSavingSnapshot ? "Saving" : "Save snapshot"}
+            </button>
+          </form>
+        </section>
+
+        <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Recent snapshots</p>
+              <h2 className="panel-title">Balance evidence</h2>
+            </div>
+          </div>
+          <div className="snapshot-list">
+            {recentSnapshots.length > 0 ? (
+              recentSnapshots.map((snapshot) => (
+                <div className="snapshot-item" key={`${snapshot.accountId}-${snapshot.asOfDate}`}>
+                  <div className="snapshot-copy">
+                    <span>{snapshot.accountName}</span>
+                    <small>{snapshot.asOfDate}</small>
+                  </div>
+                  <strong>{formatMoney(snapshot.balanceMinor, snapshot.currency)}</strong>
+                </div>
+              ))
+            ) : (
+              <p className="empty-copy">No manual balance snapshots yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="panel account-form-panel">
           <div className="account-checklist-item">
             <Building2 size={17} />
             <span>Institution names stay user-controlled until bank sync exists.</span>
@@ -363,7 +539,23 @@ type DatabaseAccount = {
   updatedAt?: string | Date;
 };
 
-function toAccountRow(account: DatabaseAccount): AccountRow {
+type DatabaseSnapshot = {
+  id: string;
+  ledgerId: string;
+  accountId: string;
+  accountName: string;
+  asOfDate: string;
+  balanceMinor: number;
+  currency: string;
+  source: string;
+  createdAt: string;
+};
+
+function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = []): AccountRow {
+  const latestSnapshot = snapshots
+    .filter((snapshot) => snapshot.accountId === account.id)
+    .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate))[0];
+
   return {
     id: account.id,
     name: account.name,
@@ -372,8 +564,8 @@ function toAccountRow(account: DatabaseAccount): AccountRow {
     type: account.type,
     assetClass: account.assetClass,
     currency: account.currency,
-    balanceMinor: 0,
-    lastActivity: account.updatedAt ? "Updated" : "No activity",
+    balanceMinor: latestSnapshot?.balanceMinor ?? 0,
+    lastActivity: latestSnapshot ? `Snapshot ${latestSnapshot.asOfDate}` : account.updatedAt ? "Updated" : "No activity",
     status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
   };
 }

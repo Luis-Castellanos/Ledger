@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDollarAmount } from "./money";
 
 export const accountTypeSchema = z.enum(["checking", "savings", "credit_card", "cash", "brokerage", "loan", "mortgage", "other"]);
 export const assetClassSchema = z.enum(["asset", "liability"]);
@@ -25,5 +26,23 @@ export const updateAccountLifecycleSchema = z.object({
   closedOn: z.string().date().optional(),
 });
 
+export const createBalanceSnapshotSchema = z.object({
+  accountId: z.string().min(1),
+  asOfDate: z.string().date(),
+  balance: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value, context) => {
+      try {
+        return parseDollarAmount(value);
+      } catch {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid balance amount" });
+        return z.NEVER;
+      }
+    }),
+});
+
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 export type UpdateAccountLifecycleInput = z.infer<typeof updateAccountLifecycleSchema>;
+export type CreateBalanceSnapshotInput = z.infer<typeof createBalanceSnapshotSchema>;

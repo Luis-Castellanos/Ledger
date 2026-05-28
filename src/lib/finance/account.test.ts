@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAccountSchema, updateAccountLifecycleSchema } from "./account";
+import { createAccountSchema, createBalanceSnapshotSchema, updateAccountLifecycleSchema } from "./account";
 
 describe("account validation", () => {
   it("normalizes currency codes", () => {
@@ -30,5 +30,27 @@ describe("account lifecycle validation", () => {
   it("allows close and reopen actions", () => {
     expect(updateAccountLifecycleSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "close", closedOn: "2026-05-28" }).success).toBe(true);
     expect(updateAccountLifecycleSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "reopen" }).success).toBe(true);
+  });
+});
+
+describe("balance snapshot validation", () => {
+  it("parses formatted balances to minor units", () => {
+    expect(
+      createBalanceSnapshotSchema.parse({
+        accountId: "local_1",
+        asOfDate: "2026-05-28",
+        balance: "$1,250.42",
+      }).balance,
+    ).toBe(125042);
+  });
+
+  it("rejects invalid dates and balances", () => {
+    expect(
+      createBalanceSnapshotSchema.safeParse({
+        accountId: "local_1",
+        asOfDate: "05/28/2026",
+        balance: "nope",
+      }).success,
+    ).toBe(false);
   });
 });

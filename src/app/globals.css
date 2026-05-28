@@ -1021,6 +1021,66 @@ button {
   font-weight: 700;
 }
 
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.snapshot-list {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(214, 226, 217, 0.08);
+  padding-bottom: 12px;
+}
+
+.snapshot-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.snapshot-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.snapshot-copy span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-copy small {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.snapshot-item strong {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.empty-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .secondary-action {
   display: inline-flex;
   height: 38px;
