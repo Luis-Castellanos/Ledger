@@ -1,80 +1,11 @@
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  BadgeDollarSign,
-  Banknote,
-  BookOpenCheck,
-  ChartNoAxesCombined,
-  Download,
-  FileUp,
-  Landmark,
-  Layers3,
-  ListChecks,
-  PanelLeft,
-  ReceiptText,
-  Search,
-  Settings,
-  ShieldCheck,
-  WalletCards,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
 import { activity, bars, categoryBars, ledgerStats, lineSeries, transactions } from "@/lib/sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
-const nav = [
-  { label: "Dashboard", icon: ChartNoAxesCombined, active: true },
-  { label: "Transactions", icon: ReceiptText },
-  { label: "Review", icon: ListChecks },
-  { label: "Imports", icon: FileUp },
-  { label: "Cashflow", icon: BadgeDollarSign },
-  { label: "Net Worth", icon: Landmark },
-  { label: "Accounts", icon: WalletCards },
-  { label: "Settings", icon: Settings },
-];
-
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(72,105,92,0.22),_transparent_34%),linear-gradient(120deg,#f4f3ef_0%,#d8d8d3_42%,#2f3330_100%)] p-3 text-[var(--ink)] sm:p-5 lg:p-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1440px] grid-cols-1 overflow-hidden rounded-[8px] border border-white/10 bg-[var(--app-bg)] shadow-2xl shadow-black/35 lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="border-b border-[var(--line)] bg-[var(--rail)] lg:border-b-0 lg:border-r">
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="flex h-20 items-center justify-between px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-[6px] border border-[var(--line)] bg-[var(--panel-2)]">
-                  <BookOpenCheck size={17} />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold tracking-[0.08em] text-[var(--ink-strong)]">VAULT</div>
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Personal ledger</div>
-                </div>
-              </div>
-              <button className="icon-button lg:hidden" aria-label="Toggle navigation">
-                <PanelLeft size={18} />
-              </button>
-            </div>
-
-            <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:overflow-visible lg:px-0 lg:pb-0">
-              <div className="hidden px-6 pb-2 pt-4 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)] lg:block">Ledger</div>
-              {nav.map((item) => (
-                <a className={item.active ? "nav-item nav-item-active" : "nav-item"} href="#" key={item.label}>
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                </a>
-              ))}
-            </nav>
-
-            <div className="mt-auto hidden border-t border-[var(--line)] p-5 lg:block">
-              <div className="metric-strip">
-                <span>Review queue</span>
-                <strong>37</strong>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-[12px] text-[var(--muted)]">
-                <span>Last import</span>
-                <span>2h ago</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-
+    <AppShell active="Dashboard">
         <section className="min-w-0">
           <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
             <div>
@@ -207,8 +138,7 @@ export default function Home() {
             </section>
           </div>
         </section>
-      </div>
-    </main>
+    </AppShell>
   );
 }
 
