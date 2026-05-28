@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Archive, Cloud, Database, KeyRound, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
+import { Archive, Cloud, Database, Download, KeyRound, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
 import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
 
@@ -281,10 +281,16 @@ export function SettingsWorkbench() {
               <p className="panel-label">Export history</p>
               <h2 className="panel-title">Backup and portability log</h2>
             </div>
-            <a className="secondary-action" href="/api/exports?format=backup_package">
-              <Archive size={16} />
-              New backup
-            </a>
+            <div className="transaction-controls">
+              <a className="secondary-action" href="/api/exports?format=transactions_csv">
+                <Download size={16} />
+                Transactions CSV
+              </a>
+              <a className="secondary-action" href="/api/exports?format=backup_package">
+                <Archive size={16} />
+                Backup package
+              </a>
+            </div>
           </div>
 
           <div className="export-history-list">
@@ -298,7 +304,7 @@ export function SettingsWorkbench() {
                   </div>
                   <div>
                     <span>{job.includeAuditEvents ? "Audit included" : "Audit excluded"}</span>
-                    <strong>{job.artifactUrl ?? job.errorMessage ?? "Pending artifact"}</strong>
+                    <strong>{getExportJobDetail(job)}</strong>
                   </div>
                 </article>
               ))
@@ -501,6 +507,18 @@ function formatExportTimestamp(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function getExportJobDetail(job: ExportJobSummary) {
+  if (job.status === "failed") {
+    return job.errorMessage ?? "Export failed";
+  }
+
+  if (job.status === "running") {
+    return "Generating export";
+  }
+
+  return job.artifactUrl ?? "Generated export";
 }
 
 function formatAuditAction(action: string) {

@@ -130,6 +130,8 @@ test("settings page supports ledger settings edits", async ({ page }) => {
   await expect(page.getByText("Redacted server error logging")).toBeVisible();
   await expect(page.getByLabel("Export history")).toBeVisible();
   await expect(page.getByText("Backup and portability log")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Transactions CSV" })).toHaveAttribute("href", "/api/exports?format=transactions_csv");
+  await expect(page.getByRole("link", { name: "Backup package" })).toHaveAttribute("href", "/api/exports?format=backup_package");
   await expect(page.getByLabel("Audit trail")).toBeVisible();
   await expect(page.getByText("Recent control events")).toBeVisible();
 
