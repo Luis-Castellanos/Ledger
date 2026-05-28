@@ -34,3 +34,14 @@ test("transactions page supports local transaction entry", async ({ page }) => {
 
   await expect(page.getByText("Local Bookstore")).toBeVisible();
 });
+
+test("imports page supports local staged row", async ({ page }) => {
+  await page.goto("/imports");
+
+  await expect(page.getByRole("heading", { name: "Imports" })).toBeVisible();
+  await expect(page.getByText("Import review")).toBeVisible();
+
+  await page.getByRole("button", { name: "Add sample row" }).click();
+
+  await expect(page.getByText("NEW CSV ROW")).toBeVisible();
+});

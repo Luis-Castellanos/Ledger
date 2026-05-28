@@ -16,7 +16,7 @@ const nav = [
   { label: "Dashboard", href: "/", icon: ChartNoAxesCombined },
   { label: "Transactions", href: "/transactions", icon: ReceiptText },
   { label: "Review", href: "#", icon: ListChecks },
-  { label: "Imports", href: "#", icon: FileUp },
+  { label: "Imports", href: "/imports", icon: FileUp },
   { label: "Cashflow", href: "#", icon: BadgeDollarSign },
   { label: "Net Worth", href: "#", icon: Landmark },
   { label: "Accounts", href: "/accounts", icon: WalletCards },

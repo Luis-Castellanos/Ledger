@@ -469,7 +469,18 @@ button {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
 
+.imports-grid {
+  display: grid;
+  min-height: calc(100vh - 7.5rem);
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
 .transactions-main {
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+
+.imports-main {
   min-width: 0;
   border-right: 1px solid var(--line);
 }
@@ -501,6 +512,11 @@ button {
 .account-metric-violet {
   background: rgba(120, 96, 173, 0.16);
   color: var(--violet);
+}
+
+.account-metric-gold {
+  background: rgba(213, 185, 106, 0.14);
+  color: var(--gold);
 }
 
 .accounts-table-panel {
@@ -665,15 +681,33 @@ button {
   overflow-x: auto;
 }
 
+.imports-table-panel {
+  min-height: 560px;
+  overflow-x: auto;
+}
+
 .transactions-table {
   margin-top: 24px;
   min-width: 520px;
+}
+
+.imports-table {
+  margin-top: 24px;
+  min-width: 620px;
 }
 
 .transactions-table-head,
 .transactions-table-row {
   display: grid;
   grid-template-columns: minmax(150px, 1.2fr) 145px 126px 92px;
+  gap: 14px;
+  align-items: center;
+}
+
+.imports-table-head,
+.imports-table-row {
+  display: grid;
+  grid-template-columns: 58px minmax(160px, 1.2fr) 150px 126px 92px;
   gap: 14px;
   align-items: center;
 }
@@ -688,12 +722,31 @@ button {
   text-transform: uppercase;
 }
 
+.imports-table-head {
+  border-bottom: 1px solid var(--line);
+  padding: 0 10px 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .transactions-table-row {
   border-bottom: 1px solid rgba(214, 226, 217, 0.07);
   padding: 12px 10px;
 }
 
+.imports-table-row {
+  border-bottom: 1px solid rgba(214, 226, 217, 0.07);
+  padding: 12px 10px;
+}
+
 .transactions-table-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.imports-table-row:hover {
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -715,6 +768,76 @@ button {
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.imports-table select {
+  height: 38px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink-strong);
+  padding: 0 10px;
+  outline: none;
+}
+
+.imports-table select option {
+  background: #101513;
+  color: var(--ink-strong);
+}
+
+.import-dropzone {
+  margin-top: 24px;
+  display: grid;
+  gap: 10px;
+  border: 1px dashed rgba(214, 226, 217, 0.22);
+  border-radius: 8px;
+  padding: 22px;
+  color: var(--muted);
+}
+
+.import-dropzone p {
+  margin: 0;
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.import-dropzone span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.import-batch-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.import-batch {
+  border-bottom: 1px solid rgba(214, 226, 217, 0.08);
+  padding-bottom: 12px;
+}
+
+.import-batch:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.import-batch strong {
+  display: block;
+  color: var(--ink-strong);
+  font-size: 13px;
+}
+
+.import-batch span,
+.import-batch p {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.import-batch p {
+  margin: 6px 0 0;
 }
 
 .account-form-grid {
@@ -816,11 +939,9 @@ button {
     padding-left: 44px;
   }
 
-  .accounts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .transactions-grid {
+  .accounts-grid,
+  .transactions-grid,
+  .imports-grid {
     grid-template-columns: 1fr;
   }
 
@@ -829,6 +950,10 @@ button {
   }
 
   .transactions-main {
+    border-right: 0;
+  }
+
+  .imports-main {
     border-right: 0;
   }
 
