@@ -35,4 +35,9 @@ describe("updateTransactionReviewSchema", () => {
 
     expect(parsed.success).toBe(true);
   });
+
+  it("allows lifecycle actions", () => {
+    expect(updateTransactionReviewSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "delete" }).success).toBe(true);
+    expect(updateTransactionReviewSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "restore" }).success).toBe(true);
+  });
 });

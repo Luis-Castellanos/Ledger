@@ -27,6 +27,7 @@ export const updateTransactionReviewSchema = z.object({
   id: z.string().uuid(),
   reviewStatus: transactionStatusSchema.optional(),
   categoryName: z.string().trim().min(1).max(120).optional(),
+  action: z.enum(["delete", "restore"]).optional(),
 });
 
 export type CreateManualTransactionInput = z.infer<typeof createManualTransactionSchema>;

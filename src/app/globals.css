@@ -712,7 +712,7 @@ button {
 .transactions-table-head,
 .transactions-table-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.2fr) 145px 126px 92px;
+  grid-template-columns: minmax(150px, 1.2fr) 145px 126px 128px;
   gap: 14px;
   align-items: center;
 }
@@ -757,6 +757,53 @@ button {
 
 .transactions-table-row:hover {
   background: rgba(255, 255, 255, 0.035);
+}
+
+.transaction-undo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(87, 184, 157, 0.22);
+  padding: 12px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.transaction-undo-banner button,
+.transaction-amount-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+}
+
+.transaction-undo-banner button {
+  height: 32px;
+  gap: 7px;
+  padding: 0 10px;
+  font-weight: 700;
+}
+
+.transaction-amount-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.transaction-amount-actions button {
+  width: 32px;
+  height: 32px;
+}
+
+.transaction-amount-actions button:hover,
+.transaction-undo-banner button:hover {
+  border-color: rgba(87, 184, 157, 0.45);
+  color: var(--green);
 }
 
 .imports-table-row:hover {

@@ -132,14 +132,43 @@ export async function PATCH(request: Request) {
   }
 
   const db = getDb();
+  const isLifecycleAction = parsed.data.action === "delete" || parsed.data.action === "restore";
   const [existingTransaction] = await db
     .select()
     .from(transactions)
-    .where(and(eq(transactions.id, parsed.data.id), eq(transactions.ledgerId, context.ledger.id), isNull(transactions.deletedAt)))
+    .where(
+      isLifecycleAction
+        ? and(eq(transactions.id, parsed.data.id), eq(transactions.ledgerId, context.ledger.id))
+        : and(eq(transactions.id, parsed.data.id), eq(transactions.ledgerId, context.ledger.id), isNull(transactions.deletedAt)),
+    )
     .limit(1);
 
   if (!existingTransaction) {
     return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+  }
+
+  if (parsed.data.action) {
+    const nextDeletedAt = parsed.data.action === "delete" ? new Date() : null;
+    const [transaction] = await db
+      .update(transactions)
+      .set({
+        deletedAt: nextDeletedAt,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(transactions.id, parsed.data.id), eq(transactions.ledgerId, context.ledger.id)))
+      .returning();
+
+    await db.insert(auditEvents).values({
+      ledgerId: context.ledger.id,
+      actorUserId: context.user.id,
+      action: parsed.data.action === "delete" ? "transaction.deleted" : "transaction.restored",
+      entityType: "transaction",
+      entityId: transaction.id,
+      before: existingTransaction,
+      after: transaction,
+    });
+
+    return NextResponse.json({ transaction });
   }
 
   const [category] = parsed.data.categoryName

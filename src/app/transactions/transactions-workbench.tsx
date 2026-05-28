@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, Save, Search } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
@@ -22,6 +22,7 @@ export function TransactionsWorkbench() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
   const [error, setError] = useState<string | null>(null);
+  const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [isSaving, setIsSaving] = useState(false);
   const [formState, setFormState] = useState({
@@ -123,6 +124,36 @@ export function TransactionsWorkbench() {
 
     if (dataSource === "database") {
       await persistTransactionPatch({ id, categoryName: category });
+    }
+  }
+
+  async function deleteTransaction(id: string) {
+    const transaction = transactions.find((row) => row.id === id);
+
+    if (!transaction) {
+      return;
+    }
+
+    hasLocalEdits.current = true;
+    setLastDeletedTransaction(transaction);
+    setTransactions((current) => current.filter((row) => row.id !== id));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({ id, action: "delete" });
+    }
+  }
+
+  async function restoreLastDeletedTransaction() {
+    if (!lastDeletedTransaction) {
+      return;
+    }
+
+    hasLocalEdits.current = true;
+    setTransactions((current) => [lastDeletedTransaction, ...current]);
+    setLastDeletedTransaction(null);
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({ id: lastDeletedTransaction.id, action: "restore" });
     }
   }
 
@@ -230,6 +261,15 @@ export function TransactionsWorkbench() {
               <span>Status</span>
               <span>Amount</span>
             </div>
+            {lastDeletedTransaction ? (
+              <div className="transaction-undo-banner">
+                <span>{lastDeletedTransaction.merchant} deleted.</span>
+                <button type="button" onClick={restoreLastDeletedTransaction}>
+                  <RotateCcw size={14} />
+                  Restore
+                </button>
+              </div>
+            ) : null}
             {filteredTransactions.map((transaction) => (
               <div className="transactions-table-row" role="row" key={transaction.id}>
                 <div className="transaction-register-name">
@@ -260,7 +300,12 @@ export function TransactionsWorkbench() {
                     </option>
                   ))}
                 </select>
-                <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
+                <div className="transaction-amount-actions">
+                  <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
+                  <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={() => deleteTransaction(transaction.id)}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -359,7 +404,7 @@ type AccountOption = {
   name: string;
 };
 
-async function persistTransactionPatch(body: { id: string; reviewStatus?: TransactionStatus; categoryName?: string }) {
+async function persistTransactionPatch(body: { id: string; reviewStatus?: TransactionStatus; categoryName?: string; action?: "delete" | "restore" }) {
   try {
     await fetch("/api/transactions", {
       method: "PATCH",

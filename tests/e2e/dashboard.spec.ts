@@ -36,6 +36,11 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await page.getByRole("button", { name: "Save transaction" }).click();
 
   await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByRole("button", { name: "Delete Local Bookstore" }).click();
+  await expect(page.getByText("Local Bookstore deleted.")).toBeVisible();
+  await expect(page.getByText("Local Bookstore", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByText("Local Bookstore", { exact: true })).toBeVisible();
 });
 
 test("imports page supports local staged row", async ({ page }) => {
