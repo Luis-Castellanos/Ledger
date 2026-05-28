@@ -16,6 +16,7 @@ describe("getSetupStatus", () => {
     expect(status).toEqual({
       appUrlConfigured: true,
       clerkConfigured: true,
+      clerkKeyMode: "test",
       databaseConfigured: true,
       nodeEnv: "production",
       vercelDetected: true,
@@ -31,5 +32,25 @@ describe("getSetupStatus", () => {
       readyCount: 0,
       requiredCount: 3,
     });
+  });
+
+  it("reports live Clerk keys without exposing key material", () => {
+    const status = getSetupStatus({
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_example",
+      CLERK_SECRET_KEY: "sk_live_example",
+    });
+
+    expect(status.clerkConfigured).toBe(true);
+    expect(status.clerkKeyMode).toBe("live");
+  });
+
+  it("flags mismatched Clerk key environments", () => {
+    const status = getSetupStatus({
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_live_example",
+    });
+
+    expect(status.clerkConfigured).toBe(true);
+    expect(status.clerkKeyMode).toBe("mixed");
   });
 });

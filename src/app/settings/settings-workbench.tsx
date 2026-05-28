@@ -30,6 +30,7 @@ const fallbackSettings: SettingsState = {
 const fallbackSetupStatus: SetupStatus = {
   appUrlConfigured: false,
   clerkConfigured: false,
+  clerkKeyMode: "missing",
   databaseConfigured: false,
   nodeEnv: "development",
   vercelDetected: false,
@@ -213,6 +214,10 @@ export function SettingsWorkbench() {
           </div>
           <div className="settings-facts">
             <SetupFact label="Clerk" ready={setupStatus.clerkConfigured} readyText="Configured" missingText="Missing keys" />
+            <div>
+              <span>Clerk keys</span>
+              <strong className={setupStatus.clerkKeyMode === "live" ? "setup-ready" : "setup-missing"}>{getClerkKeyModeLabel(setupStatus.clerkKeyMode)}</strong>
+            </div>
             <SetupFact label="Neon" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
             <SetupFact label="App URL" ready={setupStatus.appUrlConfigured} readyText="Configured" missingText="Missing app URL" />
             <div>
@@ -224,6 +229,21 @@ export function SettingsWorkbench() {
       </aside>
     </div>
   );
+}
+
+function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {
+  switch (mode) {
+    case "live":
+      return "Live keys";
+    case "test":
+      return "Development keys";
+    case "mixed":
+      return "Mixed key environments";
+    case "unknown":
+      return "Unknown key mode";
+    case "missing":
+      return "Missing keys";
+  }
 }
 
 function SetupFact({ label, ready, readyText, missingText }: { label: string; ready: boolean; readyText: string; missingText: string }) {

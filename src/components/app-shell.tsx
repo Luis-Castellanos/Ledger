@@ -57,6 +57,10 @@ export function AppShell({ active, children }: { active: string; children: React
               ))}
             </nav>
 
+            <div className="mobile-auth border-t border-[var(--line)] px-3 py-3 lg:hidden">
+              <AuthControls />
+            </div>
+
             <div className="mt-auto hidden border-t border-[var(--line)] p-5 lg:block">
               <AuthControls />
               <div className="metric-strip">

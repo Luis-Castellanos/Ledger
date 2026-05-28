@@ -486,6 +486,15 @@ button {
   color: var(--muted);
 }
 
+.mobile-auth .auth-controls {
+  flex-wrap: wrap;
+  padding-bottom: 0;
+}
+
+.mobile-auth .auth-status-pill {
+  margin-bottom: 0;
+}
+
 .accounts-grid {
   display: grid;
   min-height: calc(100vh - 7.5rem);
