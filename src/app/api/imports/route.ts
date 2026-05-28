@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
-import { accounts, auditEvents, categories, importRows, imports } from "@/lib/db/schema";
+import { accounts, auditEvents, categories, importRows, imports, merchantRules } from "@/lib/db/schema";
 import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "@/lib/finance/import";
+import { findMatchingMerchantRule } from "@/lib/finance/rules";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -93,6 +94,15 @@ export async function POST(request: Request) {
     .from(categories)
     .where(and(eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)));
   const categoryIdByName = new Map(categoryRows.map((category) => [category.name, category.id]));
+  const ruleRows = await db
+    .select({
+      categoryId: merchantRules.categoryId,
+      matchType: merchantRules.matchType,
+      normalizedMatchValue: merchantRules.normalizedMatchValue,
+    })
+    .from(merchantRules)
+    .where(and(eq(merchantRules.ledgerId, context.ledger.id), eq(merchantRules.isActive, true), isNull(merchantRules.deletedAt)))
+    .orderBy(asc(merchantRules.priority), asc(merchantRules.name));
   const fingerprint = buildImportFingerprint({
     accountId: parsed.data.accountId,
     filename: parsed.data.filename,
@@ -129,7 +139,8 @@ export async function POST(request: Request) {
       parsedDate: row.date,
       parsedAmountMinor: row.amount,
       parsedDescription: row.description,
-      proposedCategoryId: categoryIdByName.get(row.category),
+      proposedCategoryId:
+        row.category !== "Uncategorized" ? categoryIdByName.get(row.category) : findMatchingMerchantRule(row.description, ruleRows)?.categoryId,
       validationStatus: row.status,
     })),
   );

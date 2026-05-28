@@ -22,6 +22,12 @@ export const createMerchantRuleSchema = z.object({
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type CreateMerchantRuleInput = z.infer<typeof createMerchantRuleSchema>;
 
+export type MerchantRuleMatcher = {
+  categoryId: string;
+  matchType: z.infer<typeof merchantRuleMatchTypeSchema> | string;
+  normalizedMatchValue: string;
+};
+
 export function slugifyCategoryName(name: string) {
   return (
     name
@@ -34,4 +40,20 @@ export function slugifyCategoryName(name: string) {
 
 export function normalizeRuleMatchValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function findMatchingMerchantRule(description: string, rules: MerchantRuleMatcher[]) {
+  const normalizedDescription = normalizeRuleMatchValue(description);
+
+  return rules.find((rule) => {
+    if (rule.matchType === "exact") {
+      return normalizedDescription === rule.normalizedMatchValue;
+    }
+
+    if (rule.matchType === "starts_with") {
+      return normalizedDescription.startsWith(rule.normalizedMatchValue);
+    }
+
+    return normalizedDescription.includes(rule.normalizedMatchValue);
+  });
 }
