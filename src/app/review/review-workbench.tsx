@@ -16,6 +16,8 @@ export function ReviewWorkbench() {
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [message, setMessage] = useState<string | null>(null);
   const [lastReviewAction, setLastReviewAction] = useState<ReviewUndoAction | null>(null);
+  const [selectedReviewIds, setSelectedReviewIds] = useState<string[]>([]);
+  const [bulkCategory, setBulkCategory] = useState(fallbackCategoryOptions[0]?.name ?? "Groceries");
   const hasLocalEdits = useRef(false);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export function ReviewWorkbench() {
         if (isMounted && !hasLocalEdits.current) {
           setTransactions(transactionsPayload.transactions);
           setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
+          setBulkCategory(nextCategories[0]?.name ?? fallbackCategoryOptions[0]?.name ?? "Groceries");
           setDataSource("database");
         }
       } catch {
@@ -71,6 +74,17 @@ export function ReviewWorkbench() {
 
   const reviewedCount = transactions.filter((transaction) => transaction.status === "reviewed").length;
   const excludedCount = transactions.filter((transaction) => transaction.status === "excluded").length;
+  const selectedReviewRows = reviewRows.filter((transaction) => selectedReviewIds.includes(transaction.id));
+  const selectedReviewCount = selectedReviewRows.length;
+  const allReviewRowsSelected = reviewRows.length > 0 && selectedReviewCount === reviewRows.length;
+
+  function toggleReviewSelection(id: string) {
+    setSelectedReviewIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleAllReviewSelection() {
+    setSelectedReviewIds(allReviewRowsSelected ? [] : reviewRows.map((transaction) => transaction.id));
+  }
 
   async function updateReview(id: string, status: "reviewed" | "excluded") {
     hasLocalEdits.current = true;
@@ -86,6 +100,7 @@ export function ReviewWorkbench() {
       nextStatus: status,
     });
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
+    setSelectedReviewIds((current) => current.filter((selectedId) => selectedId !== id));
 
     if (dataSource === "database") {
       try {
@@ -273,6 +288,57 @@ export function ReviewWorkbench() {
     }
   }
 
+  async function updateBulkCategory() {
+    if (selectedReviewRows.length === 0) {
+      return;
+    }
+
+    const selectedIds = selectedReviewRows.map((transaction) => transaction.id);
+    hasLocalEdits.current = true;
+    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, category: bulkCategory } : transaction)));
+
+    if (dataSource === "database") {
+      try {
+        await Promise.all(selectedIds.map((id) => persistReviewPatch({ id, categoryName: bulkCategory })));
+        setMessage(`${selectedIds.length} selected transactions recategorized.`);
+      } catch {
+        setDataSource("demo");
+        setMessage("Bulk category change stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(`${selectedIds.length} selected transactions recategorized.`);
+    }
+  }
+
+  async function updateBulkReview(status: "reviewed" | "excluded") {
+    if (selectedReviewRows.length === 0) {
+      return;
+    }
+
+    const selectedRows = selectedReviewRows;
+    const selectedIds = selectedRows.map((transaction) => transaction.id);
+    hasLocalEdits.current = true;
+    setLastReviewAction({
+      transactions: selectedRows.map((transaction) => ({ id: transaction.id, previousStatus: transaction.status })),
+      merchant: `${selectedRows.length} selected rows`,
+      nextStatus: status,
+    });
+    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, status } : transaction)));
+    setSelectedReviewIds([]);
+
+    if (dataSource === "database") {
+      try {
+        await Promise.all(selectedIds.map((id) => persistReviewPatch({ id, reviewStatus: status })));
+        setMessage(`${selectedIds.length} selected transactions marked ${getReviewStatusLabel(status)}.`);
+      } catch {
+        setDataSource("demo");
+        setMessage("Bulk review decision stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(`${selectedIds.length} selected transactions marked ${getReviewStatusLabel(status)}.`);
+    }
+  }
+
   return (
     <div className="transactions-grid">
       <section className="transactions-main">
@@ -305,9 +371,36 @@ export function ReviewWorkbench() {
               </button>
             </div>
           ) : null}
+          <div className="transaction-undo-banner review-bulk-bar">
+            <span>{selectedReviewCount} selected</span>
+            <select aria-label="Bulk review category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
+              {categoryOptions.map((category) => (
+                <option value={category.name} key={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={updateBulkCategory} disabled={selectedReviewCount === 0}>
+              Set category
+            </button>
+            <button type="button" onClick={() => updateBulkReview("reviewed")} disabled={selectedReviewCount === 0}>
+              Mark reviewed
+            </button>
+            <button type="button" onClick={() => updateBulkReview("excluded")} disabled={selectedReviewCount === 0}>
+              Exclude
+            </button>
+          </div>
 
-          <div className="transactions-table" role="table" aria-label="Review queue">
+          <div className="transactions-table review-queue-table" role="table" aria-label="Review queue">
             <div className="transactions-table-head" role="row">
+              <span>
+                <input
+                  aria-label="Select all review rows"
+                  checked={allReviewRowsSelected}
+                  onChange={toggleAllReviewSelection}
+                  type="checkbox"
+                />
+              </span>
               <span>Merchant</span>
               <span>Category</span>
               <span>Status</span>
@@ -315,6 +408,12 @@ export function ReviewWorkbench() {
             </div>
             {reviewRows.map((transaction) => (
               <div className="transactions-table-row" role="row" key={transaction.id}>
+                <input
+                  aria-label={`Select ${transaction.merchant}`}
+                  checked={selectedReviewIds.includes(transaction.id)}
+                  onChange={() => toggleReviewSelection(transaction.id)}
+                  type="checkbox"
+                />
                 <div className="transaction-register-name">
                   <p>{transaction.merchant}</p>
                   <span>
@@ -415,10 +514,23 @@ function isReviewSuccessMessage(message: string) {
     message.endsWith("reviewed.") ||
     message.endsWith("excluded.") ||
     message.endsWith("undone.") ||
+    message.endsWith("recategorized.") ||
     message.endsWith("persist rules.") ||
     message.startsWith("Rule preview created") ||
     message.startsWith("Rule created")
   );
+}
+
+async function persistReviewPatch(body: { id: string; categoryName?: string; reviewStatus?: "reviewed" | "excluded" | "needs_review" }) {
+  const response = await fetch("/api/transactions", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error("Review update failed");
+  }
 }
 
 function ReviewMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {

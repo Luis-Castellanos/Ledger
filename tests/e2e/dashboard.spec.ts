@@ -156,6 +156,16 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await page.goto("/review");
   await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
   await expect(page.getByText("Unresolved transactions")).toBeVisible();
+  await page.getByLabel("Select Costco").check();
+  await page.getByLabel("Select Apple Music").check();
+  await page.getByLabel("Bulk review category").selectOption("Restaurants");
+  await page.getByRole("button", { name: "Set category" }).click();
+  await expect(page.getByText("2 selected transactions recategorized.")).toBeVisible();
+  await page.getByRole("button", { name: "Mark reviewed" }).click();
+  await expect(page.getByText("2 selected transactions marked reviewed.")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo review" }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(1);
   await page.getByRole("button", { name: "Mark Costco reviewed" }).click();
   await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(0);
   await expect(page.getByText("Costco marked reviewed.")).toBeVisible();
