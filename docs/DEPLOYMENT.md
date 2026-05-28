@@ -29,6 +29,7 @@ npm run typecheck
 npm run lint
 npm run test
 npm run db:check
+npm run secrets:scan
 npm run audit:prod
 npm run build
 npm run test:e2e
@@ -38,6 +39,7 @@ npm run test:e2e
 For production targets, `setup:check` also requires live Clerk keys and fails if test keys are configured.
 `npm run db:migrate` requires `DATABASE_URL`. Do not use `db:push` for production data.
 `npm run db:check` verifies Drizzle migration metadata.
+`npm run secrets:scan` checks tracked files for common committed secrets and intentionally ignores local `.env*` files.
 `npm run audit:prod` fails on high or critical production dependency advisories.
 Current known advisory: `npm audit` reports a moderate PostCSS advisory through Next.js. It is below the private-beta release gate and should be rechecked when the fixed Next.js release path is available without a breaking downgrade.
 

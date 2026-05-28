@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "audit:prod": "npm audit --audit-level=high --omit=dev",
+    "secrets:scan": "node scripts/scan-secrets.mjs",
     "setup:check": "node scripts/verify-production-env.mjs",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",

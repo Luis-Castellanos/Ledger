@@ -66,6 +66,7 @@ npm run setup:check
 npm run typecheck
 npm run lint
 npm run test
+npm run secrets:scan
 npm run build
 npm run test:e2e
 ```
