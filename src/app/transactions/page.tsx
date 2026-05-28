@@ -1,4 +1,4 @@
-import { Download, Search, SlidersHorizontal } from "lucide-react";
+import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { TransactionsWorkbench } from "./transactions-workbench";
 
@@ -12,13 +12,6 @@ export default function TransactionsPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Transactions</h1>
           </div>
           <div className="flex items-center gap-2">
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search ledger" placeholder="Search ledger" />
-            </label>
-            <button className="icon-button" aria-label="Filter transactions">
-              <SlidersHorizontal size={17} />
-            </button>
             <a className="icon-button" aria-label="Export transactions" href="/api/exports?format=transactions_csv">
               <Download size={17} />
             </a>

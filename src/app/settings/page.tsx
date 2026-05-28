@@ -1,4 +1,4 @@
-import { Download, Search, ShieldCheck } from "lucide-react";
+import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { SettingsWorkbench } from "./settings-workbench";
 
@@ -12,13 +12,6 @@ export default function SettingsPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Settings</h1>
           </div>
           <div className="flex items-center gap-2">
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search settings" placeholder="Search settings" />
-            </label>
-            <button className="icon-button" aria-label="Review security controls">
-              <ShieldCheck size={17} />
-            </button>
             <a className="icon-button" aria-label="Export settings" href="/api/exports?format=backup_package">
               <Download size={17} />
             </a>

@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Search, SlidersHorizontal } from "lucide-react";
+import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ReviewWorkbench } from "./review-workbench";
 
@@ -12,19 +12,9 @@ export default function ReviewPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Review</h1>
           </div>
           <div className="flex items-center gap-2">
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search review queue" placeholder="Search review" />
-            </label>
-            <button className="icon-button" aria-label="Filter review queue">
-              <SlidersHorizontal size={17} />
-            </button>
             <a className="icon-button" aria-label="Export review queue" href="/api/exports?format=transactions_csv">
               <Download size={17} />
             </a>
-            <button className="icon-button" aria-label="Mark visible reviewed">
-              <CheckCircle2 size={17} />
-            </button>
           </div>
         </header>
         <ReviewWorkbench />
