@@ -21,3 +21,16 @@ test("accounts page supports local account entry", async ({ page }) => {
 
   await expect(page.getByText("Vacation Reserve")).toBeVisible();
 });
+
+test("transactions page supports local transaction entry", async ({ page }) => {
+  await page.goto("/transactions");
+
+  await expect(page.getByRole("heading", { name: "Transactions" })).toBeVisible();
+  await expect(page.getByText("Register")).toBeVisible();
+
+  await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
+  await page.getByPlaceholder("-42.18").fill("-31.45");
+  await page.getByRole("button", { name: "Save transaction" }).click();
+
+  await expect(page.getByText("Local Bookstore")).toBeVisible();
+});

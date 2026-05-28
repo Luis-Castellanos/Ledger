@@ -14,7 +14,7 @@ import Link from "next/link";
 
 const nav = [
   { label: "Dashboard", href: "/", icon: ChartNoAxesCombined },
-  { label: "Transactions", href: "#", icon: ReceiptText },
+  { label: "Transactions", href: "/transactions", icon: ReceiptText },
   { label: "Review", href: "#", icon: ListChecks },
   { label: "Imports", href: "#", icon: FileUp },
   { label: "Cashflow", href: "#", icon: BadgeDollarSign },
