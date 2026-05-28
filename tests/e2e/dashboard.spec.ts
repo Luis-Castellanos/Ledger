@@ -112,7 +112,7 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
   await expect(page.getByText("Unresolved transactions")).toBeVisible();
   await page.getByRole("button", { name: "Mark Costco reviewed" }).click();
-  await expect(page.getByText("Costco", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(0);
 
   await page.goto("/rules");
   await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();

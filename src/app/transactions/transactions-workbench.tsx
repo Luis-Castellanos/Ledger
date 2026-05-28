@@ -31,6 +31,7 @@ export function TransactionsWorkbench() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>("all");
   const [error, setError] = useState<string | null>(null);
+  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [isSaving, setIsSaving] = useState(false);
@@ -134,7 +135,11 @@ export function TransactionsWorkbench() {
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({ id, reviewStatus: status });
+      await persistTransactionPatch({
+        body: { id, reviewStatus: status },
+        onFailure: () => setMutationMessage("Transaction status stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -143,7 +148,11 @@ export function TransactionsWorkbench() {
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({ id, categoryName: category });
+      await persistTransactionPatch({
+        body: { id, categoryName: category },
+        onFailure: () => setMutationMessage("Category change stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -152,7 +161,11 @@ export function TransactionsWorkbench() {
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, transferStatus } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({ id, transferStatus });
+      await persistTransactionPatch({
+        body: { id, transferStatus },
+        onFailure: () => setMutationMessage("Transfer classification stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -168,7 +181,11 @@ export function TransactionsWorkbench() {
     setTransactions((current) => current.filter((row) => row.id !== id));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({ id, action: "delete" });
+      await persistTransactionPatch({
+        body: { id, action: "delete" },
+        onFailure: () => setMutationMessage("Delete stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -182,7 +199,11 @@ export function TransactionsWorkbench() {
     setLastDeletedTransaction(null);
 
     if (dataSource === "database") {
-      await persistTransactionPatch({ id: lastDeletedTransaction.id, action: "restore" });
+      await persistTransactionPatch({
+        body: { id: lastDeletedTransaction.id, action: "restore" },
+        onFailure: () => setMutationMessage("Restore stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -323,6 +344,7 @@ export function TransactionsWorkbench() {
               </select>
             </div>
           </div>
+          {mutationMessage ? <p className="form-error">{mutationMessage}</p> : null}
 
           <div className="transactions-table" role="table" aria-label="Transactions">
             <div className="transactions-table-head" role="row">
@@ -501,20 +523,35 @@ function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Gr
   return options.find((category) => category.name === currentCategory)?.name ?? options.find((category) => category.name === "Groceries")?.name ?? options[0]?.name ?? "Groceries";
 }
 
-async function persistTransactionPatch(body: {
-  id: string;
-  reviewStatus?: TransactionStatus;
-  transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
-  categoryName?: string;
-  action?: "delete" | "restore";
+async function persistTransactionPatch({
+  body,
+  onFailure,
+  onSuccess,
+}: {
+  body: {
+    id: string;
+    reviewStatus?: TransactionStatus;
+    transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
+    categoryName?: string;
+    action?: "delete" | "restore";
+  };
+  onFailure: () => void;
+  onSuccess: () => void;
 }) {
   try {
-    await fetch("/api/transactions", {
+    const response = await fetch("/api/transactions", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
     });
+
+    if (!response.ok) {
+      throw new Error("Transaction update failed");
+    }
+
+    onSuccess();
   } catch {
+    onFailure();
     // The optimistic UI remains usable in demo or temporarily offline states.
   }
 }
