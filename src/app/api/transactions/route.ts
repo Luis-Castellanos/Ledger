@@ -186,6 +186,10 @@ export async function PATCH(request: Request) {
     : [];
 
   const transactionUpdate = {
+    ...(parsed.data.date ? { date: parsed.data.date } : {}),
+    ...(parsed.data.merchant ? { rawDescription: parsed.data.merchant, displayName: parsed.data.merchant } : {}),
+    ...(parsed.data.amount !== undefined ? { amountMinor: parsed.data.amount } : {}),
+    ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
     ...(parsed.data.reviewStatus ? { reviewStatus: parsed.data.reviewStatus } : {}),
     ...(parsed.data.transferStatus ? { transferStatus: parsed.data.transferStatus } : {}),
     ...(parsed.data.categoryName ? { categoryId: category?.id ?? null } : {}),

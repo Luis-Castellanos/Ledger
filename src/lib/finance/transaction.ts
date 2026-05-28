@@ -27,6 +27,22 @@ export const createManualTransactionSchema = z.object({
 
 export const updateTransactionReviewSchema = z.object({
   id: z.string().uuid(),
+  date: z.string().date().optional(),
+  merchant: z.string().trim().min(1).max(240).optional(),
+  amount: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value, context) => {
+      try {
+        return parseDollarAmount(value);
+      } catch {
+        context.addIssue({ code: "custom", message: "Enter a valid signed dollar amount." });
+        return z.NEVER;
+      }
+    })
+    .optional(),
+  notes: z.string().trim().max(2_000).optional(),
   reviewStatus: transactionStatusSchema.optional(),
   transferStatus: transactionTransferStatusSchema.optional(),
   categoryName: z.string().trim().min(1).max(120).optional(),

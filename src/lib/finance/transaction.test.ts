@@ -72,4 +72,16 @@ describe("updateTransactionReviewSchema", () => {
 
     expect(parsed.tags).toEqual(["tax", "reimbursable"]);
   });
+
+  it("allows core transaction field edits", () => {
+    const parsed = updateTransactionReviewSchema.parse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      date: "2026-05-28",
+      merchant: "Updated Merchant",
+      amount: "-12.34",
+      notes: "Receipt reviewed.",
+    });
+
+    expect(parsed.amount).toBe(-1234);
+  });
 });

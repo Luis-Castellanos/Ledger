@@ -41,6 +41,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const [error, setError] = useState<string | null>(null);
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(sampleTransactionRows[0]?.id ?? null);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [isSaving, setIsSaving] = useState(false);
   const [formState, setFormState] = useState({
@@ -50,6 +51,12 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     category: "Groceries",
     amount: "",
     tags: "",
+  });
+  const [editFormState, setEditFormState] = useState({
+    amount: "",
+    date: "",
+    merchant: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -77,6 +84,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
           setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
           setTransactions(transactionsPayload.transactions);
+          setSelectedTransactionId(transactionsPayload.transactions[0]?.id ?? null);
           setFormState((current) => ({
             ...current,
             accountId: nextAccounts[0]?.id ?? current.accountId,
@@ -124,6 +132,10 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const tagOptions = useMemo(() => {
     return Array.from(new Set(transactions.flatMap((transaction) => transaction.tags ?? []))).sort((left, right) => left.localeCompare(right));
   }, [transactions]);
+
+  const selectedTransaction = useMemo(() => {
+    return transactions.find((transaction) => transaction.id === selectedTransactionId) ?? transactions[0] ?? null;
+  }, [selectedTransactionId, transactions]);
 
   const totals = useMemo(() => {
     return transactions.reduce(
@@ -211,6 +223,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
 
     hasLocalEdits.current = true;
     setLastDeletedTransaction(transaction);
+    setSelectedTransactionId((current) => (current === id ? null : current));
     setTransactions((current) => current.filter((row) => row.id !== id));
 
     if (dataSource === "database") {
@@ -229,6 +242,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
 
     hasLocalEdits.current = true;
     setTransactions((current) => [lastDeletedTransaction, ...current]);
+    setSelectedTransactionId(lastDeletedTransaction.id);
     setLastDeletedTransaction(null);
 
     if (dataSource === "database") {
@@ -314,6 +328,60 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
       setError("Enter a valid signed dollar amount.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function startEditingTransaction(transaction: TransactionRow) {
+    setSelectedTransactionId(transaction.id);
+    setEditFormState({
+      amount: formatSignedAmount(transaction.amountMinor),
+      date: transaction.date,
+      merchant: transaction.merchant,
+      notes: transaction.notes ?? "",
+    });
+  }
+
+  async function saveSelectedTransaction() {
+    const selected = selectedTransaction;
+
+    if (!selected) {
+      return;
+    }
+
+    const amountInput = editFormState.amount || formatSignedAmount(selected.amountMinor);
+    const dateInput = editFormState.date || selected.date;
+    const merchantInput = editFormState.merchant.trim() || selected.merchant;
+    const notesInput = editFormState.notes.trim() || (selected.notes ?? "");
+    let amountMinor: number;
+
+    try {
+      amountMinor = parseDollarAmount(amountInput);
+    } catch {
+      setError("Enter a valid signed dollar amount for the selected transaction.");
+      return;
+    }
+
+    hasLocalEdits.current = true;
+    const patch = {
+      amountMinor,
+      date: dateInput,
+      merchant: merchantInput,
+      notes: notesInput || undefined,
+    };
+    setTransactions((current) => current.map((transaction) => (transaction.id === selected.id ? { ...transaction, ...patch } : transaction)));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({
+        body: {
+          id: selected.id,
+          amount: amountInput,
+          date: dateInput,
+          merchant: merchantInput,
+          notes: notesInput,
+        },
+        onFailure: () => setMutationMessage("Transaction edit stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
     }
   }
 
@@ -472,6 +540,9 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                   <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={() => deleteTransaction(transaction.id)}>
                     <Trash2 size={15} />
                   </button>
+                  <button type="button" aria-label={`Edit ${transaction.merchant}`} onClick={() => startEditingTransaction(transaction)}>
+                    <ReceiptText size={15} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -480,6 +551,59 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
       </section>
 
       <aside className="accounts-side">
+        <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Selected row</p>
+              <h2 className="panel-title">Edit transaction</h2>
+            </div>
+          </div>
+          {selectedTransaction ? (
+            <div className="account-form">
+              <label>
+                <span>Date</span>
+                <input
+                  aria-label="Edit transaction date"
+                  type="date"
+                  value={editFormState.date || selectedTransaction.date}
+                  onChange={(event) => setEditFormState((current) => ({ ...current, date: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Merchant</span>
+                <input
+                  aria-label="Edit transaction merchant"
+                  value={editFormState.merchant || selectedTransaction.merchant}
+                  onChange={(event) => setEditFormState((current) => ({ ...current, merchant: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Amount</span>
+                <input
+                  aria-label="Edit transaction amount"
+                  value={editFormState.amount || formatSignedAmount(selectedTransaction.amountMinor)}
+                  onChange={(event) => setEditFormState((current) => ({ ...current, amount: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Notes</span>
+                <input
+                  aria-label="Edit transaction notes"
+                  value={editFormState.notes}
+                  onChange={(event) => setEditFormState((current) => ({ ...current, notes: event.target.value }))}
+                  placeholder="Optional note"
+                />
+              </label>
+              <button className="secondary-action" type="button" onClick={saveSelectedTransaction}>
+                <Save size={16} />
+                Save edit
+              </button>
+            </div>
+          ) : (
+            <p className="empty-copy">Select a transaction row to edit its core fields.</p>
+          )}
+        </section>
+
         <section className="panel account-form-panel">
           <div className="panel-header">
             <div>
@@ -593,6 +717,10 @@ function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Gr
   return options.find((category) => category.name === currentCategory)?.name ?? options.find((category) => category.name === "Groceries")?.name ?? options[0]?.name ?? "Groceries";
 }
 
+function formatSignedAmount(amountMinor: number) {
+  return `${amountMinor < 0 ? "-" : ""}${(Math.abs(amountMinor) / 100).toFixed(2)}`;
+}
+
 async function persistTransactionPatch({
   body,
   onFailure,
@@ -600,6 +728,10 @@ async function persistTransactionPatch({
 }: {
   body: {
     id: string;
+    amount?: string;
+    date?: string;
+    merchant?: string;
+    notes?: string;
     reviewStatus?: TransactionStatus;
     transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
     categoryName?: string;
