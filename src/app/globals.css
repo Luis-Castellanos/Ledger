@@ -1059,6 +1059,58 @@ button {
   color: var(--coral);
 }
 
+.release-checklist {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.release-checklist-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 14px;
+}
+
+.release-checklist-item span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.release-checklist-item strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.release-checklist-item p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.release-checklist-item[data-state="ready"] {
+  border-color: rgba(87, 184, 157, 0.3);
+}
+
+.release-checklist-item[data-state="ready"] span {
+  color: var(--green);
+}
+
+.release-checklist-item[data-state="blocked"] {
+  border-color: rgba(215, 107, 100, 0.3);
+}
+
+.release-checklist-item[data-state="blocked"] span {
+  color: var(--coral);
+}
+
 .primary-action {
   display: inline-flex;
   height: 42px;
@@ -1353,6 +1405,10 @@ button {
   }
 
   .account-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .release-checklist {
     grid-template-columns: 1fr;
   }
 

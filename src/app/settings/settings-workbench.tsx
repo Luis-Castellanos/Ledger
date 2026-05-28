@@ -45,6 +45,7 @@ export function SettingsWorkbench() {
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const setupReadiness = getSetupReadiness(setupStatus);
+  const releaseTasks = getReleaseTasks(setupStatus);
 
   useEffect(() => {
     let isMounted = true;
@@ -173,6 +174,16 @@ export function SettingsWorkbench() {
               {isSaving ? "Saving" : "Save settings"}
             </button>
           </form>
+
+          <div className="release-checklist" aria-label="Release checklist">
+            {releaseTasks.map((task) => (
+              <div className="release-checklist-item" data-state={task.done ? "ready" : "blocked"} key={task.label}>
+                <span>{task.done ? "Ready" : "Required"}</span>
+                <strong>{task.label}</strong>
+                <p>{task.detail}</p>
+              </div>
+            ))}
+          </div>
         </section>
       </section>
 
@@ -235,6 +246,31 @@ export function SettingsWorkbench() {
       </aside>
     </div>
   );
+}
+
+function getReleaseTasks(status: SetupStatus) {
+  return [
+    {
+      done: status.databaseConfigured,
+      label: "Neon database URL",
+      detail: status.databaseConfigured ? "Server routes can persist ledger data." : "Add DATABASE_URL before DB-backed production use.",
+    },
+    {
+      done: status.clerkConfigured,
+      label: "Clerk authentication keys",
+      detail: status.clerkConfigured ? "Authentication variables are present." : "Add Clerk publishable and secret keys.",
+    },
+    {
+      done: status.clerkKeyMode === "live",
+      label: "Clerk production instance",
+      detail: status.clerkKeyMode === "live" ? "Live Clerk keys are active." : "Configure Clerk production and deploy live keys.",
+    },
+    {
+      done: status.appUrlConfigured,
+      label: "Canonical app URL",
+      detail: status.appUrlConfigured ? "Redirects and export links have an app origin." : "Set NEXT_PUBLIC_APP_URL for the deployed app.",
+    },
+  ];
 }
 
 function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {
