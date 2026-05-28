@@ -66,6 +66,15 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await page.getByLabel("Sort transactions").selectOption("amount_asc");
   await expect(page.locator(".transactions-table-row").first()).toContainText("Mortgage payment");
   await page.getByLabel("Sort transactions").selectOption("date_desc");
+  await page.getByLabel("Select Costco").check();
+  await page.getByLabel("Select Apple Music").check();
+  await page.getByLabel("Bulk transaction category").selectOption("Restaurants");
+  await page.getByRole("button", { name: "Set category" }).click();
+  await expect(page.getByText("2 selected transactions recategorized.")).toBeVisible();
+  await page.getByLabel("Category filter").selectOption("Restaurants");
+  await expect(page.getByText("Costco")).toBeVisible();
+  await expect(page.getByText("Apple Music")).toBeVisible();
+  await page.getByLabel("Category filter").selectOption("all");
 
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");

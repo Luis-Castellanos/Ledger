@@ -51,6 +51,10 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(sampleTransactionRows[0]?.id ?? null);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [bulkCategory, setBulkCategory] = useState("Groceries");
+  const [bulkStatus, setBulkStatus] = useState<TransactionStatus>("reviewed");
+  const [bulkTransferStatus, setBulkTransferStatus] = useState<NonNullable<TransactionRow["transferStatus"]>>("none");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [isSaving, setIsSaving] = useState(false);
   const [formState, setFormState] = useState({
@@ -94,6 +98,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
           setTransactions(transactionsPayload.transactions);
           setSelectedTransactionId(transactionsPayload.transactions[0]?.id ?? null);
+          setBulkCategory(getDefaultCategoryName(nextCategories));
           setFormState((current) => ({
             ...current,
             accountId: nextAccounts[0]?.id ?? current.accountId,
@@ -141,6 +146,10 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const sortedTransactions = useMemo(() => {
     return [...filteredTransactions].sort((left, right) => compareTransactions(left, right, sortMode));
   }, [filteredTransactions, sortMode]);
+
+  const selectedVisibleTransactions = sortedTransactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
+  const selectedVisibleCount = selectedVisibleTransactions.length;
+  const allVisibleTransactionsSelected = sortedTransactions.length > 0 && selectedVisibleCount === sortedTransactions.length;
 
   const tagOptions = useMemo(() => {
     return Array.from(new Set(transactions.flatMap((transaction) => transaction.tags ?? []))).sort((left, right) => left.localeCompare(right));
@@ -212,6 +221,44 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     }
   }
 
+  function toggleTransactionSelection(id: string) {
+    setSelectedTransactionIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  function toggleAllVisibleTransactions() {
+    setSelectedTransactionIds(allVisibleTransactionsSelected ? [] : sortedTransactions.map((transaction) => transaction.id));
+  }
+
+  async function updateSelectedTransactions(patch: Partial<Pick<TransactionRow, "category" | "status" | "transferStatus">>, successMessage: string) {
+    if (selectedVisibleTransactions.length === 0) {
+      return;
+    }
+
+    const selectedIds = selectedVisibleTransactions.map((transaction) => transaction.id);
+    hasLocalEdits.current = true;
+    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, ...patch } : transaction)));
+
+    if (dataSource === "database") {
+      await Promise.all(
+        selectedIds.map((id) =>
+          persistTransactionPatch({
+            body: {
+              id,
+              ...(patch.category ? { categoryName: patch.category } : {}),
+              ...(patch.status ? { reviewStatus: patch.status } : {}),
+              ...(patch.transferStatus ? { transferStatus: patch.transferStatus } : {}),
+            },
+            onFailure: () => setMutationMessage("Bulk transaction update stayed local because the API was unavailable."),
+            onSuccess: () => setMutationMessage(null),
+          }),
+        ),
+      );
+    }
+
+    setSelectedTransactionIds([]);
+    setMutationMessage(successMessage);
+  }
+
   async function updateTags(id: string, tagText: string) {
     const tags = parseTagList(tagText);
 
@@ -237,6 +284,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     hasLocalEdits.current = true;
     setLastDeletedTransaction(transaction);
     setSelectedTransactionId((current) => (current === id ? null : current));
+    setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
     setTransactions((current) => current.filter((row) => row.id !== id));
 
     if (dataSource === "database") {
@@ -489,9 +537,68 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
             </div>
           </div>
           {mutationMessage ? <p className="form-error">{mutationMessage}</p> : null}
+          <div className="transaction-undo-banner review-bulk-bar">
+            <span>{selectedVisibleCount} selected</span>
+            <select aria-label="Bulk transaction category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
+              {categoryOptions.map((category) => (
+                <option value={category.name} key={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => updateSelectedTransactions({ category: bulkCategory }, `${selectedVisibleCount} selected transactions recategorized.`)}
+              disabled={selectedVisibleCount === 0}
+            >
+              Set category
+            </button>
+            <select aria-label="Bulk transaction status" value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as TransactionStatus)}>
+              {statuses.map((status) => (
+                <option value={status.value} key={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => updateSelectedTransactions({ status: bulkStatus }, `${selectedVisibleCount} selected transactions marked ${bulkStatus.replace("_", " ")}.`)}
+              disabled={selectedVisibleCount === 0}
+            >
+              Set status
+            </button>
+            <select
+              aria-label="Bulk transaction transfer status"
+              value={bulkTransferStatus}
+              onChange={(event) => setBulkTransferStatus(event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
+            >
+              {transferStatuses.map((status) => (
+                <option value={status.value} key={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() =>
+                updateSelectedTransactions({ transferStatus: bulkTransferStatus }, `${selectedVisibleCount} selected transactions updated for movement type.`)
+              }
+              disabled={selectedVisibleCount === 0}
+            >
+              Set movement
+            </button>
+          </div>
 
-          <div className="transactions-table" role="table" aria-label="Transactions">
+          <div className="transactions-table transaction-register-table" role="table" aria-label="Transactions">
             <div className="transactions-table-head" role="row">
+              <span>
+                <input
+                  aria-label="Select all visible transactions"
+                  checked={allVisibleTransactionsSelected}
+                  onChange={toggleAllVisibleTransactions}
+                  type="checkbox"
+                />
+              </span>
               <span>Merchant</span>
               <span>Category</span>
               <span>Status / transfer</span>
@@ -508,6 +615,12 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
             ) : null}
             {sortedTransactions.map((transaction) => (
               <div className="transactions-table-row" role="row" key={transaction.id}>
+                <input
+                  aria-label={`Select ${transaction.merchant}`}
+                  checked={selectedTransactionIds.includes(transaction.id)}
+                  onChange={() => toggleTransactionSelection(transaction.id)}
+                  type="checkbox"
+                />
                 <div className="transaction-register-name">
                   <p>{transaction.merchant}</p>
                   <span>

@@ -835,6 +835,11 @@ button {
   grid-template-columns: 28px minmax(150px, 1.2fr) 145px 126px 128px;
 }
 
+.transaction-register-table .transactions-table-head,
+.transaction-register-table .transactions-table-row {
+  grid-template-columns: 28px minmax(150px, 1.2fr) 145px 126px 128px;
+}
+
 .imports-table-head,
 .imports-table-row {
   display: grid;
