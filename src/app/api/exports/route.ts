@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, exportJobs, importRows, imports, transactions } from "@/lib/db/schema";
 import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "@/lib/finance/export";
+import { logServerError } from "@/lib/observability/server-logger";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 import packageJson from "../../../../package.json";
 
@@ -74,6 +75,13 @@ export async function GET(request: Request) {
 
     return response;
   } catch (error) {
+    logServerError("export.failed", error, {
+      exportJobId: job.id,
+      format,
+      ledgerId: context.ledger.id,
+      userId: context.user.id,
+    });
+
     await db
       .update(exportJobs)
       .set({

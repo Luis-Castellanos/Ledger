@@ -9,7 +9,7 @@ export type SetupStatus = {
 };
 
 export type SetupReadinessCheck = {
-  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database" | "securityHeaders" | "rateLimits";
+  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database" | "securityHeaders" | "rateLimits" | "observability";
   label: string;
   ready: boolean;
 };
@@ -73,6 +73,11 @@ export function getSetupReadinessChecks(status: SetupStatus): SetupReadinessChec
     {
       key: "rateLimits",
       label: "Import and export rate limits",
+      ready: true,
+    },
+    {
+      key: "observability",
+      label: "Redacted server error logging",
       ready: true,
     },
   ];

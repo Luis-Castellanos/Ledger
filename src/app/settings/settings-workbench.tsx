@@ -356,6 +356,10 @@ function getReleaseTaskDetail(check: SetupReadinessCheck) {
       ready: "Import mutations and export generation have server-side request limits.",
       missing: "Add server-side rate limits for import and export paths.",
     },
+    observability: {
+      ready: "Server failures are logged with structured metadata and sensitive fields redacted.",
+      missing: "Add redacted server-side error logging before private beta.",
+    },
   };
 
   return check.ready ? details[check.key].ready : details[check.key].missing;

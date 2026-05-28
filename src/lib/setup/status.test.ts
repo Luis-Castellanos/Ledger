@@ -35,10 +35,11 @@ describe("getSetupStatus", () => {
         { key: "database", label: "Neon database URL", ready: false },
         { key: "securityHeaders", label: "Security headers", ready: true },
         { key: "rateLimits", label: "Import and export rate limits", ready: true },
+        { key: "observability", label: "Redacted server error logging", ready: true },
       ],
       ready: false,
-      readyCount: 2,
-      requiredCount: 6,
+      readyCount: 3,
+      requiredCount: 7,
     });
   });
 
@@ -58,10 +59,11 @@ describe("getSetupStatus", () => {
         { key: "database", label: "Neon database URL", ready: true },
         { key: "securityHeaders", label: "Security headers", ready: true },
         { key: "rateLimits", label: "Import and export rate limits", ready: true },
+        { key: "observability", label: "Redacted server error logging", ready: true },
       ],
       ready: false,
-      readyCount: 5,
-      requiredCount: 6,
+      readyCount: 6,
+      requiredCount: 7,
     });
   });
 

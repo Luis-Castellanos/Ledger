@@ -111,6 +111,7 @@ test("settings page supports ledger settings edits", async ({ page }) => {
   await expect(page.getByText("Clerk production instance")).toBeVisible();
   await expect(page.getByText("Security headers")).toBeVisible();
   await expect(page.getByText("Import and export rate limits")).toBeVisible();
+  await expect(page.getByText("Redacted server error logging")).toBeVisible();
   await expect(page.getByLabel("Export history")).toBeVisible();
   await expect(page.getByText("Backup and portability log")).toBeVisible();
 
