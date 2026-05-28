@@ -1,9 +1,124 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { activity, bars, categoryBars, ledgerStats, lineSeries, transactions } from "@/lib/sample-data";
+import { activity, bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
+import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
+import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
 export default function Home() {
+  const [accountRows, setAccountRows] = useState<AccountRow[]>(sampleAccounts);
+  const [transactionRows, setTransactionRows] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboardData() {
+      try {
+        const [accountsResponse, transactionsResponse] = await Promise.all([
+          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
+          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
+        ]);
+
+        if (!accountsResponse.ok || !transactionsResponse.ok) {
+          throw new Error("Dashboard APIs unavailable");
+        }
+
+        const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
+        const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
+
+        if (isMounted) {
+          setAccountRows(accountsPayload.accounts.map(toAccountRow));
+          setTransactionRows(transactionsPayload.transactions);
+          setDataSource("database");
+        }
+      } catch {
+        if (isMounted) {
+          setAccountRows(sampleAccounts);
+          setTransactionRows(sampleTransactionRows);
+          setDataSource("demo");
+        }
+      }
+    }
+
+    void loadDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const dashboardStats = useMemo(() => {
+    const position = accountRows.reduce(
+      (summary, account) => {
+        if (account.assetClass === "liability") {
+          summary.liabilities += Math.abs(account.balanceMinor);
+        } else {
+          summary.assets += account.balanceMinor;
+        }
+
+        return summary;
+      },
+      { assets: 0, liabilities: 0 },
+    );
+    const cashflow = transactionRows.reduce(
+      (summary, transaction) => {
+        if (transaction.status === "excluded" || transaction.category === "Internal Transfer") {
+          return summary;
+        }
+
+        if (transaction.amountMinor > 0) {
+          summary.inflow += transaction.amountMinor;
+        } else {
+          summary.outflow += Math.abs(transaction.amountMinor);
+        }
+
+        if (transaction.status === "needs_review") {
+          summary.review += 1;
+        }
+
+        return summary;
+      },
+      { inflow: 0, outflow: 0, review: 0 },
+    );
+
+    return [
+      { ...ledgerStats[0], label: "Net worth", value: formatMoney(position.assets - position.liabilities) },
+      { ...ledgerStats[1], label: "Net cashflow", value: formatMoney(cashflow.inflow - cashflow.outflow) },
+      { ...ledgerStats[2], label: "Review exposure", value: `${cashflow.review} rows` },
+    ];
+  }, [accountRows, transactionRows]);
+
+  const recentTransactions = useMemo(() => {
+    if (dataSource === "demo") {
+      return sampleDashboardTransactions;
+    }
+
+    return transactionRows.slice(0, 8).map((transaction) => ({
+      merchant: transaction.merchant,
+      time: `${transaction.date} • ${transaction.account}`,
+      amount: transaction.amountMinor,
+      category: transaction.category,
+      direction: transaction.amountMinor > 0 ? "in" : "out",
+      color: transaction.amountMinor > 0 ? "#57b89d" : "#d76b64",
+    }));
+  }, [dataSource, transactionRows]);
+
+  const cashflowTitle = useMemo(() => {
+    const outflow = transactionRows.reduce((total, transaction) => {
+      if (transaction.status === "excluded" || transaction.category === "Internal Transfer" || transaction.amountMinor > 0) {
+        return total;
+      }
+
+      return total + Math.abs(transaction.amountMinor);
+    }, 0);
+
+    return `${formatMoney(-outflow)} spent`;
+  }, [transactionRows]);
+
   return (
     <AppShell active="Dashboard">
         <section className="min-w-0">
@@ -13,6 +128,7 @@ export default function Home() {
               <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Monthly control room</h1>
             </div>
             <div className="flex items-center gap-2">
+              <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
               <label className="search-field">
                 <Search size={16} />
                 <input aria-label="Search transactions" placeholder="Search ledger" />
@@ -26,7 +142,7 @@ export default function Home() {
           <div className="grid min-h-[calc(100vh-7.5rem)] grid-cols-1 xl:grid-cols-[minmax(380px,0.84fr)_minmax(0,1.4fr)]">
             <section className="grid min-w-0 auto-rows-min gap-0 border-b border-[var(--line)] xl:border-b-0 xl:border-r">
               <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-                {ledgerStats.map((stat) => (
+                {dashboardStats.map((stat) => (
                   <article className="stat-panel" key={stat.label}>
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -49,7 +165,7 @@ export default function Home() {
                   <button className="text-button">View all</button>
                 </div>
                 <div className="transaction-list">
-                  {transactions.map((transaction) => (
+                  {recentTransactions.map((transaction) => (
                     <div className="transaction-row" key={`${transaction.merchant}-${transaction.time}`}>
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="transaction-icon" style={{ "--tile": transaction.color } as React.CSSProperties}>
@@ -108,7 +224,7 @@ export default function Home() {
                 <div className="panel-header">
                   <div>
                     <p className="panel-label">Cashflow</p>
-                    <h2 className="panel-title">{formatMoney(-934080)} spent</h2>
+                    <h2 className="panel-title">{cashflowTitle}</h2>
                   </div>
                   <div className="segmented" aria-label="Cashflow range">
                     <button>Day</button>
@@ -140,6 +256,32 @@ export default function Home() {
         </section>
     </AppShell>
   );
+}
+
+type DatabaseAccount = {
+  id: string;
+  name: string;
+  institution: string | null;
+  mask: string | null;
+  type: string;
+  assetClass: "asset" | "liability";
+  currency: string;
+  isHidden: boolean;
+};
+
+function toAccountRow(account: DatabaseAccount): AccountRow {
+  return {
+    id: account.id,
+    name: account.name,
+    institution: account.institution ?? "Manual",
+    mask: account.mask ?? "0000",
+    type: account.type,
+    assetClass: account.assetClass,
+    currency: account.currency,
+    balanceMinor: 0,
+    lastActivity: "No activity",
+    status: account.isHidden ? "hidden" : "active",
+  };
 }
 
 function MiniLine({ trend, tone }: { trend: number[]; tone: "green" | "coral" | "violet" }) {

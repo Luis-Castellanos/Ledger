@@ -5,7 +5,8 @@ test("dashboard shell renders", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Monthly control room" })).toBeVisible();
   await expect(page.getByText("Recent ledger activity")).toBeVisible();
-  await expect(page.getByText("-$9,340.80 spent")).toBeVisible();
+  await expect(page.getByText("Net cashflow")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /spent$/ })).toBeVisible();
 });
 
 test("accounts page supports local account entry", async ({ page }) => {
