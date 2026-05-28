@@ -115,6 +115,9 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByText("Unresolved transactions")).toBeVisible();
   await page.getByRole("button", { name: "Mark Costco reviewed" }).click();
   await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(0);
+  await expect(page.getByText("Costco marked reviewed.")).toBeVisible();
+  await page.getByRole("button", { name: "Undo review" }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Costco" })).toHaveCount(1);
 
   await page.goto("/rules");
   await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();

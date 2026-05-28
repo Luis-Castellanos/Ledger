@@ -15,6 +15,7 @@ export function ReviewWorkbench() {
   const [query, setQuery] = useState("");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [message, setMessage] = useState<string | null>(null);
+  const [lastReviewAction, setLastReviewAction] = useState<ReviewUndoAction | null>(null);
   const hasLocalEdits = useRef(false);
 
   useEffect(() => {
@@ -73,6 +74,18 @@ export function ReviewWorkbench() {
 
   async function updateReview(id: string, status: "reviewed" | "excluded") {
     hasLocalEdits.current = true;
+    const previousTransaction = transactions.find((transaction) => transaction.id === id);
+
+    if (!previousTransaction) {
+      return;
+    }
+
+    setLastReviewAction({
+      id,
+      merchant: previousTransaction.merchant,
+      previousStatus: previousTransaction.status,
+      nextStatus: status,
+    });
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
 
     if (dataSource === "database") {
@@ -91,6 +104,40 @@ export function ReviewWorkbench() {
       } catch {
         setDataSource("demo");
         setMessage("Review decision stayed local because the API was unavailable.");
+      }
+    } else {
+      setMessage(null);
+    }
+  }
+
+  async function undoLastReviewAction() {
+    if (!lastReviewAction) {
+      return;
+    }
+
+    hasLocalEdits.current = true;
+    const action = lastReviewAction;
+    setLastReviewAction(null);
+    setTransactions((current) =>
+      current.map((transaction) => (transaction.id === action.id ? { ...transaction, status: action.previousStatus } : transaction)),
+    );
+
+    if (dataSource === "database") {
+      try {
+        const response = await fetch("/api/transactions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ id: action.id, reviewStatus: action.previousStatus }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Review undo failed");
+        }
+
+        setMessage("Review decision undone.");
+      } catch {
+        setDataSource("demo");
+        setMessage("Review undo stayed local because the API was unavailable.");
       }
     } else {
       setMessage(null);
@@ -145,6 +192,16 @@ export function ReviewWorkbench() {
             </label>
           </div>
           {message ? <p className={message.endsWith("saved.") ? "form-success" : "form-error"}>{message}</p> : null}
+          {lastReviewAction ? (
+            <div className="transaction-undo-banner">
+              <span>
+                {lastReviewAction.merchant} marked {getReviewStatusLabel(lastReviewAction.nextStatus)}.
+              </span>
+              <button type="button" onClick={undoLastReviewAction}>
+                Undo review
+              </button>
+            </div>
+          ) : null}
 
           <div className="transactions-table" role="table" aria-label="Review queue">
             <div className="transactions-table-head" role="row">
@@ -225,6 +282,17 @@ type CategoryOption = {
   id: string;
   name: string;
 };
+
+type ReviewUndoAction = {
+  id: string;
+  merchant: string;
+  previousStatus: TransactionRow["status"];
+  nextStatus: "reviewed" | "excluded";
+};
+
+function getReviewStatusLabel(status: ReviewUndoAction["nextStatus"]) {
+  return status === "reviewed" ? "reviewed" : "excluded";
+}
 
 function ReviewMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
   return (
