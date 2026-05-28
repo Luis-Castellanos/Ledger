@@ -22,6 +22,10 @@ test("accounts page supports local account entry", async ({ page }) => {
   await page.getByRole("button", { name: /Save account|Saving/ }).click();
 
   await expect(page.getByText("Vacation Reserve")).toBeVisible();
+  await page.getByRole("button", { name: "Close Vacation Reserve" }).click();
+  await expect(page.getByText("asset / closed")).toBeVisible();
+  await page.getByRole("button", { name: "Reopen Vacation Reserve" }).click();
+  await expect(page.getByText("asset / closed")).toHaveCount(0);
 });
 
 test("transactions page supports local transaction entry", async ({ page }) => {

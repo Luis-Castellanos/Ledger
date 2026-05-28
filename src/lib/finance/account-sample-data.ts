@@ -8,7 +8,7 @@ export type AccountRow = {
   currency: string;
   balanceMinor: number;
   lastActivity: string;
-  status: "active" | "hidden";
+  status: "active" | "hidden" | "closed";
 };
 
 export const sampleAccounts = [

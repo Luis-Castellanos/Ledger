@@ -19,4 +19,11 @@ export const createAccountSchema = z.object({
   isHidden: z.boolean().default(false),
 });
 
+export const updateAccountLifecycleSchema = z.object({
+  id: z.string().uuid(),
+  action: z.enum(["close", "reopen"]),
+  closedOn: z.string().date().optional(),
+});
+
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+export type UpdateAccountLifecycleInput = z.infer<typeof updateAccountLifecycleSchema>;

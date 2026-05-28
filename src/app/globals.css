@@ -619,6 +619,30 @@ button {
   text-transform: capitalize;
 }
 
+.account-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.account-row-actions button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+}
+
+.account-row-actions button:hover {
+  border-color: rgba(87, 184, 157, 0.45);
+  color: var(--green);
+}
+
 .account-form-panel {
   border-bottom: 1px solid var(--line);
 }

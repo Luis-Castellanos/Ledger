@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAccountSchema } from "./account";
+import { createAccountSchema, updateAccountLifecycleSchema } from "./account";
 
 describe("account validation", () => {
   it("normalizes currency codes", () => {
@@ -23,5 +23,12 @@ describe("account validation", () => {
         currency: "USD",
       }),
     ).toThrow();
+  });
+});
+
+describe("account lifecycle validation", () => {
+  it("allows close and reopen actions", () => {
+    expect(updateAccountLifecycleSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "close", closedOn: "2026-05-28" }).success).toBe(true);
+    expect(updateAccountLifecycleSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "reopen" }).success).toBe(true);
   });
 });

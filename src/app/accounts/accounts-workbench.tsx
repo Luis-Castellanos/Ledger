@@ -5,6 +5,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Building2,
+  CheckCircle2,
+  CircleSlash,
   CreditCard,
   EyeOff,
   Landmark,
@@ -165,6 +167,25 @@ export function AccountsWorkbench() {
     }
   }
 
+  async function updateAccountLifecycle(id: string, action: "close" | "reopen") {
+    hasLocalEdits.current = true;
+    setAccounts((current) => current.map((account) => (account.id === id ? { ...account, status: action === "close" ? "closed" : "active", lastActivity: action === "close" ? "Closed today" : "Reopened today" } : account)));
+
+    if (dataSource === "database") {
+      try {
+        await fetch("/api/accounts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ id, action }),
+        });
+        setError(null);
+      } catch {
+        setError("Account lifecycle update stayed local because the API was unavailable.");
+      }
+    }
+  }
+
+
   return (
     <div className="accounts-grid">
       <section className="accounts-main">
@@ -206,8 +227,22 @@ export function AccountsWorkbench() {
                   </div>
                 </div>
                 <span className="account-pill">{account.type.replace("_", " ")}</span>
-                <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>{account.assetClass}</span>
-                <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
+                <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>
+                  {account.assetClass}
+                  {account.status === "closed" ? " / closed" : ""}
+                </span>
+                <div className="account-row-actions">
+                  <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
+                  {account.status === "closed" ? (
+                    <button type="button" aria-label={`Reopen ${account.name}`} onClick={() => updateAccountLifecycle(account.id, "reopen")}>
+                      <CheckCircle2 size={15} />
+                    </button>
+                  ) : (
+                    <button type="button" aria-label={`Close ${account.name}`} onClick={() => updateAccountLifecycle(account.id, "close")}>
+                      <CircleSlash size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -323,6 +358,8 @@ type DatabaseAccount = {
   assetClass: "asset" | "liability";
   currency: string;
   isHidden: boolean;
+  closedOn: string | null;
+  isActive: boolean;
   updatedAt?: string | Date;
 };
 
@@ -337,7 +374,7 @@ function toAccountRow(account: DatabaseAccount): AccountRow {
     currency: account.currency,
     balanceMinor: 0,
     lastActivity: account.updatedAt ? "Updated" : "No activity",
-    status: account.isHidden ? "hidden" : "active",
+    status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
   };
 }
 
