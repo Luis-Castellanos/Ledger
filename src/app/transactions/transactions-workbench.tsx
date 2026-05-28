@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
+import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState } from "@/lib/finance/transaction-filters";
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
 import { createManualTransactionSchema } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
@@ -19,17 +20,23 @@ const transferStatuses = [
   { label: "Operating", value: "none" },
   { label: "Transfer", value: "transfer" },
 ] satisfies { label: string; value: NonNullable<TransactionRow["transferStatus"]> }[];
+const directionFilters = [
+  { label: "All directions", value: "all" },
+  { label: "Inflows", value: "inflow" },
+  { label: "Outflows", value: "outflow" },
+] satisfies { label: string; value: DirectionFilter }[];
 
-export function TransactionsWorkbench() {
+export function TransactionsWorkbench({ initialFilters = defaultTransactionFilters }: { initialFilters?: TransactionFilterState }) {
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
   const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
   const hasLocalEdits = useRef(false);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
-  const [accountFilter, setAccountFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>("all");
+  const [query, setQuery] = useState(initialFilters.query);
+  const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>(initialFilters.status);
+  const [accountFilter, setAccountFilter] = useState(initialFilters.account);
+  const [categoryFilter, setCategoryFilter] = useState(initialFilters.category);
+  const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>(initialFilters.transfer);
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(initialFilters.direction);
   const [error, setError] = useState<string | null>(null);
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
@@ -97,15 +104,19 @@ export function TransactionsWorkbench() {
       const matchesAccount = accountFilter === "all" || transaction.account === accountFilter;
       const matchesCategory = categoryFilter === "all" || transaction.category === categoryFilter;
       const matchesTransfer = transferFilter === "all" || (transaction.transferStatus ?? "none") === transferFilter;
+      const matchesDirection =
+        directionFilter === "all" ||
+        (directionFilter === "inflow" && transaction.amountMinor > 0) ||
+        (directionFilter === "outflow" && transaction.amountMinor < 0);
       const matchesQuery =
         !normalizedQuery ||
         [transaction.merchant, transaction.account, transaction.category, transaction.date].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
 
-      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesQuery;
+      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesDirection && matchesQuery;
     });
-  }, [accountFilter, categoryFilter, query, statusFilter, transactions, transferFilter]);
+  }, [accountFilter, categoryFilter, directionFilter, query, statusFilter, transactions, transferFilter]);
 
   const totals = useMemo(() => {
     return transactions.reduce(
@@ -339,6 +350,17 @@ export function TransactionsWorkbench() {
                 {transferStatuses.map((status) => (
                   <option value={status.value} key={status.value}>
                     {status.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Direction filter"
+                value={directionFilter}
+                onChange={(event) => setDirectionFilter(event.target.value as DirectionFilter)}
+              >
+                {directionFilters.map((direction) => (
+                  <option value={direction.value} key={direction.value}>
+                    {direction.label}
                   </option>
                 ))}
               </select>

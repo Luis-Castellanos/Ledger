@@ -68,9 +68,9 @@ export function CashflowWorkbench() {
     <div className="transactions-grid">
       <section className="transactions-main">
         <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
-          <CashflowMetric label="Inflow" value={formatMoney(summary.inflow)} icon={<ArrowDownLeft size={17} />} tone="green" />
-          <CashflowMetric label="Outflow" value={formatMoney(-summary.outflow)} icon={<ArrowUpRight size={17} />} tone="coral" />
-          <CashflowMetric label="Net cashflow" value={formatMoney(summary.inflow - summary.outflow)} icon={<BadgeDollarSign size={17} />} tone="violet" />
+          <CashflowMetric label="Inflow" value={formatMoney(summary.inflow)} icon={<ArrowDownLeft size={17} />} tone="green" href="/transactions?direction=inflow" />
+          <CashflowMetric label="Outflow" value={formatMoney(-summary.outflow)} icon={<ArrowUpRight size={17} />} tone="coral" href="/transactions?direction=outflow" />
+          <CashflowMetric label="Net cashflow" value={formatMoney(summary.inflow - summary.outflow)} icon={<BadgeDollarSign size={17} />} tone="violet" href="/transactions?transfer=none" />
         </div>
 
         <section className="panel transactions-table-panel">
@@ -83,13 +83,13 @@ export function CashflowWorkbench() {
           </div>
           <div className="cashflow-bars" aria-label="Cashflow by category">
             {categoryRows.map(([category, amount]) => (
-              <div className="cashflow-row" key={category}>
+              <a className="cashflow-row report-drilldown" href={`/transactions?category=${encodeURIComponent(category)}`} key={category}>
                 <span>{category}</span>
                 <div>
                   <i style={{ width: `${Math.max(8, (Math.abs(amount) / Math.max(summary.inflow, summary.outflow, 1)) * 100)}%` }} />
                 </div>
                 <strong className={amount < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(amount)}</strong>
-              </div>
+              </a>
             ))}
           </div>
         </section>
@@ -115,12 +115,24 @@ export function CashflowWorkbench() {
   );
 }
 
-function CashflowMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
+function CashflowMetric({
+  label,
+  value,
+  icon,
+  tone,
+  href,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: "green" | "coral" | "violet";
+  href: string;
+}) {
   return (
-    <article className="stat-panel account-metric">
+    <a className="stat-panel account-metric report-drilldown" href={href}>
       <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
       <p className="panel-label">{label}</p>
       <p className="panel-title">{value}</p>
-    </article>
+    </a>
   );
 }

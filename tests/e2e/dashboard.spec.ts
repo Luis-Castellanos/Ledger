@@ -46,6 +46,10 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await page.getByLabel("Transfer filter").selectOption("transfer");
   await expect(page.getByText("Internal transfer", { exact: true })).toBeVisible();
   await page.getByLabel("Transfer filter").selectOption("all");
+  await page.getByLabel("Direction filter").selectOption("inflow");
+  await expect(page.getByText("Payroll deposit")).toBeVisible();
+  await expect(page.getByText("Mortgage payment")).toHaveCount(0);
+  await page.getByLabel("Direction filter").selectOption("all");
 
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");
@@ -134,6 +138,11 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await page.goto("/cashflow");
   await expect(page.getByRole("heading", { name: "Cashflow" })).toBeVisible();
   await expect(page.getByText("Category movement")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Outflow/ })).toHaveAttribute("href", "/transactions?direction=outflow");
+  await page.goto("/transactions?category=Shopping");
+  await expect(page.getByLabel("Category filter")).toHaveValue("Shopping");
+  await expect(page.getByText("Costco")).toBeVisible();
+  await expect(page.getByText("Payroll deposit")).toHaveCount(0);
 
   await page.goto("/net-worth");
   await expect(page.getByRole("heading", { name: "Net Worth" })).toBeVisible();
