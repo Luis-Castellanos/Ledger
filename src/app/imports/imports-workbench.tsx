@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, ListChecks, RotateCcw, Search, ShieldAlert, Upload } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
+import { parseCsvImportRows, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
 import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
@@ -24,6 +25,7 @@ export function ImportsWorkbench() {
   const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [error, setError] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isImportActionPending, setIsImportActionPending] = useState(false);
 
   useEffect(() => {
@@ -185,6 +187,93 @@ export function ImportsWorkbench() {
     setError(dataSource === "database" ? "Import stayed local because the API rejected the staged rows." : null);
   }
 
+  async function stageCsvFile(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setSelectedFileName(file.name);
+
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setError("Choose a .csv file.");
+      return;
+    }
+
+    if (file.size > 1_000_000) {
+      setError("CSV file must be 1 MB or smaller for this intake path.");
+      return;
+    }
+
+    const parsedRows = parseCsvImportRows(await file.text());
+
+    if (parsedRows.length === 0) {
+      setError("CSV must include a header row and at least one transaction row.");
+      return;
+    }
+
+    await stageParsedRows(file.name, parsedRows);
+  }
+
+  async function stageParsedRows(filename: string, parsedRows: ParsedCsvImportRow[]) {
+    hasLocalEdits.current = true;
+    const stageableRows = parsedRows.filter((row) => row.status !== "rejected");
+    const rejectedRows = parsedRows.filter((row) => row.status === "rejected");
+    const nextRows = parsedRows.map(toPreviewRow);
+
+    if (dataSource === "database" && stageableRows.length > 0) {
+      const response = await fetch("/api/imports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          accountId: selectedAccountId,
+          filename,
+          rows: stageableRows.map((row) => ({
+            rowNumber: row.rowNumber,
+            date: row.date,
+            description: row.description,
+            amount: row.amount,
+            category: row.category,
+            status: row.status,
+          })),
+        }),
+      });
+
+      if (response.ok) {
+        const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
+
+        if (importsResponse.ok) {
+          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+          setBatches(importsPayload.batches);
+          setRows(rejectedRows.length > 0 ? [...rejectedRows.map(toPreviewRow), ...importsPayload.rows] : importsPayload.rows);
+          setError(rejectedRows.length > 0 ? `${rejectedRows.length} rejected row${rejectedRows.length === 1 ? "" : "s"} stayed local for correction.` : null);
+          return;
+        }
+      }
+    }
+
+    setRows(nextRows);
+    setBatches((current) => [
+      {
+        id: `local_batch_${Date.now()}`,
+        filename,
+        account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
+        status: "staged",
+        uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+        acceptedRows: parsedRows.filter((row) => row.status === "accepted").length,
+        rejectedRows: rejectedRows.length,
+      },
+      ...current,
+    ]);
+    setDataSource("demo");
+    setError(
+      dataSource === "database"
+        ? "CSV stayed local because the import API rejected the staged rows."
+        : rejectedRows.length > 0
+          ? `${rejectedRows.length} row${rejectedRows.length === 1 ? "" : "s"} need correction before commit.`
+          : null,
+    );
+  }
+
   async function runImportAction(action: "commit" | "rollback") {
     if (!activeBatch) {
       return;
@@ -305,7 +394,13 @@ export function ImportsWorkbench() {
             <FileSpreadsheet size={26} />
             <p className="m-0 font-bold text-[var(--ink-strong)]">CSV staging area</p>
             <span className="font-mono text-[11px]">{selectedAccountName}</span>
+            {selectedFileName ? <span className="font-mono text-[11px]">{selectedFileName}</span> : null}
             {error ? <p className="form-error">{error}</p> : null}
+            <label className="file-action">
+              <Upload size={16} />
+              Stage CSV file
+              <input aria-label="Stage CSV file" type="file" accept=".csv,text/csv" onChange={(event) => void stageCsvFile(event.target.files?.[0] ?? null)} />
+            </label>
             <button className="primary-action" type="button" onClick={stageMockFile}>
               <Upload size={16} />
               Add sample row
@@ -365,6 +460,18 @@ type AccountOption = {
   id: string;
   name: string;
 };
+
+function toPreviewRow(row: ParsedCsvImportRow): ImportPreviewRow {
+  return {
+    id: `local_row_${row.rowNumber}_${row.status}`,
+    rowNumber: row.rowNumber,
+    date: row.date,
+    description: row.description || row.validationMessage || "Rejected CSV row",
+    category: row.category,
+    amountMinor: row.amountMinor,
+    status: row.status,
+  };
+}
 
 function ImportMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" | "gold" }) {
   return (

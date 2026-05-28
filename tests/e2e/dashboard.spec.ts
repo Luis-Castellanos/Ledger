@@ -58,6 +58,16 @@ test("imports page supports local staged row", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Imports" })).toBeVisible();
   await expect(page.getByText("Import review")).toBeVisible();
 
+  await page.getByLabel("Stage CSV file").setInputFiles({
+    name: "checking-import.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("Date,Description,Amount,Category\n2026-05-27,LOCAL CSV COFFEE,-4.25,Restaurants\n2026-05-27,LOCAL CSV COFFEE,-4.25,Restaurants"),
+  });
+
+  await expect(page.getByText("LOCAL CSV COFFEE")).toHaveCount(2);
+  await expect(page.getByText("checking-import.csv")).toHaveCount(2);
+  await expect(page.getByLabel("Status for row 3")).toHaveValue("duplicate");
+
   await page.getByRole("button", { name: "Add sample row" }).click();
 
   await expect(page.getByText("NEW CSV ROW")).toBeVisible();

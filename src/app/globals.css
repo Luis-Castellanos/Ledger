@@ -1150,6 +1150,29 @@ button {
   opacity: 0.42;
 }
 
+.file-action {
+  position: relative;
+  display: inline-flex;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(87, 184, 157, 0.5);
+  border-radius: 6px;
+  background: rgba(87, 184, 157, 0.16);
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.file-action input {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
 .account-checklist-item {
   display: flex;
   gap: 12px;
