@@ -28,6 +28,12 @@ describe("getSetupStatus", () => {
     const status = getSetupStatus({});
 
     expect(getSetupReadiness(status)).toEqual({
+      checks: [
+        { key: "appUrl", label: "Canonical app URL", ready: false },
+        { key: "clerkKeys", label: "Clerk authentication keys", ready: false },
+        { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
+        { key: "database", label: "Neon database URL", ready: false },
+      ],
       ready: false,
       readyCount: 0,
       requiredCount: 4,
@@ -43,6 +49,12 @@ describe("getSetupStatus", () => {
     });
 
     expect(getSetupReadiness(status)).toEqual({
+      checks: [
+        { key: "appUrl", label: "Canonical app URL", ready: true },
+        { key: "clerkKeys", label: "Clerk authentication keys", ready: true },
+        { key: "clerkLiveKeys", label: "Clerk production instance", ready: false },
+        { key: "database", label: "Neon database URL", ready: true },
+      ],
       ready: false,
       readyCount: 3,
       requiredCount: 4,

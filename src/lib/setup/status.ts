@@ -8,6 +8,12 @@ export type SetupStatus = {
   vercelEnvironment: string | null;
 };
 
+export type SetupReadinessCheck = {
+  key: "appUrl" | "clerkKeys" | "clerkLiveKeys" | "database";
+  label: string;
+  ready: boolean;
+};
+
 type SetupEnv = Partial<Record<string, string | undefined>>;
 
 export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
@@ -26,14 +32,40 @@ export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
 }
 
 export function getSetupReadiness(status: SetupStatus) {
-  const required = [status.appUrlConfigured, status.clerkConfigured, status.clerkKeyMode === "live", status.databaseConfigured];
-  const readyCount = required.filter(Boolean).length;
+  const checks = getSetupReadinessChecks(status);
+  const readyCount = checks.filter((check) => check.ready).length;
 
   return {
-    ready: readyCount === required.length,
+    checks,
+    ready: readyCount === checks.length,
     readyCount,
-    requiredCount: required.length,
+    requiredCount: checks.length,
   };
+}
+
+export function getSetupReadinessChecks(status: SetupStatus): SetupReadinessCheck[] {
+  return [
+    {
+      key: "appUrl",
+      label: "Canonical app URL",
+      ready: status.appUrlConfigured,
+    },
+    {
+      key: "clerkKeys",
+      label: "Clerk authentication keys",
+      ready: status.clerkConfigured,
+    },
+    {
+      key: "clerkLiveKeys",
+      label: "Clerk production instance",
+      ready: status.clerkKeyMode === "live",
+    },
+    {
+      key: "database",
+      label: "Neon database URL",
+      ready: status.databaseConfigured,
+    },
+  ];
 }
 
 function classifyClerkKey(value: string | undefined) {

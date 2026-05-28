@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Cloud, Database, KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
-import { getSetupReadiness, type SetupStatus } from "@/lib/setup/status";
+import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
 
 type SettingsState = {
   user: {
@@ -249,28 +249,34 @@ export function SettingsWorkbench() {
 }
 
 function getReleaseTasks(status: SetupStatus) {
-  return [
-    {
-      done: status.databaseConfigured,
-      label: "Neon database URL",
-      detail: status.databaseConfigured ? "Server routes can persist ledger data." : "Add DATABASE_URL before DB-backed production use.",
+  return getSetupReadinessChecks(status).map((check) => ({
+    done: check.ready,
+    label: check.label,
+    detail: getReleaseTaskDetail(check),
+  }));
+}
+
+function getReleaseTaskDetail(check: SetupReadinessCheck) {
+  const details: Record<SetupReadinessCheck["key"], { ready: string; missing: string }> = {
+    appUrl: {
+      ready: "Redirects and export links have an app origin.",
+      missing: "Set NEXT_PUBLIC_APP_URL for the deployed app.",
     },
-    {
-      done: status.clerkConfigured,
-      label: "Clerk authentication keys",
-      detail: status.clerkConfigured ? "Authentication variables are present." : "Add Clerk publishable and secret keys.",
+    clerkKeys: {
+      ready: "Authentication variables are present.",
+      missing: "Add Clerk publishable and secret keys.",
     },
-    {
-      done: status.clerkKeyMode === "live",
-      label: "Clerk production instance",
-      detail: status.clerkKeyMode === "live" ? "Live Clerk keys are active." : "Configure Clerk production and deploy live keys.",
+    clerkLiveKeys: {
+      ready: "Live Clerk keys are active.",
+      missing: "Configure Clerk production and deploy live keys.",
     },
-    {
-      done: status.appUrlConfigured,
-      label: "Canonical app URL",
-      detail: status.appUrlConfigured ? "Redirects and export links have an app origin." : "Set NEXT_PUBLIC_APP_URL for the deployed app.",
+    database: {
+      ready: "Server routes can persist ledger data.",
+      missing: "Add DATABASE_URL before DB-backed production use.",
     },
-  ];
+  };
+
+  return check.ready ? details[check.key].ready : details[check.key].missing;
 }
 
 function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {
