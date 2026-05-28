@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, exportJobs, importRows, imports, transactions } from "@/lib/db/schema";
 import { buildBackupPackage, buildExportFilename, isExportFormat, toCsv } from "@/lib/finance/export";
+import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 import packageJson from "../../../../package.json";
 
 export async function GET(request: Request) {
@@ -18,6 +19,15 @@ export async function GET(request: Request) {
 
   if (!isExportFormat(format)) {
     return NextResponse.json({ error: "Unsupported export format" }, { status: 400 });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `user:${context.user.id}:export:${format}`,
+    ...rateLimitPolicies.exportGeneration,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const db = getDb();

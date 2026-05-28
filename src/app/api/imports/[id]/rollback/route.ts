@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, imports } from "@/lib/db/schema";
 import { importActionParamsSchema } from "@/lib/finance/import";
+import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -14,6 +15,15 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `user:${context.user.id}:import:rollback`,
+    ...rateLimitPolicies.importMutation,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = importActionParamsSchema.safeParse(await params);

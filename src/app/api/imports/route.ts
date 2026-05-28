@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, importRows, imports, merchantRules } from "@/lib/db/schema";
 import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "@/lib/finance/import";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
+import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -70,6 +71,15 @@ export async function POST(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `user:${context.user.id}:import:stage`,
+    ...rateLimitPolicies.importMutation,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = stageImportSchema.safeParse(await request.json());
