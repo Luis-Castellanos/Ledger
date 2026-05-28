@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vault V1
 
-## Getting Started
+Production rebuild scaffold for a single-user personal finance app. The product name is still a placeholder; the architecture is aimed at a private beta replacement for Monarch-style personal finance workflows.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- Clerk auth
+- Neon Postgres
+- Drizzle ORM
+- Tailwind CSS
+- Vitest + React Testing Library
+- Playwright
+
+## Local Setup
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dashboard can run locally without Clerk keys. Production fails closed until Clerk is configured.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Required Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+CLERK_SECRET_KEY=""
+NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
+NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL="/"
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL="/"
+DATABASE_URL=""
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-## Learn More
+## Database
 
-To learn more about Next.js, take a look at the following resources:
+Generate migrations after schema changes:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run db:generate
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Apply migrations once `DATABASE_URL` points at Neon:
 
-## Deploy on Vercel
+```bash
+npm run db:migrate
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open Drizzle Studio:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run db:studio
+```
+
+## Verification
+
+```bash
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+```
+
+## Current Product Boundary
+
+V1 is a personal transaction ledger, not accounting software. It intentionally avoids double-entry, journal entries, general ledger, trial balance, and chart-of-accounts workflows.
+
+Planned V1 workflow:
+
+- Authenticated single-user ledger
+- Accounts
+- Two-level categories
+- Manual transactions
+- CSV import staging
+- Import review and commit
+- Merchant-to-category rules
+- Dashboard analytics
+- Export and backup package

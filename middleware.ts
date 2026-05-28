@@ -2,9 +2,16 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
+const isProduction = process.env.NODE_ENV === "production";
 const isProtectedRoute = createRouteMatcher(["/", "/api(.*)"]);
 
-const passthroughMiddleware = () => NextResponse.next();
+const missingAuthMiddleware = () => {
+  if (!isProduction) {
+    return NextResponse.next();
+  }
+
+  return NextResponse.json({ error: "Authentication is not configured." }, { status: 503 });
+};
 
 export default hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
@@ -12,7 +19,7 @@ export default hasClerkConfig
         await auth.protect();
       }
     })
-  : passthroughMiddleware;
+  : missingAuthMiddleware;
 
 export const config = {
   matcher: [
