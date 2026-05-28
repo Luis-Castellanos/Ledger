@@ -102,7 +102,7 @@ export function NetWorthWorkbench() {
             </div>
             {accounts.map((account) => (
               <div className="accounts-table-row" role="row" key={account.id}>
-                <div className="account-name-cell">
+                <a className="account-name-cell report-drilldown" href={`/accounts?account=${encodeURIComponent(account.name)}`}>
                   <div className="account-icon">
                     <Landmark size={17} />
                   </div>
@@ -112,7 +112,7 @@ export function NetWorthWorkbench() {
                       {account.institution} • {account.mask} • {account.lastActivity}
                     </span>
                   </div>
-                </div>
+                </a>
                 <span className="account-pill">{account.type.replace("_", " ")}</span>
                 <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>
                   {account.assetClass}

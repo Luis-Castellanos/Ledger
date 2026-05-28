@@ -2,7 +2,14 @@ import { Download, PanelLeft } from "lucide-react";
 import { AccountsWorkbench } from "./accounts-workbench";
 import { AppShell } from "@/components/app-shell";
 
-export default function AccountsPage() {
+type AccountsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AccountsPage({ searchParams }: AccountsPageProps) {
+  const params = (await searchParams) ?? {};
+  const initialAccount = singleValue(params.account) ?? "";
+
   return (
     <AppShell active="Accounts">
       <section className="min-w-0">
@@ -20,8 +27,12 @@ export default function AccountsPage() {
             </button>
           </div>
         </header>
-        <AccountsWorkbench />
+        <AccountsWorkbench initialAccount={initialAccount} />
       </section>
     </AppShell>
   );
+}
+
+function singleValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }

@@ -32,6 +32,8 @@ test("accounts page supports local account entry", async ({ page }) => {
   await page.getByRole("button", { name: "View Vacation Reserve detail" }).click();
   await expect(page.getByRole("heading", { name: "Vacation Reserve" })).toBeVisible();
   await expect(page.getByText("Current position")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Operating inflow/ })).toHaveAttribute("href", /\/transactions\?account=Vacation%20Reserve&direction=inflow/);
+  await expect(page.getByRole("link", { name: /Operating outflow/ })).toHaveAttribute("href", /\/transactions\?account=Vacation%20Reserve&direction=outflow/);
   await page.getByPlaceholder("1250.42").fill("125.50");
   await page.getByRole("button", { name: /Save snapshot|Saving/ }).click();
   await expect(page.getByLabel("Accounts", { exact: true }).getByText("$125.50")).toBeVisible();
@@ -213,4 +215,8 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Net Worth" })).toBeVisible();
   await expect(page.getByText("Account position")).toBeVisible();
   await expect(page.getByText("Position evidence")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Rewards Card/ })).toHaveAttribute("href", "/accounts?account=Rewards%20Card");
+  await page.getByRole("link", { name: /Rewards Card/ }).click();
+  await expect(page.getByRole("heading", { name: "Rewards Card" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Transactions 2 rows/ })).toHaveAttribute("href", "/transactions?account=Rewards%20Card");
 });

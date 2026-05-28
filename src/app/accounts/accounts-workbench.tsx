@@ -39,13 +39,14 @@ const assetClasses = [
   { label: "Liability", value: "liability" },
 ];
 
-export function AccountsWorkbench() {
+export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: string }) {
+  const initialSelectedAccountId = getInitialAccountId(initialAccount);
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
   const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
   const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.id ?? "");
+  const [selectedAccountId, setSelectedAccountId] = useState(initialSelectedAccountId);
   const [formState, setFormState] = useState({
     name: "",
     institution: "",
@@ -95,7 +96,14 @@ export function AccountsWorkbench() {
           setAccounts(nextAccounts);
           setSnapshots(nextSnapshots);
           setTransactions(transactionPayload.transactions);
-          setSelectedAccountId((current) => (nextAccounts.some((account) => account.id === current) ? current : nextAccounts[0]?.id ?? ""));
+          setSelectedAccountId((current) => {
+            if (nextAccounts.some((account) => account.id === current)) {
+              return current;
+            }
+
+            const requestedAccount = nextAccounts.find((account) => account.name === initialAccount);
+            return requestedAccount?.id ?? nextAccounts[0]?.id ?? "";
+          });
           setSnapshotForm((current) => ({ ...current, accountId: nextAccounts[0]?.id ?? current.accountId }));
           setDataSource("database");
         }
@@ -112,7 +120,7 @@ export function AccountsWorkbench() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [initialAccount]);
 
   const accountOptions = useMemo(() => accounts.filter((account) => account.status !== "closed"), [accounts]);
 
@@ -413,9 +421,21 @@ export function AccountsWorkbench() {
             </div>
             <div className="account-detail-grid">
               <AccountDetailFact label="Current position" value={formatMoney(selectedAccount.balanceMinor, selectedAccount.currency)} />
-              <AccountDetailFact label="Operating inflow" value={formatMoney(accountDetail.inflow, selectedAccount.currency)} />
-              <AccountDetailFact label="Operating outflow" value={formatMoney(-accountDetail.outflow, selectedAccount.currency)} />
-              <AccountDetailFact label="Transactions" value={`${accountDetail.transactionCount} rows`} />
+              <AccountDetailFact
+                href={`/transactions?account=${encodeURIComponent(selectedAccount.name)}&direction=inflow`}
+                label="Operating inflow"
+                value={formatMoney(accountDetail.inflow, selectedAccount.currency)}
+              />
+              <AccountDetailFact
+                href={`/transactions?account=${encodeURIComponent(selectedAccount.name)}&direction=outflow`}
+                label="Operating outflow"
+                value={formatMoney(-accountDetail.outflow, selectedAccount.currency)}
+              />
+              <AccountDetailFact
+                href={`/transactions?account=${encodeURIComponent(selectedAccount.name)}`}
+                label="Transactions"
+                value={`${accountDetail.transactionCount} rows`}
+              />
               <AccountDetailFact label="Snapshots" value={`${accountDetail.snapshotCount} records`} />
               <AccountDetailFact label="Latest evidence" value={accountDetail.latestSnapshot?.asOfDate ?? "No snapshot"} />
             </div>
@@ -644,6 +664,10 @@ function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = 
   };
 }
 
+function getInitialAccountId(initialAccount: string) {
+  return sampleAccounts.find((account) => account.name === initialAccount)?.id ?? sampleAccounts[0]?.id ?? "";
+}
+
 function AccountMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
   return (
     <article className="stat-panel account-metric">
@@ -654,11 +678,19 @@ function AccountMetric({ label, value, icon, tone }: { label: string; value: str
   );
 }
 
-function AccountDetailFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
+function AccountDetailFact({ href, label, value }: { href?: string; label: string; value: string }) {
+  const content = (
+    <>
       <span>{label}</span>
       <strong>{value}</strong>
-    </div>
+    </>
+  );
+
+  return href ? (
+    <a className="account-detail-fact report-drilldown" href={href}>
+      {content}
+    </a>
+  ) : (
+    <div className="account-detail-fact">{content}</div>
   );
 }

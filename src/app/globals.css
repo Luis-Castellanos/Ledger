@@ -704,7 +704,8 @@ button {
   gap: 12px;
 }
 
-.account-detail-grid div {
+.account-detail-fact {
+  display: block;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.025);
