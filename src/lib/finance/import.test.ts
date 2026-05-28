@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildImportFingerprint, importActionParamsSchema, stageImportSchema, updateImportRowSchema } from "./import";
+import { buildImportFingerprint, importActionParamsSchema, savedImportMappingSchema, stageImportSchema, updateImportRowSchema } from "./import";
+import { parseCsvImportRows } from "./import-csv";
 
 describe("stageImportSchema", () => {
   it("parses staged row amounts into minor units", () => {
@@ -17,6 +18,48 @@ describe("stageImportSchema", () => {
     const parsed = stageImportSchema.safeParse({ accountId: "account_1", filename: "empty.csv", rows: [] });
 
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("savedImportMappingSchema", () => {
+  it("requires enough columns to map a CSV amount", () => {
+    expect(
+      savedImportMappingSchema.safeParse({
+        name: "Checking CSV",
+        mapping: {
+          date: "Transaction Date",
+          description: "Memo",
+          amount: "Amount",
+          category: "Category",
+        },
+      }).success,
+    ).toBe(true);
+
+    expect(
+      savedImportMappingSchema.safeParse({
+        name: "Broken mapping",
+        mapping: {
+          date: "Transaction Date",
+          description: "Memo",
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("parses CSV rows with an explicit saved mapping", () => {
+    const rows = parseCsvImportRows("Posted,Payee,Value,Group\n05/27/2026,Coffee,-4.25,Restaurants", {
+      date: "Posted",
+      description: "Payee",
+      amount: "Value",
+      category: "Group",
+    });
+
+    expect(rows[0]).toMatchObject({
+      amountMinor: -425,
+      category: "Restaurants",
+      date: "2026-05-27",
+      description: "Coffee",
+    });
   });
 });
 

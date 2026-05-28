@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
-import { accounts, auditEvents, categories, importRows, imports, merchantRules } from "@/lib/db/schema";
+import { accounts, auditEvents, categories, importRows, imports, merchantRules, savedImportMappings } from "@/lib/db/schema";
 import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "@/lib/finance/import";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
@@ -99,6 +99,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
 
+  if (parsed.data.savedMappingId) {
+    const [mapping] = await db
+      .select({ id: savedImportMappings.id })
+      .from(savedImportMappings)
+      .where(
+        and(
+          eq(savedImportMappings.id, parsed.data.savedMappingId),
+          eq(savedImportMappings.ledgerId, context.ledger.id),
+        ),
+      )
+      .limit(1);
+
+    if (!mapping) {
+      return NextResponse.json({ error: "Import mapping not found" }, { status: 404 });
+    }
+  }
+
   const categoryRows = await db
     .select({ id: categories.id, name: categories.name })
     .from(categories)
@@ -127,6 +144,7 @@ export async function POST(request: Request) {
       ledgerId: context.ledger.id,
       accountId: parsed.data.accountId,
       uploadedByUserId: context.user.id,
+      savedMappingId: parsed.data.savedMappingId,
       originalFilename: parsed.data.filename,
       fileSha256: fingerprint,
       status: "staged",

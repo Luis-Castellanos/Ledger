@@ -27,6 +27,7 @@ type BackupPackageV1 = {
     accounts: unknown[];
     categories: unknown[];
     transactions: unknown[];
+    savedImportMappings: unknown[];
     imports: unknown[];
     importRows: unknown[];
     auditEvents: unknown[];
@@ -47,6 +48,7 @@ type BackupPackageV1 = {
 - `accounts`
 - `categories`
 - `transactions`
+- `savedImportMappings`
 - `imports`
 - `importRows`
 - `auditEvents`
@@ -54,6 +56,7 @@ type BackupPackageV1 = {
 Audit events are included by default because source traceability is part of the V1 trust model.
 
 Transaction rows include the V1 `tags` array when present. Transactions CSV exports serialize tags in a `tags` column using `; ` between tag values.
+Saved import mappings are included so CSV intake profiles can be rebuilt alongside staged import history.
 
 ## Privacy Notes
 

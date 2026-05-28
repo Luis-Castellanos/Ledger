@@ -94,6 +94,9 @@ test("imports page supports local staged row", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Imports" })).toBeVisible();
   await expect(page.getByText("Import review")).toBeVisible();
+  await page.getByPlaceholder("Bank CSV").fill("Bookstore CSV");
+  await page.getByRole("button", { name: "Save mapping" }).click();
+  await expect(page.getByLabel("Import mapping")).toHaveValue(/local_mapping_|[0-9a-f-]{36}/);
 
   await page.getByLabel("Stage CSV file").setInputFiles({
     name: "checking-import.csv",

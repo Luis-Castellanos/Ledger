@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
-import { accounts, auditEvents, categories, exportJobs, importRows, imports, transactions } from "@/lib/db/schema";
+import { accounts, auditEvents, categories, exportJobs, importRows, imports, savedImportMappings, transactions } from "@/lib/db/schema";
 import { buildBackupPackage, buildExportFilename, formatTagsForCsv, isExportFormat, toCsv } from "@/lib/finance/export";
 import { logServerError } from "@/lib/observability/server-logger";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
@@ -178,10 +178,11 @@ async function buildBackupPackageResponse({
   filename: string;
 }) {
   const db = getDb();
-  const [accountRows, categoryRows, transactionRows, importBatchRows, importPreviewRows, auditRows] = await Promise.all([
+  const [accountRows, categoryRows, transactionRows, savedImportMappingRows, importBatchRows, importPreviewRows, auditRows] = await Promise.all([
     db.select().from(accounts).where(eq(accounts.ledgerId, ledger.id)).orderBy(asc(accounts.name)),
     db.select().from(categories).where(eq(categories.ledgerId, ledger.id)).orderBy(asc(categories.sortOrder), asc(categories.name)),
     db.select().from(transactions).where(eq(transactions.ledgerId, ledger.id)).orderBy(desc(transactions.date), desc(transactions.createdAt)),
+    db.select().from(savedImportMappings).where(eq(savedImportMappings.ledgerId, ledger.id)).orderBy(asc(savedImportMappings.name)),
     db.select().from(imports).where(eq(imports.ledgerId, ledger.id)).orderBy(desc(imports.createdAt)),
     db
       .select({
@@ -213,6 +214,7 @@ async function buildBackupPackageResponse({
         accounts: accountRows,
         categories: categoryRows,
         transactions: transactionRows,
+        savedImportMappings: savedImportMappingRows,
         imports: importBatchRows,
         importRows: importPreviewRows,
         auditEvents: auditRows,

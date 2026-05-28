@@ -11,6 +11,15 @@ export type ParsedCsvImportRow = {
   validationMessage?: string;
 };
 
+export type CsvImportColumnMapping = {
+  date?: string;
+  description?: string;
+  amount?: string;
+  debit?: string;
+  credit?: string;
+  category?: string;
+};
+
 const dateHeaders = ["date", "transaction date", "posted date", "posting date"];
 const descriptionHeaders = ["description", "merchant", "name", "payee", "memo"];
 const amountHeaders = ["amount", "transaction amount"];
@@ -18,7 +27,7 @@ const debitHeaders = ["debit", "withdrawal", "withdrawals", "charge"];
 const creditHeaders = ["credit", "deposit", "deposits", "payment"];
 const categoryHeaders = ["category", "category name"];
 
-export function parseCsvImportRows(text: string): ParsedCsvImportRow[] {
+export function parseCsvImportRows(text: string, mapping: CsvImportColumnMapping = {}): ParsedCsvImportRow[] {
   const rows = parseCsv(text);
 
   if (rows.length < 2) {
@@ -35,11 +44,11 @@ export function parseCsvImportRows(text: string): ParsedCsvImportRow[] {
     }
 
     const rowNumber = index + 2;
-    const rawDate = readColumn(row, headers, dateHeaders);
-    const description = readColumn(row, headers, descriptionHeaders).trim();
-    const category = readColumn(row, headers, categoryHeaders).trim() || "Uncategorized";
+    const rawDate = readMappedColumn(row, headers, mapping.date) || readColumn(row, headers, dateHeaders);
+    const description = (readMappedColumn(row, headers, mapping.description) || readColumn(row, headers, descriptionHeaders)).trim();
+    const category = (readMappedColumn(row, headers, mapping.category) || readColumn(row, headers, categoryHeaders)).trim() || "Uncategorized";
     const date = normalizeDate(rawDate);
-    const amount = readAmount(row, headers);
+    const amount = readAmount(row, headers, mapping);
 
     if (!date || !description || !amount) {
       parsedRows.push({
@@ -140,15 +149,25 @@ function readColumn(row: string[], headers: string[], candidates: string[]) {
   return index >= 0 ? row[index] ?? "" : "";
 }
 
-function readAmount(row: string[], headers: string[]) {
-  const amount = readColumn(row, headers, amountHeaders).trim();
+function readMappedColumn(row: string[], headers: string[], columnName: string | undefined) {
+  if (!columnName) {
+    return "";
+  }
+
+  const normalizedColumnName = normalizeHeader(columnName);
+  const index = headers.findIndex((header) => header === normalizedColumnName);
+  return index >= 0 ? row[index] ?? "" : "";
+}
+
+function readAmount(row: string[], headers: string[], mapping: CsvImportColumnMapping) {
+  const amount = (readMappedColumn(row, headers, mapping.amount) || readColumn(row, headers, amountHeaders)).trim();
 
   if (amount) {
     return amount;
   }
 
-  const debit = readColumn(row, headers, debitHeaders).trim();
-  const credit = readColumn(row, headers, creditHeaders).trim();
+  const debit = (readMappedColumn(row, headers, mapping.debit) || readColumn(row, headers, debitHeaders)).trim();
+  const credit = (readMappedColumn(row, headers, mapping.credit) || readColumn(row, headers, creditHeaders)).trim();
 
   if (debit) {
     return debit.startsWith("-") ? debit : `-${debit}`;

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, ListChecks, RotateCcw, Search, ShieldAlert, Upload } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { parseCsvImportRows, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
+import { parseCsvImportRows, type CsvImportColumnMapping, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
 import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
@@ -15,11 +15,36 @@ const statuses = [
   { label: "Duplicate", value: "duplicate" },
   { label: "Rejected", value: "rejected" },
 ] satisfies { label: string; value: ImportRowStatus }[];
+const fallbackImportMappings: ImportMappingSummary[] = [
+  {
+    id: "default-csv",
+    accountId: null,
+    name: "Standard CSV",
+    mapping: {
+      date: "Date",
+      description: "Description",
+      amount: "Amount",
+      category: "Category",
+    },
+    updatedAt: "local",
+  },
+];
 
 export function ImportsWorkbench() {
   const [rows, setRows] = useState<ImportPreviewRow[]>(sampleImportRows);
   const [batches, setBatches] = useState<ImportBatch[]>(sampleImportBatches);
   const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+  const [importMappings, setImportMappings] = useState<ImportMappingSummary[]>(fallbackImportMappings);
+  const [selectedMappingId, setSelectedMappingId] = useState(fallbackImportMappings[0]?.id ?? "none");
+  const [mappingForm, setMappingForm] = useState({
+    name: "Standard CSV",
+    date: "Date",
+    description: "Description",
+    amount: "Amount",
+    debit: "",
+    credit: "",
+    category: "Category",
+  });
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
@@ -37,6 +62,7 @@ export function ImportsWorkbench() {
           fetch("/api/accounts", { headers: { Accept: "application/json" } }),
           fetch("/api/imports", { headers: { Accept: "application/json" } }),
         ]);
+        const mappingsResponse = await fetch("/api/import-mappings", { headers: { Accept: "application/json" } });
 
         if (!accountsResponse.ok || !importsResponse.ok) {
           throw new Error("Import APIs unavailable");
@@ -44,11 +70,14 @@ export function ImportsWorkbench() {
 
         const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
         const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+        const mappingsPayload = mappingsResponse.ok ? ((await mappingsResponse.json()) as { mappings: ImportMappingSummary[] }) : { mappings: [] };
         const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
 
         if (isMounted && !hasLocalEdits.current) {
           setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
           setSelectedAccountId(nextAccounts[0]?.id ?? selectedAccountId);
+          setImportMappings(mappingsPayload.mappings.length > 0 ? mappingsPayload.mappings : fallbackImportMappings);
+          setSelectedMappingId(mappingsPayload.mappings[0]?.id ?? fallbackImportMappings[0]?.id ?? "none");
           setBatches(importsPayload.batches);
           setRows(importsPayload.rows);
           setDataSource("database");
@@ -126,6 +155,7 @@ export function ImportsWorkbench() {
         body: JSON.stringify({
           accountId: selectedAccountId,
           filename: `manual-stage-${Date.now()}.csv`,
+          savedMappingId: isUuid(selectedMappingId) ? selectedMappingId : undefined,
           rows: [
             {
               rowNumber: nextRow.rowNumber,
@@ -204,7 +234,7 @@ export function ImportsWorkbench() {
       return;
     }
 
-    const parsedRows = parseCsvImportRows(await file.text());
+    const parsedRows = parseCsvImportRows(await file.text(), getSelectedMapping(importMappings, selectedMappingId)?.mapping);
 
     if (parsedRows.length === 0) {
       setError("CSV must include a header row and at least one transaction row.");
@@ -227,6 +257,7 @@ export function ImportsWorkbench() {
         body: JSON.stringify({
           accountId: selectedAccountId,
           filename,
+          savedMappingId: isUuid(selectedMappingId) ? selectedMappingId : undefined,
           rows: stageableRows.map((row) => ({
             rowNumber: row.rowNumber,
             date: row.date,
@@ -309,6 +340,56 @@ export function ImportsWorkbench() {
     setIsImportActionPending(false);
   }
 
+  async function saveMappingProfile() {
+    const mapping = buildMappingFromForm(mappingForm);
+    const hasCoreColumns = mapping.date && mapping.description;
+    const hasAmountColumns = mapping.amount || mapping.debit || mapping.credit;
+
+    if (!hasCoreColumns || !hasAmountColumns) {
+      setError("Mapping needs date, description, and either amount or debit/credit columns.");
+      return;
+    }
+
+    const localMapping = {
+      id: `local_mapping_${Date.now()}`,
+      accountId: selectedAccountId,
+      name: mappingForm.name.trim() || "CSV mapping",
+      mapping,
+      updatedAt: new Date().toISOString(),
+    };
+
+    hasLocalEdits.current = true;
+
+    if (dataSource === "database") {
+      try {
+        const response = await fetch("/api/import-mappings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            accountId: selectedAccountId,
+            name: localMapping.name,
+            mapping,
+          }),
+        });
+
+        if (response.ok) {
+          const payload = (await response.json()) as { mapping: ImportMappingSummary };
+          setImportMappings((current) => [payload.mapping, ...current]);
+          setSelectedMappingId(payload.mapping.id);
+          setError(null);
+          return;
+        }
+      } catch {
+        // Fall through to local mapping so the workflow remains usable.
+      }
+    }
+
+    setImportMappings((current) => [localMapping, ...current]);
+    setSelectedMappingId(localMapping.id);
+    setDataSource("demo");
+    setError(dataSource === "database" ? "Mapping stayed local because the API was unavailable." : null);
+  }
+
   const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
 
   return (
@@ -337,6 +418,13 @@ export function ImportsWorkbench() {
                 {accountOptions.map((account) => (
                   <option value={account.id} key={account.id}>
                     {account.name}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Import mapping" value={selectedMappingId} onChange={(event) => setSelectedMappingId(event.target.value)}>
+                {importMappings.map((mapping) => (
+                  <option value={mapping.id} key={mapping.id}>
+                    {mapping.name}
                   </option>
                 ))}
               </select>
@@ -394,6 +482,7 @@ export function ImportsWorkbench() {
             <FileSpreadsheet size={26} />
             <p className="m-0 font-bold text-[var(--ink-strong)]">CSV staging area</p>
             <span className="font-mono text-[11px]">{selectedAccountName}</span>
+            <span className="font-mono text-[11px]">Mapping: {getSelectedMapping(importMappings, selectedMappingId)?.name ?? "Auto-detect"}</span>
             {selectedFileName ? <span className="font-mono text-[11px]">{selectedFileName}</span> : null}
             {error ? <p className="form-error">{error}</p> : null}
             <label className="file-action">
@@ -417,6 +506,44 @@ export function ImportsWorkbench() {
             <button className="secondary-action" type="button" onClick={() => runImportAction("rollback")} disabled={!activeBatch || activeBatch.status !== "committed" || isImportActionPending}>
               <RotateCcw size={16} />
               Roll back import
+            </button>
+          </div>
+        </section>
+
+        <section className="panel account-form-panel">
+          <p className="panel-label">Mapping profile</p>
+          <div className="account-form mt-5">
+            <label>
+              <span>Name</span>
+              <input value={mappingForm.name} onChange={(event) => setMappingForm((current) => ({ ...current, name: event.target.value }))} placeholder="Bank CSV" />
+            </label>
+            <label>
+              <span>Date column</span>
+              <input value={mappingForm.date} onChange={(event) => setMappingForm((current) => ({ ...current, date: event.target.value }))} placeholder="Date" />
+            </label>
+            <label>
+              <span>Description column</span>
+              <input value={mappingForm.description} onChange={(event) => setMappingForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" />
+            </label>
+            <label>
+              <span>Amount column</span>
+              <input value={mappingForm.amount} onChange={(event) => setMappingForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount" />
+            </label>
+            <label>
+              <span>Debit column</span>
+              <input value={mappingForm.debit} onChange={(event) => setMappingForm((current) => ({ ...current, debit: event.target.value }))} placeholder="Debit" />
+            </label>
+            <label>
+              <span>Credit column</span>
+              <input value={mappingForm.credit} onChange={(event) => setMappingForm((current) => ({ ...current, credit: event.target.value }))} placeholder="Credit" />
+            </label>
+            <label>
+              <span>Category column</span>
+              <input value={mappingForm.category} onChange={(event) => setMappingForm((current) => ({ ...current, category: event.target.value }))} placeholder="Category" />
+            </label>
+            <button className="secondary-action" type="button" onClick={saveMappingProfile}>
+              <CheckCircle2 size={16} />
+              Save mapping
             </button>
           </div>
         </section>
@@ -456,10 +583,44 @@ type DatabaseImport = {
   status: ImportBatch["status"];
 };
 
+type ImportMappingSummary = {
+  accountId: string | null;
+  id: string;
+  mapping: CsvImportColumnMapping;
+  name: string;
+  updatedAt: string;
+};
+
 type AccountOption = {
   id: string;
   name: string;
 };
+
+function buildMappingFromForm(mappingForm: {
+  amount: string;
+  category: string;
+  credit: string;
+  date: string;
+  debit: string;
+  description: string;
+}) {
+  return {
+    date: mappingForm.date.trim(),
+    description: mappingForm.description.trim(),
+    amount: mappingForm.amount.trim() || undefined,
+    debit: mappingForm.debit.trim() || undefined,
+    credit: mappingForm.credit.trim() || undefined,
+    category: mappingForm.category.trim() || undefined,
+  };
+}
+
+function getSelectedMapping(mappings: ImportMappingSummary[], selectedMappingId: string) {
+  return mappings.find((mapping) => mapping.id === selectedMappingId) ?? mappings[0];
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 function toPreviewRow(row: ParsedCsvImportRow): ImportPreviewRow {
   return {

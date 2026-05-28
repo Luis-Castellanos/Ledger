@@ -77,13 +77,14 @@ describe("buildBackupPackage", () => {
         accounts: [],
         categories: [],
         transactions: [],
+        savedImportMappings: [],
         imports: [],
         importRows: [],
         auditEvents: [],
       },
     });
 
-    expect(Object.keys(backup.data)).toEqual(["accounts", "categories", "transactions", "imports", "importRows", "auditEvents"]);
-    expect(Object.keys(backup.manifest.tableCounts)).toEqual(["accounts", "categories", "transactions", "imports", "importRows", "auditEvents"]);
+    expect(Object.keys(backup.data)).toEqual(["accounts", "categories", "transactions", "savedImportMappings", "imports", "importRows", "auditEvents"]);
+    expect(Object.keys(backup.manifest.tableCounts)).toEqual(["accounts", "categories", "transactions", "savedImportMappings", "imports", "importRows", "auditEvents"]);
   });
 });

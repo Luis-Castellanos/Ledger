@@ -27,7 +27,26 @@ export const stageImportRowSchema = z.object({
 export const stageImportSchema = z.object({
   accountId: z.string().min(1),
   filename: z.string().trim().min(1).max(240),
+  savedMappingId: z.string().uuid().optional(),
   rows: z.array(stageImportRowSchema).min(1).max(1_000),
+});
+
+export const savedImportMappingSchema = z.object({
+  accountId: z.string().min(1).optional(),
+  name: z.string().trim().min(1).max(120),
+  mapping: z
+    .object({
+      date: z.string().trim().min(1).max(120),
+      description: z.string().trim().min(1).max(120),
+      amount: z.string().trim().max(120).optional(),
+      debit: z.string().trim().max(120).optional(),
+      credit: z.string().trim().max(120).optional(),
+      category: z.string().trim().max(120).optional(),
+    })
+    .refine((mapping) => Boolean(mapping.amount || mapping.debit || mapping.credit), {
+      message: "Map either amount or debit/credit columns.",
+      path: ["amount"],
+    }),
 });
 
 export const updateImportRowSchema = z.object({
@@ -42,6 +61,7 @@ export const importActionParamsSchema = z.object({
 
 export type StageImportInput = z.input<typeof stageImportSchema>;
 export type StageImportRow = z.infer<typeof stageImportRowSchema>;
+export type SavedImportMappingInput = z.infer<typeof savedImportMappingSchema>;
 export type UpdateImportRowInput = z.infer<typeof updateImportRowSchema>;
 export type ImportActionParams = z.infer<typeof importActionParamsSchema>;
 
