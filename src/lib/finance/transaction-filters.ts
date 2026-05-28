@@ -7,6 +7,7 @@ export type TransactionFilterState = {
   status: "all" | TransactionStatus;
   account: string;
   category: string;
+  tag: string;
   transfer: "all" | TransactionTransferStatus;
   direction: DirectionFilter;
 };
@@ -16,6 +17,7 @@ export const defaultTransactionFilters: TransactionFilterState = {
   status: "all",
   account: "all",
   category: "all",
+  tag: "all",
   transfer: "all",
   direction: "all",
 };

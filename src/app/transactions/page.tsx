@@ -41,6 +41,7 @@ function buildInitialFilters(params: Record<string, string | string[] | undefine
     status: isOneOf(status, ["needs_review", "reviewed", "excluded"]) ? status : defaultTransactionFilters.status,
     account: singleValue(params.account) ?? defaultTransactionFilters.account,
     category: singleValue(params.category) ?? defaultTransactionFilters.category,
+    tag: singleValue(params.tag) ?? defaultTransactionFilters.tag,
     transfer: isOneOf(transfer, ["none", "transfer"]) ? transfer : defaultTransactionFilters.transfer,
     direction: isOneOf(direction, ["all", "inflow", "outflow"]) ? direction : defaultTransactionFilters.direction,
   };

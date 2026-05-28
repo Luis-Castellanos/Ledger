@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createManualTransactionSchema, updateTransactionReviewSchema } from "./transaction";
+import { createManualTransactionSchema, parseTagList, updateTransactionReviewSchema } from "./transaction";
 
 describe("createManualTransactionSchema", () => {
   it("parses signed dollar amounts to minor units", () => {
@@ -23,6 +23,20 @@ describe("createManualTransactionSchema", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("normalizes optional transaction tags", () => {
+    const parsed = createManualTransactionSchema.parse({
+      date: "2026-05-27",
+      accountId: "account_1",
+      merchant: "Local Bookstore",
+      categoryName: "Shopping",
+      amount: "-31.45",
+      tags: ["tax", " tax ", "reimbursable"],
+    });
+
+    expect(parsed.tags).toEqual(["tax", "reimbursable"]);
+    expect(parseTagList("tax, reimbursable, tax")).toEqual(["tax", "reimbursable"]);
   });
 });
 
@@ -48,5 +62,14 @@ describe("updateTransactionReviewSchema", () => {
   it("allows lifecycle actions", () => {
     expect(updateTransactionReviewSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "delete" }).success).toBe(true);
     expect(updateTransactionReviewSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", action: "restore" }).success).toBe(true);
+  });
+
+  it("allows tag updates", () => {
+    const parsed = updateTransactionReviewSchema.parse({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      tags: ["tax", " tax ", "reimbursable"],
+    });
+
+    expect(parsed.tags).toEqual(["tax", "reimbursable"]);
   });
 });

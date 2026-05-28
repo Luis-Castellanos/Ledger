@@ -55,12 +55,25 @@ test("transactions page supports local transaction entry", async ({ page }) => {
   await expect(page.getByText("Payroll deposit")).toBeVisible();
   await expect(page.getByText("Mortgage payment")).toHaveCount(0);
   await page.getByLabel("Direction filter").selectOption("all");
+  await page.getByLabel("Tag filter").selectOption("subscription");
+  await expect(page.getByText("Apple Music")).toBeVisible();
+  await expect(page.getByText("Costco")).toHaveCount(0);
+  await page.getByLabel("Tag filter").selectOption("all");
 
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");
+  await page.getByPlaceholder("tax, reimbursable").fill("tax, reimbursable");
   await page.getByRole("button", { name: "Save transaction" }).click();
 
   await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Tag filter").selectOption("tax");
+  await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Tag filter").selectOption("all");
+  await page.getByLabel("Tags for Local Bookstore").fill("tax, audit");
+  await page.getByLabel("Tags for Local Bookstore").blur();
+  await page.getByLabel("Tag filter").selectOption("audit");
+  await expect(page.getByText("Local Bookstore")).toBeVisible();
+  await page.getByLabel("Tag filter").selectOption("all");
   await page.getByLabel("Account filter").selectOption("Operating Checking");
   await expect(page.getByText("Local Bookstore")).toBeVisible();
   await page.getByLabel("Category filter").selectOption("Groceries");

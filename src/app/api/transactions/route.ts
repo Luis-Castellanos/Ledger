@@ -23,6 +23,7 @@ export async function GET() {
       merchant: transactions.displayName,
       notes: transactions.notes,
       status: transactions.reviewStatus,
+      tags: transactions.tags,
       transferStatus: transactions.transferStatus,
     })
     .from(transactions)
@@ -36,6 +37,7 @@ export async function GET() {
     transactions: rows.map((row) => ({
       ...row,
       category: row.category ?? "Uncategorized",
+      tags: row.tags ?? [],
     })),
   });
 }
@@ -87,6 +89,7 @@ export async function POST(request: Request) {
       rawDescription: parsed.data.merchant,
       displayName: parsed.data.merchant,
       notes: parsed.data.notes,
+      tags: parsed.data.tags,
       source: "manual",
       reviewStatus: "needs_review",
       dedupeKey,
@@ -113,6 +116,7 @@ export async function POST(request: Request) {
         amountMinor: transaction.amountMinor,
         notes: transaction.notes,
         status: transaction.reviewStatus,
+        tags: transaction.tags ?? [],
         transferStatus: transaction.transferStatus,
       },
     },
@@ -185,6 +189,7 @@ export async function PATCH(request: Request) {
     ...(parsed.data.reviewStatus ? { reviewStatus: parsed.data.reviewStatus } : {}),
     ...(parsed.data.transferStatus ? { transferStatus: parsed.data.transferStatus } : {}),
     ...(parsed.data.categoryName ? { categoryId: category?.id ?? null } : {}),
+    ...(parsed.data.tags ? { tags: parsed.data.tags } : {}),
     updatedAt: new Date(),
   };
 

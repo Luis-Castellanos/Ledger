@@ -6,7 +6,7 @@ import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState } from "@/lib/finance/transaction-filters";
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
-import { createManualTransactionSchema } from "@/lib/finance/transaction";
+import { createManualTransactionSchema, parseTagList } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
@@ -35,6 +35,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>(initialFilters.status);
   const [accountFilter, setAccountFilter] = useState(initialFilters.account);
   const [categoryFilter, setCategoryFilter] = useState(initialFilters.category);
+  const [tagFilter, setTagFilter] = useState(initialFilters.tag);
   const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>(initialFilters.transfer);
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(initialFilters.direction);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     accountId: sampleAccounts[0]?.name ?? "",
     category: "Groceries",
     amount: "",
+    tags: "",
   });
 
   useEffect(() => {
@@ -108,15 +110,20 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         directionFilter === "all" ||
         (directionFilter === "inflow" && transaction.amountMinor > 0) ||
         (directionFilter === "outflow" && transaction.amountMinor < 0);
+      const matchesTag = tagFilter === "all" || (transaction.tags ?? []).includes(tagFilter);
       const matchesQuery =
         !normalizedQuery ||
-        [transaction.merchant, transaction.account, transaction.category, transaction.date].some((value) =>
+        [transaction.merchant, transaction.account, transaction.category, transaction.date, ...(transaction.tags ?? [])].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
 
-      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesDirection && matchesQuery;
+      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesDirection && matchesTag && matchesQuery;
     });
-  }, [accountFilter, categoryFilter, directionFilter, query, statusFilter, transactions, transferFilter]);
+  }, [accountFilter, categoryFilter, directionFilter, query, statusFilter, tagFilter, transactions, transferFilter]);
+
+  const tagOptions = useMemo(() => {
+    return Array.from(new Set(transactions.flatMap((transaction) => transaction.tags ?? []))).sort((left, right) => left.localeCompare(right));
+  }, [transactions]);
 
   const totals = useMemo(() => {
     return transactions.reduce(
@@ -180,6 +187,21 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     }
   }
 
+  async function updateTags(id: string, tagText: string) {
+    const tags = parseTagList(tagText);
+
+    hasLocalEdits.current = true;
+    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, tags } : transaction)));
+
+    if (dataSource === "database") {
+      await persistTransactionPatch({
+        body: { id, tags },
+        onFailure: () => setMutationMessage("Tag change stayed local because the API was unavailable."),
+        onSuccess: () => setMutationMessage(null),
+      });
+    }
+  }
+
   async function deleteTransaction(id: string) {
     const transaction = transactions.find((row) => row.id === id);
 
@@ -228,6 +250,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         merchant: formState.merchant,
         categoryName: formState.category,
         amount: formState.amount,
+        tags: parseTagList(formState.tags),
       });
       const accountName = accountOptions.find((account) => account.id === formState.accountId)?.name ?? formState.accountId;
 
@@ -255,6 +278,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
             accountId: formState.accountId,
             category: getDefaultCategoryName(categoryOptions, formState.category),
             amount: "",
+            tags: "",
           });
           setError(null);
           return;
@@ -271,6 +295,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           category: formState.category,
           amountMinor,
           status: "needs_review",
+          tags: parsed.tags ?? [],
           transferStatus: "none",
         },
         ...current,
@@ -282,6 +307,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         accountId: accountOptions[0]?.id ?? "",
         category: getDefaultCategoryName(categoryOptions, formState.category),
         amount: "",
+        tags: "",
       });
       setError(dataSource === "database" ? "Saved in local demo mode because the transaction API rejected the write." : null);
     } catch {
@@ -338,6 +364,14 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                 {categoryOptions.map((category) => (
                   <option value={category.name} key={category.id}>
                     {category.name}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Tag filter" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
+                <option value="all">All tags</option>
+                {tagOptions.map((tag) => (
+                  <option value={tag} key={tag}>
+                    {tag}
                   </option>
                 ))}
               </select>
@@ -415,6 +449,12 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                       </option>
                     ))}
                   </select>
+                  <input
+                    aria-label={`Tags for ${transaction.merchant}`}
+                    defaultValue={(transaction.tags ?? []).join(", ")}
+                    onBlur={(event) => void updateTags(transaction.id, event.target.value)}
+                    placeholder="tags"
+                  />
                   <select
                     aria-label={`Transfer status for ${transaction.merchant}`}
                     value={transaction.transferStatus ?? "none"}
@@ -494,6 +534,14 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                 placeholder="-42.18"
               />
             </label>
+            <label>
+              <span>Tags</span>
+              <input
+                value={formState.tags}
+                onChange={(event) => setFormState((current) => ({ ...current, tags: event.target.value }))}
+                placeholder="tax, reimbursable"
+              />
+            </label>
             {error ? <p className="form-error">{error}</p> : null}
             <button className="primary-action" type="submit">
               <Save size={16} />
@@ -555,6 +603,7 @@ async function persistTransactionPatch({
     reviewStatus?: TransactionStatus;
     transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
     categoryName?: string;
+    tags?: string[];
     action?: "delete" | "restore";
   };
   onFailure: () => void;

@@ -10,6 +10,7 @@ export type TransactionRow = {
   merchant: string;
   notes?: string;
   status: TransactionStatus;
+  tags?: string[];
   transferStatus?: TransactionTransferStatus;
 };
 
@@ -40,6 +41,7 @@ export const sampleTransactionRows = [
     category: "Shopping",
     amountMinor: -10088,
     status: "needs_review",
+    tags: ["household", "bulk"],
   },
   {
     id: "txn_apple",
@@ -49,6 +51,7 @@ export const sampleTransactionRows = [
     category: "Subscriptions",
     amountMinor: -999,
     status: "needs_review",
+    tags: ["subscription"],
   },
   {
     id: "txn_interest",
