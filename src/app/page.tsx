@@ -133,9 +133,9 @@ export default function Home() {
                 <Search size={16} />
                 <input aria-label="Search transactions" placeholder="Search ledger" />
               </label>
-              <button className="icon-button" aria-label="Export backup package">
+              <a className="icon-button" aria-label="Export backup package" href="/api/exports?format=backup_package">
                 <Download size={17} />
-              </button>
+              </a>
             </div>
           </header>
 

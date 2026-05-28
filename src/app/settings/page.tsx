@@ -19,9 +19,9 @@ export default function SettingsPage() {
             <button className="icon-button" aria-label="Review security controls">
               <ShieldCheck size={17} />
             </button>
-            <button className="icon-button" aria-label="Export settings">
+            <a className="icon-button" aria-label="Export settings" href="/api/exports?format=backup_package">
               <Download size={17} />
-            </button>
+            </a>
           </div>
         </header>
         <SettingsWorkbench />

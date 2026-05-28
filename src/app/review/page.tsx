@@ -19,9 +19,9 @@ export default function ReviewPage() {
             <button className="icon-button" aria-label="Filter review queue">
               <SlidersHorizontal size={17} />
             </button>
-            <button className="icon-button" aria-label="Export review queue">
+            <a className="icon-button" aria-label="Export review queue" href="/api/exports?format=transactions_csv">
               <Download size={17} />
-            </button>
+            </a>
             <button className="icon-button" aria-label="Mark visible reviewed">
               <CheckCircle2 size={17} />
             </button>

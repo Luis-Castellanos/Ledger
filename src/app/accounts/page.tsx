@@ -19,9 +19,9 @@ export default function AccountsPage() {
             <button className="icon-button" aria-label="Filter accounts">
               <SlidersHorizontal size={17} />
             </button>
-            <button className="icon-button" aria-label="Export account register">
+            <a className="icon-button" aria-label="Export account register" href="/api/exports?format=backup_package">
               <Download size={17} />
-            </button>
+            </a>
             <button className="icon-button lg:hidden" aria-label="Toggle navigation">
               <PanelLeft size={18} />
             </button>

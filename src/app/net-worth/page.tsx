@@ -19,9 +19,9 @@ export default function NetWorthPage() {
             <button className="icon-button" aria-label="Filter net worth">
               <SlidersHorizontal size={17} />
             </button>
-            <button className="icon-button" aria-label="Export net worth">
+            <a className="icon-button" aria-label="Export net worth" href="/api/exports?format=backup_package">
               <Download size={17} />
-            </button>
+            </a>
           </div>
         </header>
         <NetWorthWorkbench />

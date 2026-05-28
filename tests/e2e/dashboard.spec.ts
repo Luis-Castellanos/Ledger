@@ -7,6 +7,7 @@ test("dashboard shell renders", async ({ page }) => {
   await expect(page.getByText("Recent ledger activity")).toBeVisible();
   await expect(page.getByText("Net cashflow")).toBeVisible();
   await expect(page.getByRole("heading", { name: /spent$/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Export backup package" })).toHaveAttribute("href", "/api/exports?format=backup_package");
 });
 
 test("accounts page supports local account entry", async ({ page }) => {
@@ -28,6 +29,7 @@ test("transactions page supports local transaction entry", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Transactions" })).toBeVisible();
   await expect(page.getByText("Register")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Export transactions" })).toHaveAttribute("href", "/api/exports?format=transactions_csv");
 
   await page.getByPlaceholder("Trader Joe's").fill("Local Bookstore");
   await page.getByPlaceholder("-42.18").fill("-31.45");

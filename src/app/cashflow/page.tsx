@@ -19,9 +19,9 @@ export default function CashflowPage() {
             <button className="icon-button" aria-label="Filter cashflow">
               <SlidersHorizontal size={17} />
             </button>
-            <button className="icon-button" aria-label="Export cashflow">
+            <a className="icon-button" aria-label="Export cashflow" href="/api/exports?format=transactions_csv">
               <Download size={17} />
-            </button>
+            </a>
           </div>
         </header>
         <CashflowWorkbench />
