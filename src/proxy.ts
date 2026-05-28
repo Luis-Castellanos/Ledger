@@ -1,9 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { publicRoutePatterns } from "@/lib/setup/route-protection";
 
 const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
 const isProduction = process.env.NODE_ENV === "production";
-const isProtectedRoute = createRouteMatcher(["/", "/api(.*)"]);
+const isPublicRoute = createRouteMatcher([...publicRoutePatterns]);
 const isHealthRoute = (pathname: string) => pathname === "/api/health";
 
 const missingAuthProxy = (request: Request) => {
@@ -24,13 +25,14 @@ export default hasClerkConfig
         return NextResponse.next();
       }
 
-      if (isProtectedRoute(request)) {
+      if (!isPublicRoute(request)) {
         await auth.protect();
       }
     })
   : missingAuthProxy;
 
 export const config = {
+  // Next.js requires matcher entries to be static literals in this file.
   matcher: [
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
