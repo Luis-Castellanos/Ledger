@@ -7,6 +7,10 @@ import { auditEvents, categories, ledgers, users } from "@/lib/db/schema";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 
 export async function getOrCreateCurrentLedger() {
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) {
+    return null;
+  }
+
   const { userId } = await auth();
 
   if (!userId) {

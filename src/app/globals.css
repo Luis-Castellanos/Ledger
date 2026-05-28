@@ -449,6 +449,43 @@ button {
   color: var(--green);
 }
 
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+}
+
+.auth-controls button,
+.auth-status-pill {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(214, 226, 217, 0.18);
+  border-radius: 6px;
+  background: rgba(214, 226, 217, 0.06);
+  color: var(--ink-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-controls button {
+  padding: 0 10px;
+}
+
+.auth-controls button:hover {
+  border-color: rgba(87, 184, 157, 0.45);
+  color: var(--green);
+}
+
+.auth-status-pill {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 0 10px;
+  color: var(--muted);
+}
+
 .accounts-grid {
   display: grid;
   min-height: calc(100vh - 7.5rem);

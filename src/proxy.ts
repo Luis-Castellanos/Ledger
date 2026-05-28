@@ -5,7 +5,7 @@ const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && 
 const isProduction = process.env.NODE_ENV === "production";
 const isProtectedRoute = createRouteMatcher(["/", "/api(.*)"]);
 
-const missingAuthMiddleware = () => {
+const missingAuthProxy = () => {
   if (!isProduction) {
     return NextResponse.next();
   }
@@ -14,16 +14,17 @@ const missingAuthMiddleware = () => {
 };
 
 export default hasClerkConfig
-  ? clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
+  ? clerkMiddleware(async (auth, request) => {
+      if (isProtectedRoute(request)) {
         await auth.protect();
       }
     })
-  : missingAuthMiddleware;
+  : missingAuthProxy;
 
 export const config = {
   matcher: [
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
+    "/__clerk/(.*)",
   ],
 };

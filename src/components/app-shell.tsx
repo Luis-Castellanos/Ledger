@@ -12,6 +12,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { AuthControls } from "@/components/auth-controls";
 
 const nav = [
   { label: "Dashboard", href: "/", icon: ChartNoAxesCombined },
@@ -57,6 +58,7 @@ export function AppShell({ active, children }: { active: string; children: React
             </nav>
 
             <div className="mt-auto hidden border-t border-[var(--line)] p-5 lg:block">
+              <AuthControls />
               <div className="metric-strip">
                 <span>Review queue</span>
                 <strong>37</strong>
