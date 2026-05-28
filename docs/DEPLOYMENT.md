@@ -57,6 +57,10 @@ If Vercel Deployment Protection is enabled, run this check from an authenticated
 
 Backup package exports are documented in [BACKUP_PACKAGE.md](./BACKUP_PACKAGE.md). Private beta deployments must verify that `/api/exports?format=backup_package` returns a JSON package with manifest counts before relying on the deployment for real financial data.
 
+## Database
+
+Neon project and migration operations are documented in [DATABASE.md](./DATABASE.md).
+
 ## Rate Limiting
 
 V1 includes in-process, per-user rate limits for import mutations and export generation. This is an initial private-beta safeguard against accidental abuse on a single deployment instance. Before public beta or horizontal scaling, replace it with a durable shared counter such as Vercel KV, Upstash Redis, or another server-side store.
