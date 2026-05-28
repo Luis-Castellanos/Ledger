@@ -100,4 +100,5 @@ test("review, cashflow, and net worth pages render", async ({ page }) => {
   await page.goto("/net-worth");
   await expect(page.getByRole("heading", { name: "Net Worth" })).toBeVisible();
   await expect(page.getByText("Account position")).toBeVisible();
+  await expect(page.getByText("Position evidence")).toBeVisible();
 });

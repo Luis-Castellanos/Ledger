@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Landmark, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarDays, Landmark, ShieldCheck, WalletCards } from "lucide-react";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 
 export function NetWorthWorkbench() {
   const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
+  const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
 
   useEffect(() => {
@@ -14,16 +15,23 @@ export function NetWorthWorkbench() {
 
     async function loadAccounts() {
       try {
-        const response = await fetch("/api/accounts", { headers: { Accept: "application/json" } });
+        const [accountsResponse, snapshotsResponse] = await Promise.all([
+          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
+          fetch("/api/balance-snapshots", { headers: { Accept: "application/json" } }),
+        ]);
 
-        if (!response.ok) {
+        if (!accountsResponse.ok || !snapshotsResponse.ok) {
           throw new Error("Account API unavailable");
         }
 
-        const payload = (await response.json()) as { accounts: DatabaseAccount[] };
+        const [accountPayload, snapshotPayload] = (await Promise.all([accountsResponse.json(), snapshotsResponse.json()])) as [
+          { accounts: DatabaseAccount[] },
+          { snapshots: DatabaseSnapshot[] },
+        ];
 
         if (isMounted) {
-          setAccounts(payload.accounts.map(toAccountRow));
+          setAccounts(accountPayload.accounts.map((account) => toAccountRow(account, snapshotPayload.snapshots)));
+          setSnapshots(snapshotPayload.snapshots);
           setDataSource("database");
         }
       } catch {
@@ -41,6 +49,20 @@ export function NetWorthWorkbench() {
     };
   }, []);
 
+  const latestSnapshotByAccount = useMemo(() => {
+    const latest = new Map<string, DatabaseSnapshot>();
+
+    for (const snapshot of snapshots) {
+      const existing = latest.get(snapshot.accountId);
+
+      if (!existing || snapshot.asOfDate > existing.asOfDate) {
+        latest.set(snapshot.accountId, snapshot);
+      }
+    }
+
+    return latest;
+  }, [snapshots]);
+
   const summary = useMemo(() => {
     return accounts.reduce(
       (acc, account) => {
@@ -55,6 +77,16 @@ export function NetWorthWorkbench() {
       { assets: 0, liabilities: 0 },
     );
   }, [accounts]);
+
+  const recentSnapshots = useMemo(() => {
+    return [...snapshots]
+      .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate) || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 6);
+  }, [snapshots]);
+
+  const snapshotCoverage = accounts.length === 0 ? 0 : Math.round((latestSnapshotByAccount.size / accounts.length) * 100);
+  const latestSnapshotDate = recentSnapshots[0]?.asOfDate ?? "No snapshots";
+  const accountsWithoutSnapshots = Math.max(accounts.length - latestSnapshotByAccount.size, 0);
 
   return (
     <div className="accounts-grid">
@@ -89,12 +121,15 @@ export function NetWorthWorkbench() {
                   <div className="min-w-0">
                     <p>{account.name}</p>
                     <span>
-                      {account.institution} • {account.mask}
+                      {account.institution} • {account.mask} • {account.lastActivity}
                     </span>
                   </div>
                 </div>
                 <span className="account-pill">{account.type.replace("_", " ")}</span>
-                <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>{account.assetClass}</span>
+                <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>
+                  {account.assetClass}
+                  {account.status === "closed" ? " / closed" : ""}
+                </span>
                 <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
               </div>
             ))}
@@ -104,17 +139,64 @@ export function NetWorthWorkbench() {
 
       <aside className="accounts-side">
         <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Snapshot coverage</p>
+              <h2 className="panel-title">Position evidence</h2>
+            </div>
+          </div>
+          <div className="settings-facts">
+            <div>
+              <span>Coverage</span>
+              <strong>{snapshotCoverage}% of accounts</strong>
+            </div>
+            <div>
+              <span>Latest snapshot</span>
+              <strong>{latestSnapshotDate}</strong>
+            </div>
+            <div>
+              <span>Missing evidence</span>
+              <strong>{accountsWithoutSnapshots} accounts</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel account-form-panel">
+          <div className="panel-header">
+            <div>
+              <p className="panel-label">Recent snapshots</p>
+              <h2 className="panel-title">Balance evidence</h2>
+            </div>
+          </div>
+          <div className="snapshot-list">
+            {recentSnapshots.length > 0 ? (
+              recentSnapshots.map((snapshot) => (
+                <div className="snapshot-item" key={`${snapshot.accountId}-${snapshot.asOfDate}`}>
+                  <div className="snapshot-copy">
+                    <span>{snapshot.accountName}</span>
+                    <small>{snapshot.asOfDate}</small>
+                  </div>
+                  <strong>{formatMoney(snapshot.balanceMinor, snapshot.currency)}</strong>
+                </div>
+              ))
+            ) : (
+              <p className="empty-copy">No manual balance snapshots yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="panel account-form-panel">
           <div className="account-checklist-item">
             <WalletCards size={17} />
-            <span>Current balances use account records until balance snapshots are wired.</span>
+            <span>Net worth uses the latest balance snapshot per account.</span>
           </div>
           <div className="account-checklist-item">
             <ShieldCheck size={17} />
             <span>Reports use ledger-scoped API data when credentials are configured.</span>
           </div>
           <div className="account-checklist-item">
-            <Landmark size={17} />
-            <span>Historical snapshot charts are the next reporting upgrade.</span>
+            <CalendarDays size={17} />
+            <span>Accounts without snapshots stay visible with a zero balance until evidence is entered.</span>
           </div>
         </section>
       </aside>
@@ -131,9 +213,28 @@ type DatabaseAccount = {
   assetClass: "asset" | "liability";
   currency: string;
   isHidden: boolean;
+  closedOn: string | null;
+  isActive: boolean;
+  updatedAt?: string | Date;
 };
 
-function toAccountRow(account: DatabaseAccount): AccountRow {
+type DatabaseSnapshot = {
+  id: string;
+  ledgerId: string;
+  accountId: string;
+  accountName: string;
+  asOfDate: string;
+  balanceMinor: number;
+  currency: string;
+  source: string;
+  createdAt: string;
+};
+
+function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = []): AccountRow {
+  const latestSnapshot = snapshots
+    .filter((snapshot) => snapshot.accountId === account.id)
+    .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate))[0];
+
   return {
     id: account.id,
     name: account.name,
@@ -142,9 +243,9 @@ function toAccountRow(account: DatabaseAccount): AccountRow {
     type: account.type,
     assetClass: account.assetClass,
     currency: account.currency,
-    balanceMinor: 0,
-    lastActivity: "No activity",
-    status: account.isHidden ? "hidden" : "active",
+    balanceMinor: latestSnapshot?.balanceMinor ?? 0,
+    lastActivity: latestSnapshot ? `Snapshot ${latestSnapshot.asOfDate}` : account.updatedAt ? "Updated" : "No snapshot",
+    status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
   };
 }
 
