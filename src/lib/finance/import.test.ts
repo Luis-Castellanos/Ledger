@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "./import";
+import { buildImportFingerprint, importActionParamsSchema, stageImportSchema, updateImportRowSchema } from "./import";
 
 describe("stageImportSchema", () => {
   it("parses staged row amounts into minor units", () => {
@@ -29,6 +29,13 @@ describe("updateImportRowSchema", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("importActionParamsSchema", () => {
+  it("requires a uuid import id", () => {
+    expect(importActionParamsSchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000" }).success).toBe(true);
+    expect(importActionParamsSchema.safeParse({ id: "import_local" }).success).toBe(false);
   });
 });
 

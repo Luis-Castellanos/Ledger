@@ -36,9 +36,14 @@ export const updateImportRowSchema = z.object({
   status: importRowStatusSchema.optional(),
 });
 
+export const importActionParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export type StageImportInput = z.input<typeof stageImportSchema>;
 export type StageImportRow = z.infer<typeof stageImportRowSchema>;
 export type UpdateImportRowInput = z.infer<typeof updateImportRowSchema>;
+export type ImportActionParams = z.infer<typeof importActionParamsSchema>;
 
 export function buildImportFingerprint(input: { accountId: string; filename: string; rows: StageImportRow[] }) {
   const hash = createHash("sha256");

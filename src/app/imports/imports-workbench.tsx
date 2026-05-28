@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, FileSpreadsheet, ListChecks, Search, ShieldAlert, Upload } from "lucide-react";
+import { CheckCircle2, FileSpreadsheet, ListChecks, RotateCcw, Search, ShieldAlert, Upload } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
@@ -24,6 +24,7 @@ export function ImportsWorkbench() {
   const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
   const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [error, setError] = useState<string | null>(null);
+  const [isImportActionPending, setIsImportActionPending] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -84,6 +85,8 @@ export function ImportsWorkbench() {
     return rows.filter((row) => [row.description, row.category, row.date, String(row.rowNumber)].some((value) => value.toLowerCase().includes(normalizedQuery)));
   }, [query, rows]);
 
+  const activeBatch = batches[0];
+
   async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
     hasLocalEdits.current = true;
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -135,16 +138,28 @@ export function ImportsWorkbench() {
       });
 
       if (response.ok) {
-        setRows([nextRow]);
+        const payload = (await response.json()) as { import: DatabaseImport };
+        const stagedBatch = payload.import;
+        const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
+
+        if (importsResponse.ok) {
+          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[] };
+          setBatches(importsPayload.batches);
+          setRows(importsPayload.rows);
+          setError(null);
+          return;
+        }
+
+        setRows([{ ...nextRow, id: `row_${stagedBatch.id}_${nextRow.rowNumber}` }]);
         setBatches((current) => [
           {
-            id: `local_batch_${Date.now()}`,
-            filename: "manual-stage.csv",
+            id: stagedBatch.id,
+            filename: stagedBatch.originalFilename,
             account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-            status: "staged",
-            uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-            acceptedRows: 0,
-            rejectedRows: 0,
+            status: stagedBatch.status,
+            uploadedAt: new Date(stagedBatch.createdAt).toISOString().slice(0, 16).replace("T", " "),
+            acceptedRows: stagedBatch.acceptedRowCount,
+            rejectedRows: stagedBatch.rejectedRowCount,
           },
           ...current,
         ]);
@@ -168,6 +183,41 @@ export function ImportsWorkbench() {
     ]);
     setDataSource("demo");
     setError(dataSource === "database" ? "Import stayed local because the API rejected the staged rows." : null);
+  }
+
+  async function runImportAction(action: "commit" | "rollback") {
+    if (!activeBatch) {
+      return;
+    }
+
+    hasLocalEdits.current = true;
+    setIsImportActionPending(true);
+
+    if (dataSource === "database") {
+      try {
+        const response = await fetch(`/api/imports/${activeBatch.id}/${action}`, {
+          method: "POST",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Import ${action} failed`);
+        }
+
+        setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
+        setError(null);
+        setIsImportActionPending(false);
+        return;
+      } catch {
+        setError(`Import ${action} stayed local because the API was unavailable.`);
+        setIsImportActionPending(false);
+        return;
+      }
+    }
+
+    setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
+    setDataSource("demo");
+    setIsImportActionPending(false);
   }
 
   const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
@@ -260,6 +310,19 @@ export function ImportsWorkbench() {
               <Upload size={16} />
               Add sample row
             </button>
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() => runImportAction("commit")}
+              disabled={!activeBatch || activeBatch.status === "committed" || activeBatch.status === "rolled_back" || isImportActionPending}
+            >
+              <CheckCircle2 size={16} />
+              Commit import
+            </button>
+            <button className="secondary-action" type="button" onClick={() => runImportAction("rollback")} disabled={!activeBatch || activeBatch.status !== "committed" || isImportActionPending}>
+              <RotateCcw size={16} />
+              Roll back import
+            </button>
           </div>
         </section>
 
@@ -273,7 +336,7 @@ export function ImportsWorkbench() {
                   {batch.account} • {batch.uploadedAt}
                 </span>
                 <p className="m-0 mt-1 font-mono text-[11px] text-[var(--muted)]">
-                  {batch.acceptedRows} accepted / {batch.rejectedRows} rejected
+                  {batch.acceptedRows} accepted / {batch.rejectedRows} rejected / {batch.status}
                 </p>
               </div>
             ))}
@@ -287,6 +350,15 @@ export function ImportsWorkbench() {
 type DatabaseAccount = {
   id: string;
   name: string;
+};
+
+type DatabaseImport = {
+  acceptedRowCount: number;
+  createdAt: string;
+  id: string;
+  originalFilename: string;
+  rejectedRowCount: number;
+  status: ImportBatch["status"];
 };
 
 type AccountOption = {

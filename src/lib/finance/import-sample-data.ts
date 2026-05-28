@@ -6,7 +6,7 @@ export type ImportBatch = {
   filename: string;
   id: string;
   rejectedRows: number;
-  status: "staged" | "committed";
+  status: "staged" | "committed" | "rolled_back";
   uploadedAt: string;
 };
 
