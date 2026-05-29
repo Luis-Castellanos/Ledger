@@ -15,10 +15,12 @@
 - Production domain DNS setup for `praxisledger.app` and Clerk DNS records.
 - Gringotts-style sidebar foundation with resize, collapse, drag-reorder navigation, profile avatar/name display, theme toggle, and placeholder routes for Payroll, Credit Cards, Files, and Upload.
 - `ledger_settings` persistence table for profile, sidebar, and per-ledger UI preferences.
+- User-facing Settings workbench with Profile, Appearance, Sidebar, Ledger, Data & exports, and Audit trail subareas.
 
 ### Changed
 
 - Design direction now uses Gringotts Vault workbench layouts with Fidelity-derived dark institutional colors, while excluding the dashboard from the Gringotts port.
 - Shared app tokens now use the Fidelity-derived palette, stronger borders, larger radii, and wider Gringotts-style sidebar.
+- Settings no longer leads with internal production-readiness diagnostics.
 - Transaction toolbar layout now wraps filter/sort controls instead of compressing labels.
 - Deployment verification docs now include the secret scan gate.
