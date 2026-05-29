@@ -28,8 +28,8 @@ const nav = [
 
 export function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(72,105,92,0.22),_transparent_34%),linear-gradient(120deg,#f4f3ef_0%,#d8d8d3_42%,#2f3330_100%)] p-3 text-[var(--ink)] sm:p-5 lg:p-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1440px] grid-cols-1 overflow-hidden rounded-[8px] border border-white/10 bg-[var(--app-bg)] shadow-2xl shadow-black/35 lg:grid-cols-[248px_minmax(0,1fr)]">
+    <main className="min-h-screen bg-[var(--app-bg)] text-[var(--ink)]">
+      <div className="grid min-h-screen w-full grid-cols-1 overflow-hidden bg-[var(--app-bg)] lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="border-b border-[var(--line)] bg-[var(--rail)] lg:border-b-0 lg:border-r">
           <div className="flex h-full min-h-0 flex-col">
             <div className="flex h-20 items-center justify-between px-6">
