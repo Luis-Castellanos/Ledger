@@ -4,6 +4,8 @@
 
 Vault is a production-grade personal finance app for people who want deeper understanding, ownership, and trust than mainstream finance apps provide.
 
+The long-term product goal is feature parity with Monarch Money, followed by deeper power-user differentiation. See [MONARCH_PARITY.md](./MONARCH_PARITY.md) for the parity capability map.
+
 It should eventually replace Monarch Money for users who care about:
 
 - Owning and auditing their financial data.
@@ -350,6 +352,26 @@ Candidate modules:
 Exit criteria:
 
 - Each module has its own data model, permissions, tests, and import/export plan.
+
+### Phase 9: Monarch Parity Expansion
+
+Goal: Expand from trusted ledger foundation to full Monarch Money replacement.
+
+Features:
+
+- Spending plan/budgeting.
+- Recurring bills and subscriptions.
+- Goals.
+- Investment holdings and allocation.
+- Bank sync.
+- Household collaboration.
+- Mobile-friendly review flows.
+- Deeper dashboard customization.
+
+Exit criteria:
+
+- A current Monarch user can run their normal monthly finance workflow in Praxis Ledger without needing Monarch as the parallel source of truth.
+- Remaining gaps are documented as deliberate differentiation, not accidental omissions.
 
 ## Product Requirements by Area
 

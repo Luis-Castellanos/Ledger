@@ -7,6 +7,7 @@ The existing app is treated as a research prototype: it proved the core product 
 ## Documents
 
 - [PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md) — product vision, target users, release scope, milestones, and feature sequencing.
+- [MONARCH_PARITY.md](./MONARCH_PARITY.md) — long-term Monarch Money replacement scope, parity capability map, and phased parity roadmap.
 - [V1_PRD.md](./V1_PRD.md) — concrete first-release product requirements, user journey, functional scope, and open decisions.
 - [V1_DATA_MODEL.md](./V1_DATA_MODEL.md) — first-release relational model, ledger ownership boundary, constraints, indexes, and backup shape.
 - [V1_BUILD_PLAN.md](./V1_BUILD_PLAN.md) — implementation milestones, CI gates, QA flow, and private beta hardening plan.
