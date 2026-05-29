@@ -39,7 +39,7 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use a **modern refined banking app** as the base direction.
+Use a **light institutional banking app** as the base direction, with a stronger Fidelity-like wealth-management feel.
 
 Current preference:
 
@@ -49,6 +49,7 @@ Current preference:
 - Compact dashboard summaries.
 - Restrained green brand accent.
 - Cool neutral surfaces over warm paper-like surfaces.
+- Deep navy or charcoal navigation accents are acceptable when they improve institutional trust.
 - Dark mode can exist later, but should not drive the default design.
 
 Rationale:
@@ -57,6 +58,24 @@ Rationale:
 - A refined banking direction better matches the product's need for trust, speed, and routine use.
 - A lighter, denser workspace will make tables, forms, imports, and long review sessions easier.
 - The design should feel polished and premium without sacrificing information density.
+- The old Gringotts transaction layout had the right ledger-workbench instincts and should be preserved as the transaction-page interaction model.
+
+## Selected Design Reference
+
+Working direction:
+
+- **Global app:** light institutional banking, closer to Fidelity than Robinhood.
+- **Transactions:** Gringotts Vault-inspired ledger workbench.
+
+This means the product should use Fidelity-like trust cues: light surfaces, conservative spacing, strong table hierarchy, clear account balances, controlled green accent, understated navigation, and precise labels.
+
+It should not become a Fidelity clone. The goal is the same category of trust and seriousness, adapted to a personal finance ledger.
+
+### Reference Concept
+
+The current expansion board is:
+
+`/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a190f6afec8819a9b3d681851b47b81.png`
 
 ## Layout System
 
@@ -70,6 +89,7 @@ Desktop default:
 - Top utility bar inside the main content area.
 - Main content uses a full-width work surface.
 - Page content can have max readable widths only where the task calls for it, such as settings forms.
+- Left navigation may use a deep navy/charcoal institutional treatment if the content area remains light.
 
 Tablet:
 
@@ -195,6 +215,22 @@ Avoid:
 
 The transaction table is the most important V1 screen.
 
+Use the old Gringotts Vault transaction page as the interaction reference, restyled into the light institutional design system.
+
+Preserve these Gringotts-derived concepts:
+
+- Sticky transaction toolbar.
+- Search, filters, sort, saved views, and row count near the table.
+- Date-grouped transaction rows.
+- Compact row density.
+- Merchant/account/category/amount columns.
+- Bulk select.
+- Needs-review row treatment.
+- Expandable inline row detail.
+- Original statement/source text in the expanded detail.
+- Inline merchant, category, subcategory, date, notes, split, and delete actions.
+- Merchant-focused action: "view all from this merchant."
+
 Required table columns:
 
 - Date.
@@ -234,6 +270,14 @@ Design emphasis:
 - Make rollback visible.
 - Failed rows need specific repair guidance.
 
+Visual model:
+
+- Institutional workflow table.
+- Status tabs across the top.
+- Import account/source selector.
+- Row counts and match confidence visible but not decorative.
+- Recent import activity and import summary can sit below the table.
+
 ### Review
 
 Review should feel like an efficient work queue.
@@ -246,6 +290,13 @@ Design emphasis:
 - Apply-once vs create-rule distinction.
 - Undo path.
 
+Visual model:
+
+- Queue table/list on the left or center.
+- Selected transaction detail panel on the right.
+- Category suggestion and action buttons should be explicit.
+- "Mark reviewed" is primary; "skip" and "create rule" are secondary.
+
 ### Accounts
 
 Accounts should be operational and precise.
@@ -255,6 +306,37 @@ Design emphasis:
 - Account list with balance, freshness, type, visibility, and status.
 - Account detail page/workbench with snapshots, imports, and transactions.
 - Data-source confidence should be visible.
+
+Visual model:
+
+- Group accounts by asset/liability class.
+- Use a table/list over cards.
+- Show institution, balance, change, freshness, and visibility.
+- Account detail can use a right-side inspector or drilldown view.
+
+### Settings
+
+Settings should be user-facing only.
+
+Visible:
+
+- Profile information.
+- Ledger preferences.
+- Notification preferences.
+- Security/account controls.
+- Export/backup controls.
+- Integrations when user-actionable.
+- Destructive data controls, clearly separated.
+
+Not visible:
+
+- Clerk keys.
+- Neon connection status.
+- Vercel environment.
+- Runtime environment.
+- Setup readiness gates.
+- Deployment diagnostics.
+- Internal security-header checks.
 
 ## Visual Anti-Patterns
 
