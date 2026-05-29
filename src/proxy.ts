@@ -30,7 +30,7 @@ export default hasClerkConfig
         if (isApiRoute(request.nextUrl.pathname)) {
           await auth.protect();
         } else {
-          await auth.protect({ unauthenticatedUrl: "/sign-in" });
+          await auth.protect({ unauthenticatedUrl: new URL("/sign-in", request.url).toString() });
         }
       }
     })
