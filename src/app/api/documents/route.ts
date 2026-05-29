@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rateLimit = checkRateLimit({
+  const rateLimit = await checkRateLimit({
     key: `user:${context.user.id}:documents:upload`,
     ...rateLimitPolicies.importMutation,
   });

@@ -37,7 +37,7 @@ async function generateExport(
   context: NonNullable<Awaited<ReturnType<typeof getOrCreateCurrentLedger>>>,
   format: ExportFormat,
 ) {
-  const rateLimit = checkRateLimit({
+  const rateLimit = await checkRateLimit({
     key: `user:${context.user.id}:export:${format}`,
     ...rateLimitPolicies.exportGeneration,
   });

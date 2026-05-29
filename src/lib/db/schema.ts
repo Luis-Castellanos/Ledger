@@ -331,6 +331,20 @@ export const auditEvents = pgTable(
   }),
 );
 
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull().default(0),
+    resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    resetIdx: index("rate_limits_reset_at_idx").on(table.resetAt),
+  }),
+);
+
 export const userRelations = relations(users, ({ many }) => ({
   ledgers: many(ledgers),
 }));

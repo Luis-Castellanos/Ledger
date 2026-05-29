@@ -65,7 +65,7 @@ Neon project and migration operations are documented in [DATABASE.md](./DATABASE
 
 ## Rate Limiting
 
-V1 includes in-process, per-user rate limits for import mutations and export generation. This is an initial private-beta safeguard against accidental abuse on a single deployment instance. Production readiness intentionally marks this as incomplete because serverless instances do not share process memory. Before public beta or horizontal scaling, replace it with a durable shared counter such as Vercel KV, Upstash Redis, or another server-side store.
+V1 uses Postgres-backed, per-user rate limits for import mutations and export generation in production. Local development and tests keep an in-process limiter for speed. The production limiter depends on the checked-in `rate_limits` migration being applied to the target Neon database before deployment.
 
 ## Vercel Setup
 

@@ -17,7 +17,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rateLimit = checkRateLimit({
+  const rateLimit = await checkRateLimit({
     key: `user:${context.user.id}:import:rollback`,
     ...rateLimitPolicies.importMutation,
   });

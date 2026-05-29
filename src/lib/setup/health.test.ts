@@ -11,13 +11,13 @@ const readyEnv = {
 };
 
 describe("getDeploymentHealthReport", () => {
-  it("keeps production health incomplete while rate limits are process-local", async () => {
+  it("marks production health complete when readiness and database ping pass", async () => {
     const report = await buildHealthReport(readyEnv, new Date("2026-05-28T12:00:00.000Z"), async () => undefined);
 
-    expect(report.ok).toBe(false);
+    expect(report.ok).toBe(true);
     expect(report.status.databaseReachable).toBe(true);
     expect(report.readiness.checks).toContainEqual({ key: "databaseConnection", label: "Neon connection verified", ready: true });
-    expect(report.readiness.checks).toContainEqual({ key: "rateLimits", label: "Durable rate limits", ready: false });
+    expect(report.readiness.checks).toContainEqual({ key: "rateLimits", label: "Database-backed rate limits", ready: true });
   });
 
   it("marks the deployment unhealthy when database ping fails", async () => {
