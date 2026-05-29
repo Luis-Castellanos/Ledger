@@ -24,6 +24,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Production setup readiness now requires database-backed rate limiting, and production API rate limits use Postgres instead of process memory.
 - Neon migration journal drift has been repaired for the configured database, and the `rate_limits` migration has been applied.
 - Mutation queries now keep ledger ownership predicates on follow-up updates after scoped reads.
+- Public health checks now return only minimal readiness counts; detailed setup state remains behind authenticated API protection.
 
 ## Remaining Review Items
 
