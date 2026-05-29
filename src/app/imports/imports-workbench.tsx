@@ -91,7 +91,7 @@ export function ImportsWorkbench() {
           setDataSource("database");
         }
       } catch {
-        if (isMounted) {
+        if (isMounted && !hasLocalEdits.current) {
           setRows(demoFallback(sampleImportRows, []));
           setBatches(demoFallback(sampleImportBatches, []));
           setAccountOptions(demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
