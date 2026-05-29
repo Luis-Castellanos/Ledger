@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { logServerError, redactValue } from "./server-logger";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("redactValue", () => {
   it("redacts sensitive keys recursively", () => {
@@ -27,6 +31,7 @@ describe("redactValue", () => {
 
 describe("logServerError", () => {
   it("logs structured errors without sensitive context", () => {
+    vi.stubEnv("NODE_ENV", "development");
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     logServerError("export.failed", new Error("Export failed"), {
@@ -48,6 +53,23 @@ describe("logServerError", () => {
       exportJobId: "job_1",
       rawDescription: "[REDACTED]",
     });
+
+    spy.mockRestore();
+  });
+
+  it("does not log raw exception messages in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    logServerError("export.failed", new Error("connection string leaked in driver error"), {
+      exportJobId: "job_1",
+    });
+
+    const payload = JSON.parse(spy.mock.calls[0]?.[0] ?? "{}") as {
+      error: { message: string };
+    };
+    expect(payload.error.message).toBe("Server error");
+    expect(JSON.stringify(payload)).not.toContain("connection string");
 
     spy.mockRestore();
   });

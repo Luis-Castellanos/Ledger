@@ -35,7 +35,7 @@ function serializeError(error: unknown) {
   if (error instanceof Error) {
     return {
       name: error.name,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Server error" : error.message,
     };
   }
 

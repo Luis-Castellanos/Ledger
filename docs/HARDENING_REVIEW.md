@@ -25,6 +25,8 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Neon migration journal drift has been repaired for the configured database, and the `rate_limits` migration has been applied.
 - Mutation queries now keep ledger ownership predicates on follow-up updates after scoped reads.
 - Public health checks now return only minimal readiness counts; detailed setup state remains behind authenticated API protection.
+- Failed export jobs persist a generic user-facing error instead of raw server exception messages.
+- Production server error logs redact raw exception messages while retaining structured event context.
 
 ## Remaining Review Items
 

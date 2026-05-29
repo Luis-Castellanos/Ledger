@@ -13,6 +13,7 @@ import packageJson from "../../../../package.json";
 const exportRequestSchema = z.object({
   format: z.enum(exportFormats),
 });
+const exportFailedMessage = "Export failed. Please try again.";
 
 export function GET() {
   return NextResponse.json({ error: "Use POST to generate exports." }, { status: 405, headers: { Allow: "POST" } });
@@ -101,12 +102,12 @@ async function generateExport(
       .update(exportJobs)
       .set({
         status: "failed",
-        errorMessage: error instanceof Error ? error.message : "Export failed",
+        errorMessage: exportFailedMessage,
         completedAt: new Date(),
       })
       .where(and(eq(exportJobs.id, job.id), eq(exportJobs.ledgerId, context.ledger.id)));
 
-    return NextResponse.json({ error: "Export failed" }, { status: 500 });
+    return NextResponse.json({ error: exportFailedMessage }, { status: 500 });
   }
 }
 
