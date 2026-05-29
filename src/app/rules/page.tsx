@@ -1,5 +1,6 @@
 import { Download, Filter, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { RulesWorkbench } from "./rules-workbench";
 
 export default function RulesPage() {
@@ -18,9 +19,9 @@ export default function RulesPage() {
             <button className="icon-button" aria-label="Add rule shortcut">
               <Plus size={17} />
             </button>
-            <a className="icon-button" aria-label="Export rules" href="/api/exports?format=backup_package">
+            <ExportButton className="icon-button" aria-label="Export rules" format="backup_package">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
 

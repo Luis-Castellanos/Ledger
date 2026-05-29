@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { ImportsWorkbench } from "./imports-workbench";
 
 export default function ImportsPage() {
@@ -12,9 +13,9 @@ export default function ImportsPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Imports</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a className="icon-button" aria-label="Export import report" href="/api/exports?format=backup_package">
+            <ExportButton className="icon-button" aria-label="Export import report" format="backup_package">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
         <ImportsWorkbench />

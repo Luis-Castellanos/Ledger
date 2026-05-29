@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
@@ -164,9 +165,9 @@ export default function Home() {
               <Search size={16} />
               <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
-            <a className="icon-button" aria-label="Export backup package" href="/api/exports?format=backup_package">
+            <ExportButton className="icon-button" aria-label="Export backup package" format="backup_package">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
 

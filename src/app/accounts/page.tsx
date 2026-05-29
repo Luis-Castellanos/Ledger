@@ -1,6 +1,7 @@
 import { Download, PanelLeft } from "lucide-react";
 import { AccountsWorkbench } from "./accounts-workbench";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 
 type AccountsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -19,9 +20,9 @@ export default async function AccountsPage({ searchParams }: AccountsPageProps) 
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Accounts</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a className="icon-button" aria-label="Export account register" href="/api/exports?format=backup_package">
+            <ExportButton className="icon-button" aria-label="Export account register" format="backup_package">
               <Download size={17} />
-            </a>
+            </ExportButton>
             <button className="icon-button lg:hidden" aria-label="Toggle navigation">
               <PanelLeft size={18} />
             </button>

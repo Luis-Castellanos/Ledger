@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { NetWorthWorkbench } from "./net-worth-workbench";
 
 export default function NetWorthPage() {
@@ -12,9 +13,9 @@ export default function NetWorthPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Net Worth</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a className="icon-button" aria-label="Export net worth" href="/api/exports?format=backup_package">
+            <ExportButton className="icon-button" aria-label="Export net worth" format="backup_package">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
         <NetWorthWorkbench />

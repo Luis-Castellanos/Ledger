@@ -57,7 +57,7 @@ If Vercel Deployment Protection is enabled, run this check from an authenticated
 
 ## Backup Package
 
-Backup package exports are documented in [BACKUP_PACKAGE.md](./BACKUP_PACKAGE.md). Private beta deployments must verify that `/api/exports?format=backup_package` returns a JSON package with manifest counts before relying on the deployment for real financial data.
+Backup package exports are documented in [BACKUP_PACKAGE.md](./BACKUP_PACKAGE.md). Private beta deployments must verify that `POST /api/exports` with `{ "format": "backup_package" }` returns a JSON package with manifest counts before relying on the deployment for real financial data.
 
 ## Database
 

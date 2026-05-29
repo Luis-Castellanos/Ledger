@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { defaultTransactionFilters, type TransactionFilterState } from "@/lib/finance/transaction-filters";
 import { TransactionsWorkbench } from "./transactions-workbench";
 
@@ -20,9 +21,9 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Transactions</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a className="icon-button" aria-label="Export transactions" href="/api/exports?format=transactions_csv">
+            <ExportButton className="icon-button" aria-label="Export transactions" format="transactions_csv">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
         <TransactionsWorkbench initialFilters={initialFilters} />

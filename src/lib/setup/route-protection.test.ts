@@ -35,8 +35,9 @@ describe("cross-site API request guard", () => {
     expect(shouldBlockCrossSiteApiRequest(request)).toBe(true);
   });
 
-  it("treats export downloads as state-changing because they create export and audit records", () => {
-    const request = new Request("https://praxisledger.app/api/exports?format=backup_package", {
+  it("blocks export generation POSTs from cross-site contexts", () => {
+    const request = new Request("https://praxisledger.app/api/exports", {
+      method: "POST",
       headers: { "sec-fetch-site": "cross-site" },
     });
 

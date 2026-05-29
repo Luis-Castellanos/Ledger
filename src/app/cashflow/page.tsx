@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export-button";
 import { CashflowWorkbench } from "./cashflow-workbench";
 
 export default function CashflowPage() {
@@ -12,9 +13,9 @@ export default function CashflowPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Cashflow</h1>
           </div>
           <div className="flex items-center gap-2">
-            <a className="icon-button" aria-label="Export cashflow" href="/api/exports?format=transactions_csv">
+            <ExportButton className="icon-button" aria-label="Export cashflow" format="transactions_csv">
               <Download size={17} />
-            </a>
+            </ExportButton>
           </div>
         </header>
         <CashflowWorkbench />

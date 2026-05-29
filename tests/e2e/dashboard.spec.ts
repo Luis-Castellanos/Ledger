@@ -10,7 +10,7 @@ test("dashboard shell renders", async ({ page }) => {
   await expect(page.getByText("Recent activity")).toBeVisible();
   await expect(page.getByText("Net cashflow")).toBeVisible();
   await expect(page.getByRole("heading", { name: /spent$/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Export backup package" })).toHaveAttribute("href", "/api/exports?format=backup_package");
+  await expect(page.getByRole("button", { name: "Export backup package" })).toBeVisible();
   await expect(page.getByRole("link", { name: "View all" })).toHaveAttribute("href", "/transactions");
 
   await page.getByLabel("Search ledger").fill("Costco");
@@ -51,7 +51,7 @@ test("transactions page supports local transaction entry", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Transactions" })).toBeVisible();
   await expect(page.getByText("Register")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Export transactions" })).toHaveAttribute("href", "/api/exports?format=transactions_csv");
+  await expect(page.getByRole("button", { name: "Export transactions" })).toBeVisible();
 
   await page.getByLabel("Transfer filter").selectOption("transfer");
   await expect(page.getByText("Internal transfer", { exact: true })).toBeVisible();
@@ -148,8 +148,8 @@ test("settings page supports ledger settings edits", async ({ page }) => {
   await expect(page.getByText("Ledger name")).toBeVisible();
   await page.getByRole("button", { name: "Data & exports" }).click();
   await expect(page.getByText("Backup and portability log")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Transactions CSV" })).toHaveAttribute("href", "/api/exports?format=transactions_csv");
-  await expect(page.getByRole("link", { name: "Backup package" })).toHaveAttribute("href", "/api/exports?format=backup_package");
+  await expect(page.getByRole("button", { name: "Transactions CSV" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Backup package" })).toBeVisible();
   await page.getByRole("button", { name: "Audit trail" }).click();
   await expect(page.getByText("Recent control events")).toBeVisible();
   await page.getByRole("button", { name: "Ledger" }).click();

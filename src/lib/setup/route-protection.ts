@@ -15,8 +15,7 @@ export function shouldBlockCrossSiteApiRequest(request: Request) {
     return false;
   }
 
-  const createsExportArtifact = url.pathname === "/api/exports";
-  const isStateChanging = !safeMethods.has(request.method.toUpperCase()) || createsExportArtifact;
+  const isStateChanging = !safeMethods.has(request.method.toUpperCase());
 
   if (!isStateChanging) {
     return false;

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Download, Eye, EyeOff, Palette, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { ExportButton } from "@/components/export-button";
 import { ALL_NAV_ITEMS, ITEM_BY_HREF, normalizeSections } from "@/components/nav-config";
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme";
 import { AVATAR_GRADIENTS, PROFILE_EVENT, type AvatarKind, type ProfileData } from "@/lib/profile/avatars";
@@ -617,14 +618,14 @@ export function SettingsWorkbench() {
                 <p className="mt-1 text-[12.5px] text-text-tertiary">Generate CSV exports or a full backup package.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <a className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-[12.5px] font-medium text-text-secondary transition-colors hover:bg-surface-2" href="/api/exports?format=transactions_csv">
+                <ExportButton className="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-2 text-[12.5px] font-medium text-text-secondary transition-colors hover:bg-surface-2 disabled:opacity-60" aria-label="Transactions CSV" format="transactions_csv">
                   <Download size={15} />
                   Transactions CSV
-                </a>
-                <a className="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90" href="/api/exports?format=backup_package">
+                </ExportButton>
+                <ExportButton className="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60" aria-label="Backup package" format="backup_package">
                   <Archive size={15} />
                   Backup package
-                </a>
+                </ExportButton>
               </div>
             </div>
             <div className="divide-y divide-border-subtle">

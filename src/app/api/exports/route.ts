@@ -1,27 +1,42 @@
 import { NextResponse } from "next/server";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, documents, exportJobs, importRows, imports, savedImportMappings, transactions } from "@/lib/db/schema";
-import { buildBackupPackage, buildExportFilename, formatTagsForCsv, isExportFormat, toCsv } from "@/lib/finance/export";
+import { buildBackupPackage, buildExportFilename, exportFormats, formatTagsForCsv, toCsv, type ExportFormat } from "@/lib/finance/export";
+import { parseJsonRequest } from "@/lib/http/request";
 import { logServerError } from "@/lib/observability/server-logger";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 import packageJson from "../../../../package.json";
 
-export async function GET(request: Request) {
+const exportRequestSchema = z.object({
+  format: z.enum(exportFormats),
+});
+
+export function GET() {
+  return NextResponse.json({ error: "Use POST to generate exports." }, { status: 405, headers: { Allow: "POST" } });
+}
+
+export async function POST(request: Request) {
   const context = await getOrCreateCurrentLedger();
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(request.url);
-  const format = url.searchParams.get("format");
-
-  if (!isExportFormat(format)) {
-    return NextResponse.json({ error: "Unsupported export format" }, { status: 400 });
+  const parsed = await parseJsonRequest(request, exportRequestSchema, "export request");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
+  return generateExport(context, parsed.data.format);
+}
+
+async function generateExport(
+  context: NonNullable<Awaited<ReturnType<typeof getOrCreateCurrentLedger>>>,
+  format: ExportFormat,
+) {
   const rateLimit = checkRateLimit({
     key: `user:${context.user.id}:export:${format}`,
     ...rateLimitPolicies.exportGeneration,
