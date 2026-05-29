@@ -22,9 +22,10 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Production file metadata, import commit/rollback, and ledger settings failures no longer report local-only success after failed server writes.
 - Production document uploads fail closed unless metadata-only uploads are explicitly enabled with `DOCUMENT_STORAGE_MODE=metadata-only`.
 - Production setup readiness now requires database-backed rate limiting, and production API rate limits use Postgres instead of process memory.
+- Neon migration journal drift has been repaired for the configured database, and the `rate_limits` migration has been applied.
+- Mutation queries now keep ledger ownership predicates on follow-up updates after scoped reads.
 
 ## Remaining Review Items
 
-- Resolve migration journal drift in the current Neon database before relying on `drizzle-kit migrate` operationally.
 - Add production object storage for uploaded documents; metadata-only uploads are guarded behind an explicit beta flag.
 - Continue auditing lower-risk optimistic local mutation fallbacks outside the core financial register. Development demo mode is useful, but production should avoid local-only writes.

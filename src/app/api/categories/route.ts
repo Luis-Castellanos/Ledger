@@ -107,7 +107,11 @@ export async function PATCH(request: Request) {
     updatedAt: new Date(),
   };
 
-  const [category] = await db.update(categories).set(update).where(eq(categories.id, parsed.data.id)).returning();
+  const [category] = await db
+    .update(categories)
+    .set(update)
+    .where(and(eq(categories.id, parsed.data.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
+    .returning();
 
   await db.insert(auditEvents).values({
     ledgerId: context.ledger.id,

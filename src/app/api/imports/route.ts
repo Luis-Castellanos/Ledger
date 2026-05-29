@@ -237,7 +237,7 @@ export async function PATCH(request: Request) {
       validationStatus: parsed.data.status,
       proposedCategoryId: parsed.data.category ? category?.id ?? null : existingRow.proposedCategoryId,
     })
-    .where(eq(importRows.id, parsed.data.id))
+    .where(and(eq(importRows.id, parsed.data.id), eq(importRows.importId, existingRow.importId)))
     .returning();
 
   await db.insert(auditEvents).values({

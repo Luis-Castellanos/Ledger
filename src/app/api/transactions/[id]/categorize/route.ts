@@ -73,7 +73,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     updatedAt: new Date(),
   };
 
-  const [transaction] = await db.update(transactions).set(update).where(eq(transactions.id, id)).returning();
+  const [transaction] = await db
+    .update(transactions)
+    .set(update)
+    .where(and(eq(transactions.id, id), eq(transactions.ledgerId, current.ledger.id), isNull(transactions.deletedAt)))
+    .returning();
   const applied: { id: string }[] = [{ id }];
 
   if (parsed.data.applyToSimilar) {

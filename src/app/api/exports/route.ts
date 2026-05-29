@@ -74,7 +74,7 @@ async function generateExport(
         artifactUrl: filename,
         completedAt: new Date(),
       })
-      .where(eq(exportJobs.id, job.id));
+      .where(and(eq(exportJobs.id, job.id), eq(exportJobs.ledgerId, context.ledger.id)));
 
     await db.insert(auditEvents).values({
       ledgerId: context.ledger.id,
@@ -104,7 +104,7 @@ async function generateExport(
         errorMessage: error instanceof Error ? error.message : "Export failed",
         completedAt: new Date(),
       })
-      .where(eq(exportJobs.id, job.id));
+      .where(and(eq(exportJobs.id, job.id), eq(exportJobs.ledgerId, context.ledger.id)));
 
     return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }

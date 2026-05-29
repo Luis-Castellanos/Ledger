@@ -145,7 +145,11 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
   }
 
-  const [transaction] = await db.update(transactions).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(transactions.id, id)).returning();
+  const [transaction] = await db
+    .update(transactions)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(transactions.id, id), eq(transactions.ledgerId, current.ledger.id), isNull(transactions.deletedAt)))
+    .returning();
 
   await db.insert(auditEvents).values({
     ledgerId: current.ledger.id,
