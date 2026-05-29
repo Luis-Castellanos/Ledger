@@ -4,12 +4,18 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, merchantRules, transactions } from "@/lib/db/schema";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function POST() {
   const context = await getOrCreateCurrentLedger();
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "merchant-rules-apply");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const db = getDb();

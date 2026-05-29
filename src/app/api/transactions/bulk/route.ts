@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { auditEvents, categories, transactions } from "@/lib/db/schema";
 import { transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 const bodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(2000),
@@ -22,6 +23,11 @@ export async function POST(request: NextRequest) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "transactions-bulk");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, bodySchema, "bulk transaction update");

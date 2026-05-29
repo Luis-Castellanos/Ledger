@@ -29,6 +29,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Production server error logs redact raw exception messages while retaining structured event context.
 - Read-side account and category joins now include ledger ownership predicates before exposing related labels in transactions, imports, documents, rules, review, and exports.
 - API schemas now reject malformed account/category foreign keys as UUID validation errors before they can reach Postgres query predicates.
+- Mutating account, category, profile, settings, balance, transaction, import-row, rule, and document metadata routes now share per-user rate limiting instead of leaving lower-risk write paths unbounded.
 
 ## Remaining Review Items
 

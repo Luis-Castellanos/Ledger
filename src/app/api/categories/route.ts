@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { auditEvents, categories } from "@/lib/db/schema";
 import { createCategorySchema, slugifyCategoryName, updateCategoryApiSchema } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -36,6 +37,11 @@ export async function POST(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "categories");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, createCategorySchema, "category");
@@ -75,6 +81,11 @@ export async function PATCH(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "categories");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, updateCategoryApiSchema, "category update");

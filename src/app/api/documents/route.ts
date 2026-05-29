@@ -8,7 +8,7 @@ import { accounts, auditEvents, documents } from "@/lib/db/schema";
 import { canCreateDocumentMetadataOnly, documentStorageUnavailableResponse } from "@/lib/finance/document-storage";
 import { detectDocumentType, documentStatuses, documentTypes, validateDocumentIntake } from "@/lib/finance/document";
 import { parseFormDataRequest, parseJsonRequest } from "@/lib/http/request";
-import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
+import { checkRateLimit, checkUserMutationRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 const documentUpdateSchema = z.object({
   id: z.string().uuid(),
@@ -178,6 +178,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "documents");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
+  }
+
   const parsed = await parseJsonRequest(request, documentUpdateSchema, "document update");
   if (!parsed.ok) {
     return parsed.response;
@@ -237,6 +242,11 @@ export async function DELETE(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "documents");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, documentDeleteSchema, "document delete");

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { parseJsonRequest } from "@/lib/http/request";
 import { setProfile, type ProfilePatch, getProfile } from "@/lib/profile/load";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 const navSectionSchema = z.object({
   id: z.string().trim().min(1).max(80),
@@ -29,10 +31,15 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const currentProfile = await getProfile();
+  const context = await getOrCreateCurrentLedger();
 
-  if (!currentProfile) {
+  if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "profile");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, profilePatchSchema, "profile");

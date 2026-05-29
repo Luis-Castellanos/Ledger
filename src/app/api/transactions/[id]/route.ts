@@ -8,6 +8,7 @@ import { merchantPrefix } from "@/lib/finance/merchant";
 import { parseDollarAmount } from "@/lib/finance/money";
 import { transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 const bodySchema = z.object({
   merchant: z.string().trim().min(1).max(240).optional(),
@@ -40,6 +41,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   if (!current) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(current.user.id, "transactions");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const { id } = await context.params;
@@ -131,6 +137,11 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
 
   if (!current) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(current.user.id, "transactions");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const { id } = await context.params;

@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, balanceSnapshots } from "@/lib/db/schema";
 import { createBalanceSnapshotApiSchema } from "@/lib/finance/account";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "balance-snapshots");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, createBalanceSnapshotApiSchema, "balance snapshot");

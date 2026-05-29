@@ -32,6 +32,7 @@ globalRateLimitStore.__vaultRateLimitStore = store;
 export const rateLimitPolicies = {
   exportGeneration: { limit: 10, windowMs: 60_000 },
   importMutation: { limit: 30, windowMs: 60_000 },
+  userMutation: { limit: 60, windowMs: 60_000 },
 } as const;
 
 export async function checkRateLimit(policy: RateLimitPolicy, now = Date.now()): Promise<RateLimitResult> {
@@ -40,6 +41,13 @@ export async function checkRateLimit(policy: RateLimitPolicy, now = Date.now()):
   }
 
   return checkMemoryRateLimit(policy, now);
+}
+
+export function checkUserMutationRateLimit(userId: string, action: string) {
+  return checkRateLimit({
+    key: `user:${userId}:mutation:${action}`,
+    ...rateLimitPolicies.userMutation,
+  });
 }
 
 export function checkMemoryRateLimit(policy: RateLimitPolicy, now = Date.now()): RateLimitResult {

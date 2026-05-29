@@ -5,6 +5,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, transactions } from "@/lib/db/schema";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 const bodySchema = z.object({ clearCategory: z.boolean().default(false) });
 
@@ -13,6 +14,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
   if (!current) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(current.user.id, "transactions");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const { id } = await context.params;

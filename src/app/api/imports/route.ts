@@ -6,7 +6,7 @@ import { accounts, auditEvents, categories, importRows, imports, merchantRules, 
 import { buildImportFingerprint, stageImportApiSchema, updateImportRowSchema } from "@/lib/finance/import";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
-import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
+import { checkRateLimit, checkUserMutationRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function GET(request: Request) {
   const context = await getOrCreateCurrentLedger();
@@ -198,6 +198,11 @@ export async function PATCH(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "import-rows");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, updateImportRowSchema, "import row update");

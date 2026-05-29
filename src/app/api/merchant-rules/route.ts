@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, merchantRules } from "@/lib/db/schema";
 import { createMerchantRuleApiSchema, normalizeRuleMatchValue } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "merchant-rules");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, createMerchantRuleApiSchema, "merchant rule");

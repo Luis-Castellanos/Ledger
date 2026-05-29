@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { checkMemoryRateLimit, rateLimitHeaders, resetRateLimitStore, usesDurableRateLimitStore } from "./rate-limit";
+import { checkMemoryRateLimit, checkUserMutationRateLimit, rateLimitHeaders, resetRateLimitStore, usesDurableRateLimitStore } from "./rate-limit";
 
 describe("checkRateLimit", () => {
   beforeEach(() => {
@@ -25,6 +25,16 @@ describe("checkRateLimit", () => {
     expect(blocked.allowed).toBe(false);
     expect(blocked.retryAfterSeconds).toBe(59);
     expect(reset.allowed).toBe(true);
+  });
+
+  it("scopes generic mutation limits by user and action", async () => {
+    const first = await checkUserMutationRateLimit("user_1", "transactions");
+    const second = await checkUserMutationRateLimit("user_1", "categories");
+
+    expect(first.allowed).toBe(true);
+    expect(second.allowed).toBe(true);
+    expect(first.remaining).toBe(59);
+    expect(second.remaining).toBe(59);
   });
 });
 

@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, transactions } from "@/lib/db/schema";
 import { createManualTransactionApiSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
+import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -48,6 +49,11 @@ export async function POST(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "transactions");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, createManualTransactionApiSchema, "transaction");
@@ -129,6 +135,11 @@ export async function PATCH(request: Request) {
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "transactions");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
   }
 
   const parsed = await parseJsonRequest(request, updateTransactionReviewSchema, "transaction update");
