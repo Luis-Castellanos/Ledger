@@ -42,6 +42,9 @@ export const createBalanceSnapshotSchema = z.object({
       }
     }),
 });
+export const createBalanceSnapshotApiSchema = createBalanceSnapshotSchema.extend({
+  accountId: z.string().uuid(),
+});
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 export type UpdateAccountLifecycleInput = z.infer<typeof updateAccountLifecycleSchema>;

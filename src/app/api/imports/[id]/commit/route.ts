@@ -42,7 +42,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       currency: accounts.currency,
     })
     .from(imports)
-    .innerJoin(accounts, eq(imports.accountId, accounts.id))
+    .innerJoin(accounts, and(eq(imports.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id)))
     .where(and(eq(imports.id, parsed.data.id), eq(imports.ledgerId, context.ledger.id), isNull(accounts.deletedAt)))
     .limit(1);
 

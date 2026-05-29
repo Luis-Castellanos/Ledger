@@ -3,7 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, transactions } from "@/lib/db/schema";
-import { createManualTransactionSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
+import { createManualTransactionApiSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
@@ -28,8 +28,8 @@ export async function GET() {
       transferStatus: transactions.transferStatus,
     })
     .from(transactions)
-    .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .innerJoin(accounts, and(eq(transactions.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id)))
+    .leftJoin(categories, and(eq(transactions.categoryId, categories.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
     .where(and(eq(transactions.ledgerId, context.ledger.id), isNull(transactions.deletedAt)))
     .orderBy(desc(transactions.date), desc(transactions.createdAt))
     .limit(100);
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = await parseJsonRequest(request, createManualTransactionSchema, "transaction");
+  const parsed = await parseJsonRequest(request, createManualTransactionApiSchema, "transaction");
   if (!parsed.ok) {
     return parsed.response;
   }

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   createCategorySchema,
+  createMerchantRuleApiSchema,
   createMerchantRuleSchema,
   findMatchingMerchantRule,
   normalizeRuleMatchValue,
   slugifyCategoryName,
+  updateCategoryApiSchema,
   updateCategorySchema,
 } from "./rules";
 
@@ -21,6 +23,10 @@ describe("updateCategorySchema", () => {
     expect(updateCategorySchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000" }).success).toBe(false);
     expect(updateCategorySchema.safeParse({ id: "550e8400-e29b-41d4-a716-446655440000", isArchived: true }).success).toBe(true);
   });
+
+  it("rejects malformed category ids before they reach database queries", () => {
+    expect(updateCategoryApiSchema.safeParse({ id: "category_1", isArchived: true }).success).toBe(false);
+  });
 });
 
 describe("createMerchantRuleSchema", () => {
@@ -32,6 +38,16 @@ describe("createMerchantRuleSchema", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("rejects malformed foreign keys before they reach database queries", () => {
+    expect(
+      createMerchantRuleApiSchema.safeParse({
+        name: "Apple subscriptions",
+        categoryId: "category_1",
+        matchValue: "APPLE.COM/BILL",
+      }).success,
+    ).toBe(false);
   });
 });
 

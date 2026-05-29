@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       },
     })
     .from(transactions)
-    .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+    .innerJoin(accounts, and(eq(transactions.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id)))
     .where(and(eq(transactions.ledgerId, context.ledger.id), eq(transactions.reviewStatus, "needs_review"), isNull(transactions.deletedAt), skipClause))
     .orderBy(asc(transactions.date), asc(transactions.createdAt))
     .limit(1);
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
           },
         })
         .from(transactions)
-        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(categories, and(eq(transactions.categoryId, categories.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
         .where(and(eq(transactions.ledgerId, context.ledger.id), isNull(transactions.deletedAt), ne(transactions.id, txn.id), sql`${transactions.rawDescription} ILIKE ${prefix + "%"}`))
         .orderBy(desc(transactions.date))
         .limit(params.data.limit)

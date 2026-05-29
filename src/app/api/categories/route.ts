@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, categories } from "@/lib/db/schema";
-import { createCategorySchema, slugifyCategoryName, updateCategorySchema } from "@/lib/finance/rules";
+import { createCategorySchema, slugifyCategoryName, updateCategoryApiSchema } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
@@ -77,7 +77,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = await parseJsonRequest(request, updateCategorySchema, "category update");
+  const parsed = await parseJsonRequest(request, updateCategoryApiSchema, "category update");
   if (!parsed.ok) {
     return parsed.response;
   }

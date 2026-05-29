@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createManualTransactionSchema, parseTagList, updateTransactionReviewSchema } from "./transaction";
+import { createManualTransactionApiSchema, createManualTransactionSchema, parseTagList, updateTransactionReviewSchema } from "./transaction";
+
+const accountId = "550e8400-e29b-41d4-a716-446655440001";
 
 describe("createManualTransactionSchema", () => {
   it("parses signed dollar amounts to minor units", () => {
     const parsed = createManualTransactionSchema.parse({
       date: "2026-05-27",
-      accountId: "account_1",
+      accountId,
       merchant: "Local Bookstore",
       categoryName: "Shopping",
       amount: "-31.45",
@@ -15,8 +17,19 @@ describe("createManualTransactionSchema", () => {
   });
 
   it("rejects invalid transaction dates", () => {
-    const parsed = createManualTransactionSchema.safeParse({
+    const parsed = createManualTransactionApiSchema.safeParse({
       date: "05/27/2026",
+      accountId,
+      merchant: "Local Bookstore",
+      amount: "-31.45",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects malformed account ids before they reach database queries", () => {
+    const parsed = createManualTransactionApiSchema.safeParse({
+      date: "2026-05-27",
       accountId: "account_1",
       merchant: "Local Bookstore",
       amount: "-31.45",
@@ -28,7 +41,7 @@ describe("createManualTransactionSchema", () => {
   it("normalizes optional transaction tags", () => {
     const parsed = createManualTransactionSchema.parse({
       date: "2026-05-27",
-      accountId: "account_1",
+      accountId,
       merchant: "Local Bookstore",
       categoryName: "Shopping",
       amount: "-31.45",

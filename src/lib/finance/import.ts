@@ -30,6 +30,9 @@ export const stageImportSchema = z.object({
   savedMappingId: z.string().uuid().optional(),
   rows: z.array(stageImportRowSchema).min(1).max(1_000),
 });
+export const stageImportApiSchema = stageImportSchema.extend({
+  accountId: z.string().uuid(),
+});
 
 export const savedImportMappingSchema = z.object({
   accountId: z.string().min(1).optional(),
@@ -47,6 +50,9 @@ export const savedImportMappingSchema = z.object({
       message: "Map either amount or debit/credit columns.",
       path: ["amount"],
     }),
+});
+export const savedImportMappingApiSchema = savedImportMappingSchema.extend({
+  accountId: z.string().uuid().optional(),
 });
 
 export const updateImportRowSchema = z.object({

@@ -3,7 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, balanceSnapshots } from "@/lib/db/schema";
-import { createBalanceSnapshotSchema } from "@/lib/finance/account";
+import { createBalanceSnapshotApiSchema } from "@/lib/finance/account";
 import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = await parseJsonRequest(request, createBalanceSnapshotSchema, "balance snapshot");
+  const parsed = await parseJsonRequest(request, createBalanceSnapshotApiSchema, "balance snapshot");
   if (!parsed.ok) {
     return parsed.response;
   }

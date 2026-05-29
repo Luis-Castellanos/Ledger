@@ -3,7 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, savedImportMappings } from "@/lib/db/schema";
-import { savedImportMappingSchema } from "@/lib/finance/import";
+import { savedImportMappingApiSchema } from "@/lib/finance/import";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const parsed = await parseJsonRequest(request, savedImportMappingSchema, "import mapping");
+  const parsed = await parseJsonRequest(request, savedImportMappingApiSchema, "import mapping");
   if (!parsed.ok) {
     return parsed.response;
   }

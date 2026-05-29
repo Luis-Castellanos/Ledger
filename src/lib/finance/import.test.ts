@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { buildImportFingerprint, importActionParamsSchema, savedImportMappingSchema, stageImportSchema, updateImportRowSchema } from "./import";
+import {
+  buildImportFingerprint,
+  importActionParamsSchema,
+  savedImportMappingApiSchema,
+  stageImportApiSchema,
+  stageImportSchema,
+  updateImportRowSchema,
+} from "./import";
 import { parseCsvImportRows } from "./import-csv";
+
+const accountId = "550e8400-e29b-41d4-a716-446655440001";
 
 describe("stageImportSchema", () => {
   it("parses staged row amounts into minor units", () => {
     const parsed = stageImportSchema.parse({
-      accountId: "account_1",
+      accountId,
       filename: "checking.csv",
       rows: [{ rowNumber: 1, date: "2026-05-27", description: "Coffee", amount: "-4.25" }],
     });
@@ -15,7 +24,17 @@ describe("stageImportSchema", () => {
   });
 
   it("rejects empty import files", () => {
-    const parsed = stageImportSchema.safeParse({ accountId: "account_1", filename: "empty.csv", rows: [] });
+    const parsed = stageImportSchema.safeParse({ accountId, filename: "empty.csv", rows: [] });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects malformed account ids before they reach database queries", () => {
+    const parsed = stageImportApiSchema.safeParse({
+      accountId: "account_1",
+      filename: "checking.csv",
+      rows: [{ rowNumber: 1, date: "2026-05-27", description: "Coffee", amount: "-4.25" }],
+    });
 
     expect(parsed.success).toBe(false);
   });
@@ -24,7 +43,7 @@ describe("stageImportSchema", () => {
 describe("savedImportMappingSchema", () => {
   it("requires enough columns to map a CSV amount", () => {
     expect(
-      savedImportMappingSchema.safeParse({
+      savedImportMappingApiSchema.safeParse({
         name: "Checking CSV",
         mapping: {
           date: "Transaction Date",
@@ -36,11 +55,25 @@ describe("savedImportMappingSchema", () => {
     ).toBe(true);
 
     expect(
-      savedImportMappingSchema.safeParse({
+      savedImportMappingApiSchema.safeParse({
         name: "Broken mapping",
         mapping: {
           date: "Transaction Date",
           description: "Memo",
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects malformed scoped account ids", () => {
+    expect(
+      savedImportMappingApiSchema.safeParse({
+        accountId: "account_1",
+        name: "Checking CSV",
+        mapping: {
+          date: "Transaction Date",
+          description: "Memo",
+          amount: "Amount",
         },
       }).success,
     ).toBe(false);
@@ -85,7 +118,7 @@ describe("importActionParamsSchema", () => {
 describe("buildImportFingerprint", () => {
   it("returns stable fingerprints for identical payloads", () => {
     const input = {
-      accountId: "account_1",
+      accountId,
       filename: "checking.csv",
       rows: [{ rowNumber: 1, date: "2026-05-27", description: "Coffee", amount: -425, category: "Uncategorized", status: "needs_review" as const }],
     };

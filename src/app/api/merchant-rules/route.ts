@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, merchantRules } from "@/lib/db/schema";
-import { createMerchantRuleSchema, normalizeRuleMatchValue } from "@/lib/finance/rules";
+import { createMerchantRuleApiSchema, normalizeRuleMatchValue } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
@@ -28,8 +28,8 @@ export async function GET() {
       accountName: accounts.name,
     })
     .from(merchantRules)
-    .innerJoin(categories, eq(merchantRules.categoryId, categories.id))
-    .leftJoin(accounts, eq(merchantRules.accountId, accounts.id))
+    .innerJoin(categories, and(eq(merchantRules.categoryId, categories.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
+    .leftJoin(accounts, and(eq(merchantRules.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id), isNull(accounts.deletedAt)))
     .where(and(eq(merchantRules.ledgerId, context.ledger.id), isNull(merchantRules.deletedAt)))
     .orderBy(asc(merchantRules.priority), asc(merchantRules.name));
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = await parseJsonRequest(request, createMerchantRuleSchema, "merchant rule");
+  const parsed = await parseJsonRequest(request, createMerchantRuleApiSchema, "merchant rule");
   if (!parsed.ok) {
     return parsed.response;
   }

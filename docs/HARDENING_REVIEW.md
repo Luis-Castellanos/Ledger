@@ -27,6 +27,8 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Public health checks now return only minimal readiness counts; detailed setup state remains behind authenticated API protection.
 - Failed export jobs persist a generic user-facing error instead of raw server exception messages.
 - Production server error logs redact raw exception messages while retaining structured event context.
+- Read-side account and category joins now include ledger ownership predicates before exposing related labels in transactions, imports, documents, rules, review, and exports.
+- API schemas now reject malformed account/category foreign keys as UUID validation errors before they can reach Postgres query predicates.
 
 ## Remaining Review Items
 

@@ -51,7 +51,7 @@ export async function GET() {
       accountType: accounts.type,
     })
     .from(documents)
-    .leftJoin(accounts, eq(documents.accountId, accounts.id))
+    .leftJoin(accounts, and(eq(documents.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id), isNull(accounts.deletedAt)))
     .where(and(eq(documents.ledgerId, context.ledger.id), isNull(documents.deletedAt)))
     .orderBy(desc(documents.createdAt));
 

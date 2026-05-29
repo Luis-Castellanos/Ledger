@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ mer
       categoryName: categories.name,
     })
     .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(categories, and(eq(transactions.categoryId, categories.id), eq(categories.ledgerId, current.ledger.id), isNull(categories.deletedAt)))
     .where(
       and(
         eq(transactions.ledgerId, current.ledger.id),

@@ -24,6 +24,9 @@ export const createManualTransactionSchema = z.object({
   notes: z.string().trim().max(2_000).optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(12).optional().transform(normalizeTags),
 });
+export const createManualTransactionApiSchema = createManualTransactionSchema.extend({
+  accountId: z.string().uuid(),
+});
 
 export const updateTransactionReviewSchema = z.object({
   id: z.string().uuid(),

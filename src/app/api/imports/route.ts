@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, importRows, imports, merchantRules, savedImportMappings } from "@/lib/db/schema";
-import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "@/lib/finance/import";
+import { buildImportFingerprint, stageImportApiSchema, updateImportRowSchema } from "@/lib/finance/import";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       rejectedRows: imports.rejectedRowCount,
     })
     .from(imports)
-    .innerJoin(accounts, eq(imports.accountId, accounts.id))
+    .innerJoin(accounts, and(eq(imports.accountId, accounts.id), eq(accounts.ledgerId, context.ledger.id)))
     .where(eq(imports.ledgerId, context.ledger.id))
     .orderBy(desc(imports.createdAt))
     .limit(20);
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
           status: importRows.validationStatus,
         })
         .from(importRows)
-        .leftJoin(categories, eq(importRows.proposedCategoryId, categories.id))
+        .leftJoin(categories, and(eq(importRows.proposedCategoryId, categories.id), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
         .where(eq(importRows.importId, selectedImportId))
         .orderBy(importRows.rowNumber)
     : [];
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const parsed = await parseJsonRequest(request, stageImportSchema, "import");
+  const parsed = await parseJsonRequest(request, stageImportApiSchema, "import");
   if (!parsed.ok) {
     return parsed.response;
   }
@@ -215,7 +215,7 @@ export async function PATCH(request: Request) {
       ledgerId: imports.ledgerId,
     })
     .from(importRows)
-    .innerJoin(imports, eq(importRows.importId, imports.id))
+    .innerJoin(imports, and(eq(importRows.importId, imports.id), eq(imports.ledgerId, context.ledger.id)))
     .where(and(eq(importRows.id, parsed.data.id), eq(imports.ledgerId, context.ledger.id)))
     .limit(1);
 

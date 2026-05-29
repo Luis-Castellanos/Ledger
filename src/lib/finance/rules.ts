@@ -8,17 +8,24 @@ export const createCategorySchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).default("#57b89d"),
 });
 
-export const updateCategorySchema = z
-  .object({
-    id: z.string().trim().min(1),
-    name: z.string().trim().min(1).max(120).optional(),
-    flowType: categoryFlowTypeSchema.optional(),
-    color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    isArchived: z.boolean().optional(),
-  })
-  .refine((value) => value.name !== undefined || value.flowType !== undefined || value.color !== undefined || value.isArchived !== undefined, {
+const updateCategoryBaseSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(120).optional(),
+  flowType: categoryFlowTypeSchema.optional(),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  isArchived: z.boolean().optional(),
+});
+export const updateCategorySchema = updateCategoryBaseSchema.refine(
+  (value) => value.name !== undefined || value.flowType !== undefined || value.color !== undefined || value.isArchived !== undefined,
+  {
     message: "At least one category field is required.",
-  });
+  },
+);
+export const updateCategoryApiSchema = updateCategoryBaseSchema.extend({
+  id: z.string().uuid(),
+}).refine((value) => value.name !== undefined || value.flowType !== undefined || value.color !== undefined || value.isArchived !== undefined, {
+  message: "At least one category field is required.",
+});
 
 export const merchantRuleMatchTypeSchema = z.enum(["contains", "exact", "starts_with"]);
 
@@ -29,6 +36,10 @@ export const createMerchantRuleSchema = z.object({
   matchType: merchantRuleMatchTypeSchema.default("contains"),
   matchValue: z.string().trim().min(2).max(240),
   priority: z.number().int().min(1).max(1_000).default(100),
+});
+export const createMerchantRuleApiSchema = createMerchantRuleSchema.extend({
+  categoryId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
 });
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;

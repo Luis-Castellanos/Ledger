@@ -133,8 +133,8 @@ async function buildTransactionsCsvResponse({ ledgerId, filename }: { ledgerId: 
       updatedAt: transactions.updatedAt,
     })
     .from(transactions)
-    .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .innerJoin(accounts, and(eq(transactions.accountId, accounts.id), eq(accounts.ledgerId, ledgerId)))
+    .leftJoin(categories, and(eq(transactions.categoryId, categories.id), eq(categories.ledgerId, ledgerId), isNull(categories.deletedAt)))
     .where(and(eq(transactions.ledgerId, ledgerId), isNull(transactions.deletedAt)))
     .orderBy(desc(transactions.date), desc(transactions.createdAt));
 
@@ -217,7 +217,7 @@ async function buildBackupPackageResponse({
         createdAt: importRows.createdAt,
       })
       .from(importRows)
-      .innerJoin(imports, eq(importRows.importId, imports.id))
+      .innerJoin(imports, and(eq(importRows.importId, imports.id), eq(imports.ledgerId, ledger.id)))
       .where(eq(imports.ledgerId, ledger.id))
       .orderBy(asc(importRows.rowNumber)),
     db.select().from(auditEvents).where(eq(auditEvents.ledgerId, ledger.id)).orderBy(asc(auditEvents.createdAt)),
