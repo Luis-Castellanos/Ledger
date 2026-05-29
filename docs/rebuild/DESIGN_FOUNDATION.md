@@ -12,8 +12,8 @@ Praxis Ledger should feel like a modern, refined banking app: calm, precise, dur
 
 Reference qualities:
 
-- Fidelity-like institutional density, card structure, tab treatment, line weight, and account-context layout.
-- Robinhood-like clarity, speed, and modern product polish where it improves everyday use.
+- Gringotts Vault page architecture, information density, sidebar shell, and transaction workbench model.
+- Fidelity-like institutional palette, line weight, tab treatment, and mature account-management feel.
 - Efficient use of space without massive whitespace.
 - Serious wealth-management feel without becoming brokerage or trading software.
 
@@ -39,11 +39,12 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use a **dark institutional finance workspace** as the base direction, informed by Fidelity's dense account-management UI and adapted to a personal finance ledger.
+Use **Gringotts Vault layouts with Fidelity-derived colors and surface treatment** as the base direction.
 
 Current preference:
 
-- Dark institutional default.
+- Gringotts page structures copied forward as the layout reference.
+- Fidelity-derived dark institutional color system.
 - Dense but readable work surfaces.
 - Excellent table hierarchy.
 - Compact dashboard summaries.
@@ -55,26 +56,28 @@ Current preference:
 
 Rationale:
 
-- The current app has the right product skeleton, but the visual system is too thin and prototype-like.
-- The supplied Fidelity screenshots show stronger patterns for dense financial account management: tab hierarchy, action pills, rounded cards, readable tables, and account context.
-- Praxis should borrow the structural language and maturity, not Fidelity's brand, copy, logo, or exact trade dress.
+- The old Gringotts app already solved many layout and workflow questions: sidebar-first navigation, compact KPI panels, dense account screens, and a strong transaction workbench.
+- The supplied Fidelity screenshots provide the better color, border, tab, and surface direction for a mature finance product.
+- Praxis should reuse Gringotts layout ideas and Fidelity-like visual principles, without copying Fidelity's brand, copy, logo, or exact trade dress.
 - The design should feel polished, premium, and durable without sacrificing information density.
-- The old Gringotts transaction layout had the right ledger-workbench instincts and should be preserved as the transaction-page interaction model.
+- The Gringotts transaction layout should become the reference for all ledger workbench pages, not only Transactions.
 
 ## Selected Design Reference
 
 Working direction:
 
-- **Global app:** dark institutional finance workspace informed by Fidelity's account-management density and component hierarchy.
-- **Transactions:** Gringotts Vault-inspired ledger workbench, restyled into the dark institutional system.
+- **Global app:** Gringotts Vault app shell and page architecture, recolored with a Fidelity-derived dark institutional palette.
+- **Transactions:** Gringotts Vault transaction workbench, restyled with Fidelity-derived colors, borders, typography, and states.
+- **Other pages:** Gringotts-style workbench layouts adapted per domain instead of new generic dashboard/card layouts.
 
-This means the product should use mature finance-app cues: full-viewport shell, top-level navigation, contextual account rail, rounded graphite panels, visible separators, green active tabs, compact filter pills, strong table hierarchy, and precise labels.
+This means the product should use mature finance-app cues: full-viewport shell, persistent sidebar, compact page headers, dense KPI panels, rounded graphite work surfaces, visible separators, green active states, compact filter pills, strong table hierarchy, and precise labels.
 
-It should not become a Fidelity clone, brokerage interface, or trading app. The goal is to translate useful patterns into a distinct Praxis Ledger product.
+It should not become a Fidelity clone, brokerage interface, or trading app. It also should not copy Gringotts code wholesale when the new codebase has better production boundaries. The goal is to translate the Gringotts product layout into a distinct Praxis Ledger implementation.
 
 ### Reference Documents
 
 - [FIDELITY_REFERENCE_ANALYSIS.md](./FIDELITY_REFERENCE_ANALYSIS.md)
+- Old Gringotts design reference: `/Users/luis/Documents/Codex/2026-05-27/i-started-a-web-app-that/Gringotts-Vault/DESIGN.md`
 - Legacy generated concept board: `/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a19178c06e4819a89fe74ac27c1933f.png`
 
 ## Layout System
@@ -85,11 +88,12 @@ The app should occupy the full viewport. No decorative outer frame, browser-with
 
 Desktop default:
 
-- Top global navigation for primary product modules.
-- Contextual account rail on account-centric pages.
+- Persistent left sidebar for primary product modules, modeled after Gringotts.
+- Compact page header inside the main content area.
+- Contextual secondary rails or inspector panels only when the page benefits from them.
 - Main content uses a full-width work surface.
 - Page content can have max readable widths only where the task calls for it, such as settings forms.
-- Left navigation should not be overloaded with both app modules and account context.
+- Left navigation can support user customization later, but V1 should prioritize stability and clarity.
 
 Tablet:
 
@@ -109,7 +113,7 @@ Mobile:
 - Use cards for repeated entities, modal content, compact summaries, and isolated actions.
 - Prefer full-width bands, table frames, split panes, and workbench sections for core workflows.
 - Border radius should be restrained: `6px` default, `8px` maximum for ordinary UI.
-- Fidelity-derived major panels may use larger radii, roughly `20-24px`, when the surface is a true card/workbench container.
+- Major Gringotts-style panels should use larger radii, roughly `18-24px`, with Fidelity-derived border contrast.
 
 ## Typography
 
@@ -217,7 +221,7 @@ Avoid:
 
 The transaction table is the most important V1 screen.
 
-Use the old Gringotts Vault transaction page as the interaction reference, restyled into the dark institutional design system.
+Use the old Gringotts Vault transaction page as the interaction reference, restyled into the Fidelity-derived dark institutional color system.
 
 Preserve these Gringotts-derived concepts:
 

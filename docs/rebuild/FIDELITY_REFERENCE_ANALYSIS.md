@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document translates the supplied Fidelity screenshots into a reusable Praxis Ledger design direction.
+This document translates the supplied Fidelity screenshots into a reusable Praxis Ledger visual direction. The structural layout reference is now Gringotts Vault; Fidelity supplies the palette, surface treatment, line weight, and selected-state feel.
 
 The goal is not to copy Fidelity's logo, brand identity, proprietary trade dress, exact page structure, or text. The goal is to extract durable product-design patterns that are appropriate for a serious personal finance ledger:
 
@@ -10,7 +10,7 @@ The goal is not to copy Fidelity's logo, brand identity, proprietary trade dress
 - Dark institutional palette with warm undertones.
 - Clear green active and positive states.
 - Strong tab, filter, card, and table hierarchy.
-- Mature account-management layout patterns.
+- Mature account-management visual patterns.
 
 ## Reference Summary
 
@@ -26,11 +26,11 @@ The screenshots show a high-density institutional finance interface with a dark 
 
 ## Product Translation
 
-Praxis Ledger should use this as the stronger reference direction:
+Praxis Ledger should use this as the visual reference direction:
 
 - Dark institutional finance app, not decorative dark dashboard.
 - Serious wealth-management feel, adapted to personal finance transactions.
-- Full-viewport application, no decorative browser-frame padding.
+- Gringotts-style full-viewport application, no decorative browser-frame padding.
 - Financial tables and review queues as first-class work surfaces.
 - Cards only where they group real account, balance, insight, or workflow content.
 - Green as the primary active/success accent, used sparingly.
@@ -43,6 +43,29 @@ Avoid:
 - Oversized empty dashboard cards.
 - Dark neon terminal styling.
 - One-note black and green UI.
+
+## Relationship To Gringotts
+
+Gringotts Vault is the layout source of truth:
+
+- Persistent left sidebar.
+- Compact page headers.
+- Dashboard KPI panels.
+- Dense account and transaction workbenches.
+- Date-grouped ledger rows.
+- Operational panels rather than marketing-style cards.
+- Generous card radii and compact finance controls.
+
+Fidelity is the color and finish source:
+
+- Warmer page canvas.
+- Cooler graphite panels.
+- More visible borders.
+- Softer off-white type.
+- Restrained green selected states.
+- Larger, more legible user-facing text.
+
+Implementation should migrate Gringotts layouts intentionally into the new codebase rather than copying old code wholesale.
 
 ## Visual Tokens
 
@@ -122,13 +145,13 @@ Starting rules:
 
 ### Global Chrome
 
-Use a top global navigation model for the long-term product:
+Use the Gringotts persistent sidebar as the default product navigation model:
 
-- Brand/product mark on the left.
-- Primary modules across the header.
-- Utility actions on the right.
-- Search in the upper right.
-- Secondary action rail below the header when the current section needs repeated commands.
+- Brand/product mark and user context at the top.
+- Primary modules grouped by section.
+- Active state uses a green left bar or strong green-tinted row.
+- Bottom area can hold account/user controls and secondary status.
+- Page-level search/actions live in the content header, not global chrome.
 
 Praxis-specific primary modules should eventually map to:
 
@@ -141,13 +164,14 @@ Praxis-specific primary modules should eventually map to:
 - Reports
 - Settings
 
-### Account Rail
+### Account And Context Rails
 
-The left rail in the screenshot is not generic navigation; it is account context.
+Fidelity's left rail is account context, while Gringotts' left rail is app navigation. Praxis should keep those roles separate.
 
 For Praxis:
 
-- Use it on Dashboard, Accounts, and Net Worth views.
+- Keep the main left sidebar for app navigation.
+- Use account/context rails on Dashboard, Accounts, Net Worth, and account detail views only when useful.
 - Show all accounts, grouped accounts, balances, freshness, and add/link account actions.
 - Do not overload it with every app module.
 - Keep app navigation separate from account context.
@@ -251,9 +275,9 @@ Do not show internal production readiness checks, provider keys, deployment stat
 
 ## Implementation Order
 
-1. Replace the current app shell with the Fidelity-derived full-viewport dark shell.
+1. Preserve the Gringotts-style full-viewport sidebar shell and recolor it with Fidelity-derived tokens.
 2. Create shared tokens for color, typography, radius, borders, and component states.
-3. Rebuild navigation into global chrome plus contextual account rail.
+3. Normalize page headers, tabs, filters, and workbench panels to the Gringotts layout model.
 4. Restyle Transactions first, because it is the core product surface.
 5. Restyle Dashboard and Accounts next.
 6. Normalize Settings into user-facing preferences.
@@ -262,6 +286,6 @@ Do not show internal production readiness checks, provider keys, deployment stat
 ## Open Decisions
 
 - Whether dark mode becomes the default product identity or one of two themes.
-- Whether the account rail appears on every page or only account-centric pages.
-- Whether global navigation moves fully to the top header in V1 or after core feature parity.
+- Whether Gringotts' customizable sidebar behavior returns in V1 or later.
+- Whether account context rails appear on every finance page or only account-centric pages.
 - How much warmth to keep in the page background versus a cooler graphite institutional look.

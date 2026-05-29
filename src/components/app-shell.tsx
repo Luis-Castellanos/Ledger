@@ -29,12 +29,12 @@ const nav = [
 export function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-[var(--app-bg)] text-[var(--ink)]">
-      <div className="grid min-h-screen w-full grid-cols-1 overflow-hidden bg-[var(--app-bg)] lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="border-b border-[var(--line)] bg-[var(--rail)] lg:border-b-0 lg:border-r">
+      <div className="grid min-h-screen w-full grid-cols-1 overflow-hidden bg-[var(--app-bg)] lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="border-b border-[var(--line-strong)] bg-[var(--rail)] lg:border-b-0 lg:border-r">
           <div className="flex h-full min-h-0 flex-col">
             <div className="flex h-20 items-center justify-between px-6">
               <Link className="flex items-center gap-3 no-underline" href="/">
-                <div className="flex size-8 items-center justify-center rounded-[6px] border border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink)]">
+                <div className="flex size-9 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink)]">
                   <BookOpenCheck size={17} />
                 </div>
                 <div>
@@ -57,11 +57,11 @@ export function AppShell({ active, children }: { active: string; children: React
               ))}
             </nav>
 
-            <div className="mobile-auth border-t border-[var(--line)] px-3 py-3 lg:hidden">
+            <div className="mobile-auth border-t border-[var(--line-strong)] px-3 py-3 lg:hidden">
               <AuthControls />
             </div>
 
-            <div className="mt-auto hidden border-t border-[var(--line)] p-5 lg:block">
+            <div className="mt-auto hidden border-t border-[var(--line-strong)] p-5 lg:block">
               <AuthControls />
               <div className="metric-strip">
                 <span>Review queue</span>

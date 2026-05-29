@@ -16,10 +16,7 @@
 
 ### Changed
 
+- Design direction now uses Gringotts Vault page layouts with Fidelity-derived dark institutional colors.
+- Shared app tokens now use the Fidelity-derived palette, stronger borders, larger radii, and wider Gringotts-style sidebar.
 - Transaction toolbar layout now wraps filter/sort controls instead of compressing labels.
 - Deployment verification docs now include the secret scan gate.
-
-### Blocked
-
-- GitHub push is blocked by local 1Password SSH signing: `sign_and_send_pubkey ... communication with agent failed`.
-- Production deploy remains blocked until live Clerk production env vars are added to Vercel and Clerk SSL is active.
