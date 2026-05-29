@@ -65,7 +65,7 @@ Neon project and migration operations are documented in [DATABASE.md](./DATABASE
 
 ## Rate Limiting
 
-V1 uses Postgres-backed, per-user rate limits for import mutations and export generation in production. Local development and tests keep an in-process limiter for speed. The production limiter depends on the checked-in `rate_limits` migration being applied to the target Neon database before deployment.
+V1 uses Postgres-backed, per-user rate limits for import mutations and export generation in production. Local development and tests keep an in-process limiter for speed. The production limiter depends on the checked-in `rate_limits` migration being applied to the target Neon database before deployment. `npm run db:migrate` loads the local Next.js env files before invoking Drizzle so local deploy prep does not require exporting `DATABASE_URL` manually.
 
 ## Vercel Setup
 

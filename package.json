@@ -16,7 +16,7 @@
     "setup:check": "node scripts/verify-production-env.mjs",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/run-drizzle-with-env.mjs migrate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
