@@ -102,7 +102,9 @@ export const merchants = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
-    normalizedUnique: uniqueIndex("merchants_ledger_normalized_unique").on(table.ledgerId, table.normalizedName),
+    normalizedUnique: uniqueIndex("merchants_ledger_normalized_unique")
+      .on(table.ledgerId, table.normalizedName)
+      .where(sql`${table.deletedAt} is null`),
   }),
 );
 
@@ -213,7 +215,9 @@ export const documents = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
-    fileUnique: uniqueIndex("documents_ledger_file_sha_unique").on(table.ledgerId, table.fileSha256),
+    fileUnique: uniqueIndex("documents_ledger_file_sha_unique")
+      .on(table.ledgerId, table.fileSha256)
+      .where(sql`${table.deletedAt} is null`),
     statusIdx: index("documents_ledger_status_idx").on(table.ledgerId, table.status),
     accountIdx: index("documents_ledger_account_idx").on(table.ledgerId, table.accountId),
   }),
@@ -267,7 +271,9 @@ export const transactions = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
-    dedupeUnique: uniqueIndex("transactions_ledger_account_dedupe_unique").on(table.ledgerId, table.accountId, table.dedupeKey),
+    dedupeUnique: uniqueIndex("transactions_ledger_account_dedupe_unique")
+      .on(table.ledgerId, table.accountId, table.dedupeKey)
+      .where(sql`${table.deletedAt} is null`),
     dateIdx: index("transactions_ledger_date_idx").on(table.ledgerId, table.date),
     accountDateIdx: index("transactions_ledger_account_date_idx").on(table.ledgerId, table.accountId, table.date),
     reviewIdx: index("transactions_ledger_review_idx").on(table.ledgerId, table.reviewStatus),

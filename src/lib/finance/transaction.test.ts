@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createManualTransactionApiSchema, createManualTransactionSchema, parseTagList, updateTransactionReviewSchema } from "./transaction";
+import {
+  buildTransactionDedupeKey,
+  createManualTransactionApiSchema,
+  createManualTransactionSchema,
+  parseTagList,
+  updateTransactionReviewSchema,
+} from "./transaction";
 
 const accountId = "550e8400-e29b-41d4-a716-446655440001";
 
@@ -50,6 +56,35 @@ describe("createManualTransactionSchema", () => {
 
     expect(parsed.tags).toEqual(["tax", "reimbursable"]);
     expect(parseTagList("tax, reimbursable, tax")).toEqual(["tax", "reimbursable"]);
+  });
+});
+
+describe("buildTransactionDedupeKey", () => {
+  const input = {
+    ledgerId: "550e8400-e29b-41d4-a716-446655440000",
+    accountId,
+    date: "2026-05-27",
+    amountMinor: -3145,
+    rawDescription: "Local Bookstore",
+  };
+
+  it("builds a stable content-derived key", () => {
+    expect(buildTransactionDedupeKey(input)).toBe(
+      buildTransactionDedupeKey({
+        ...input,
+        rawDescription: "  LOCAL   BOOKSTORE  ",
+      }),
+    );
+  });
+
+  it("changes when transaction identity fields change", () => {
+    const key = buildTransactionDedupeKey(input);
+
+    expect(buildTransactionDedupeKey({ ...input, ledgerId: "550e8400-e29b-41d4-a716-446655440099" })).not.toBe(key);
+    expect(buildTransactionDedupeKey({ ...input, accountId: "550e8400-e29b-41d4-a716-446655440099" })).not.toBe(key);
+    expect(buildTransactionDedupeKey({ ...input, date: "2026-05-28" })).not.toBe(key);
+    expect(buildTransactionDedupeKey({ ...input, amountMinor: -3146 })).not.toBe(key);
+    expect(buildTransactionDedupeKey({ ...input, rawDescription: "Different Store" })).not.toBe(key);
   });
 });
 

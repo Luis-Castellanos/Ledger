@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseDollarAmount } from "./money";
 
@@ -57,8 +58,29 @@ export type CreateManualTransactionInput = z.infer<typeof createManualTransactio
 export type UpdateTransactionReviewInput = z.infer<typeof updateTransactionReviewSchema>;
 export type TransactionTransferStatus = z.infer<typeof transactionTransferStatusSchema>;
 
+export function buildTransactionDedupeKey(input: {
+  ledgerId: string;
+  accountId: string;
+  date: string;
+  amountMinor: number;
+  rawDescription: string;
+}) {
+  const payload = [
+    input.ledgerId,
+    input.accountId,
+    input.date,
+    input.amountMinor.toString(),
+    normalizeDedupeDescription(input.rawDescription),
+  ].join("|");
+  return createHash("sha256").update(payload).digest("hex");
+}
+
 export function parseTagList(value: string) {
   return normalizeTags(value.split(","));
+}
+
+function normalizeDedupeDescription(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function normalizeTags(tags: string[] | undefined) {

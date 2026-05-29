@@ -3,7 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, transactions } from "@/lib/db/schema";
-import { createManualTransactionApiSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
+import { buildTransactionDedupeKey, createManualTransactionApiSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
@@ -80,8 +80,13 @@ export async function POST(request: Request) {
         .limit(1)
     : [];
 
-  const normalizedMerchant = parsed.data.merchant.toLowerCase().replace(/\s+/g, " ").trim();
-  const dedupeKey = ["manual", parsed.data.accountId, parsed.data.date, parsed.data.amount, normalizedMerchant, Date.now()].join(":");
+  const dedupeKey = buildTransactionDedupeKey({
+    ledgerId: context.ledger.id,
+    accountId: parsed.data.accountId,
+    date: parsed.data.date,
+    amountMinor: parsed.data.amount,
+    rawDescription: parsed.data.merchant,
+  });
 
   const [transaction] = await db
     .insert(transactions)

@@ -30,6 +30,8 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Read-side account and category joins now include ledger ownership predicates before exposing related labels in transactions, imports, documents, rules, review, and exports.
 - API schemas now reject malformed account/category foreign keys as UUID validation errors before they can reach Postgres query predicates.
 - Mutating account, category, profile, settings, balance, transaction, import-row, rule, and document metadata routes now share per-user rate limiting instead of leaving lower-risk write paths unbounded.
+- Soft-deletable document, merchant, and transaction uniqueness now uses partial indexes so deleted records do not block valid replacement records.
+- Manual transaction dedupe keys are now deterministic hashes of ledger, account, date, amount, and normalized description instead of timestamp-based unique strings.
 
 ## Remaining Review Items
 
