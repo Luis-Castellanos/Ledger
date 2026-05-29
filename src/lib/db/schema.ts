@@ -189,6 +189,36 @@ export const imports = pgTable(
   }),
 );
 
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull().references(() => ledgers.id),
+    accountId: uuid("account_id").references(() => accounts.id),
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id),
+    fileName: text("file_name").notNull(),
+    mimeType: text("mime_type").notNull().default("application/octet-stream"),
+    byteSize: bigint("byte_size", { mode: "number" }).notNull().default(0),
+    fileSha256: text("file_sha256").notNull(),
+    detectedType: text("detected_type").notNull().default("unknown"),
+    detectedIssuer: text("detected_issuer"),
+    statementPeriod: text("statement_period"),
+    status: text("status").notNull().default("uploaded"),
+    transactionCount: integer("transaction_count").notNull().default(0),
+    storageKey: text("storage_key"),
+    parseError: text("parse_error"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => ({
+    fileUnique: uniqueIndex("documents_ledger_file_sha_unique").on(table.ledgerId, table.fileSha256),
+    statusIdx: index("documents_ledger_status_idx").on(table.ledgerId, table.status),
+    accountIdx: index("documents_ledger_account_idx").on(table.ledgerId, table.accountId),
+  }),
+);
+
 export const importRows = pgTable(
   "import_rows",
   {
@@ -313,6 +343,7 @@ export const ledgerRelations = relations(ledgers, ({ one, many }) => ({
   merchantRules: many(merchantRules),
   settings: many(ledgerSettings),
   imports: many(imports),
+  documents: many(documents),
   transactions: many(transactions),
   balanceSnapshots: many(balanceSnapshots),
   exportJobs: many(exportJobs),
