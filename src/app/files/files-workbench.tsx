@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Search, Trash2 } from "lucide-react";
 import { documentStatuses, documentTypes, labelizeDocumentValue } from "@/lib/finance/document";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 type DocumentRow = {
   id: string;
@@ -137,6 +137,7 @@ export function FilesWorkbench() {
   );
 
   async function updateDocument(id: string, patch: Partial<Pick<DocumentRow, "accountId" | "detectedType" | "statementPeriod" | "detectedIssuer" | "status">>) {
+    const previous = documents;
     setDocuments((current) => current.map((document) => (document.id === id ? { ...document, ...patch } : document)));
     if (dataSource !== "database") {
       return;
@@ -153,6 +154,12 @@ export function FilesWorkbench() {
       }
       setMessage(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setDocuments(previous);
+        setMessage(productionFallbackMessage("File update"));
+        return;
+      }
+      setDataSource(fallbackDataSource());
       setMessage("File update stayed local because the API was unavailable.");
     }
   }
@@ -176,7 +183,7 @@ export function FilesWorkbench() {
       setMessage(null);
     } catch {
       setDocuments(previous);
-      setMessage("File delete failed.");
+      setMessage(canUseLocalFallback(dataSource) ? "File delete failed." : productionFallbackMessage("File delete"));
     }
   }
 

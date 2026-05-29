@@ -8,7 +8,7 @@ import { ALL_NAV_ITEMS, ITEM_BY_HREF, normalizeSections } from "@/components/nav
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme";
 import { AVATAR_GRADIENTS, PROFILE_EVENT, type AvatarKind, type ProfileData } from "@/lib/profile/avatars";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
-import { demoFallback } from "@/lib/demo-fallback";
+import { canUseLocalFallback, demoFallback, fallbackDataSource, productionFallbackMessage } from "@/lib/demo-fallback";
 
 type SettingsState = {
   user: {
@@ -226,6 +226,10 @@ export function SettingsWorkbench() {
       setFormState(payload.ledger);
       setMessage("Ledger settings saved.");
     } catch {
+      if (!canUseLocalFallback(fallbackDataSource())) {
+        setMessage(productionFallbackMessage("Ledger settings save"));
+        return;
+      }
       setSettings((current) => ({ ...current, ledger: parsed.data }));
       setFormState(parsed.data);
       setMessage("Settings are saved for this session. Permanent saving is unavailable right now.");

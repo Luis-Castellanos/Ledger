@@ -415,6 +415,12 @@ export function ImportsWorkbench() {
         setIsImportActionPending(false);
         return;
       } catch {
+        if (!canUseLocalFallback(dataSource)) {
+          setError(productionFallbackMessage(`Import ${action}`));
+          setIsImportActionPending(false);
+          return;
+        }
+        setDataSource(fallbackDataSource());
         setError(`Import ${action} stayed local because the API was unavailable.`);
         setIsImportActionPending(false);
         return;
