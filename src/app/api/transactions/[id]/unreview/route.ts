@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, transactions } from "@/lib/db/schema";
+import { parseJsonRequest } from "@/lib/http/request";
 
 const bodySchema = z.object({ clearCategory: z.boolean().default(false) });
 
@@ -15,9 +16,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 
   const { id } = await context.params;
-  const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid unreview request", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, bodySchema, "unreview request");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

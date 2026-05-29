@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { parseJsonRequest } from "@/lib/http/request";
 import { setProfile, type ProfilePatch, getProfile } from "@/lib/profile/load";
 
 const navSectionSchema = z.object({
@@ -34,10 +35,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = profilePatchSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid profile", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, profilePatchSchema, "profile");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const data = await setProfile(parsed.data satisfies ProfilePatch);

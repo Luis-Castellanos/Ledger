@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, categories } from "@/lib/db/schema";
 import { createCategorySchema, slugifyCategoryName, updateCategorySchema } from "@/lib/finance/rules";
+import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -37,10 +38,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = createCategorySchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid category", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, createCategorySchema, "category");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
@@ -77,10 +77,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = updateCategorySchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid category update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, updateCategorySchema, "category update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

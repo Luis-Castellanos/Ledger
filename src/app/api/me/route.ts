@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, ledgers } from "@/lib/db/schema";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
+import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -33,10 +34,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = updateLedgerSettingsSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid settings", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, updateLedgerSettingsSchema, "settings");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

@@ -6,6 +6,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, documents } from "@/lib/db/schema";
 import { detectDocumentType, documentStatuses, documentTypes, validateDocumentIntake } from "@/lib/finance/document";
+import { parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 const documentUpdateSchema = z.object({
@@ -168,10 +169,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = documentUpdateSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid document update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, documentUpdateSchema, "document update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
@@ -230,10 +230,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = documentDeleteSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid document delete", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, documentDeleteSchema, "document delete");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

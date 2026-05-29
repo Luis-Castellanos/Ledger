@@ -11,6 +11,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - `/api/exports` is treated as state-changing because it creates `export_jobs` and `audit_events`.
 - Document upload and preview requests enforce file count, size, extension, and MIME allowlists before hashing file bytes.
 - Profile customization writes validate payload shape and size before persisting settings.
+- JSON mutation routes now share controlled body parsing so malformed payloads return `400` responses before schema validation.
 
 ## Remaining Review Items
 

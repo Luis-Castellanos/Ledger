@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, importRows, imports, merchantRules, savedImportMappings } from "@/lib/db/schema";
 import { buildImportFingerprint, stageImportSchema, updateImportRowSchema } from "@/lib/finance/import";
 import { findMatchingMerchantRule } from "@/lib/finance/rules";
+import { parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function GET(request: Request) {
@@ -85,10 +86,9 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const parsed = stageImportSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid import", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, stageImportSchema, "import");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
@@ -200,10 +200,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = updateImportRowSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid import row update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, updateImportRowSchema, "import row update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

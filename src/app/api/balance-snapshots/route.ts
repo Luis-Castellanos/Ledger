@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, balanceSnapshots } from "@/lib/db/schema";
 import { createBalanceSnapshotSchema } from "@/lib/finance/account";
+import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -41,10 +42,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = createBalanceSnapshotSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid balance snapshot", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, createBalanceSnapshotSchema, "balance snapshot");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

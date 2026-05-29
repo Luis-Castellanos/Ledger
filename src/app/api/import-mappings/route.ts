@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, savedImportMappings } from "@/lib/db/schema";
 import { savedImportMappingSchema } from "@/lib/finance/import";
+import { parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function GET() {
@@ -52,10 +53,9 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const parsed = savedImportMappingSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid import mapping", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, savedImportMappingSchema, "import mapping");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

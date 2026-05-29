@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, transactions } from "@/lib/db/schema";
 import { createManualTransactionSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
+import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -49,10 +50,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = createManualTransactionSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid transaction", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, createManualTransactionSchema, "transaction");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
@@ -131,10 +131,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = updateTransactionReviewSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid transaction update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, updateTransactionReviewSchema, "transaction update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

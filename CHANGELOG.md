@@ -38,3 +38,4 @@
 - Block cross-site API writes and export-generation requests at the proxy layer.
 - Validate document upload count, size, extension, and MIME type before hashing file bytes.
 - Validate profile customization payload size and shape before persisting ledger settings.
+- Return controlled `400` responses for malformed JSON bodies across mutation APIs.

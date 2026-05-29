@@ -4,6 +4,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents } from "@/lib/db/schema";
 import { createAccountSchema, updateAccountLifecycleSchema } from "@/lib/finance/account";
+import { parseJsonRequest } from "@/lib/http/request";
 
 export async function GET() {
   const context = await getOrCreateCurrentLedger();
@@ -29,10 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = createAccountSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid account", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, createAccountSchema, "account");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
@@ -71,10 +71,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = updateAccountLifecycleSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid account update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, updateAccountLifecycleSchema, "account update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

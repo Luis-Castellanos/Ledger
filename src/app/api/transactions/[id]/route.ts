@@ -7,6 +7,7 @@ import { accounts, auditEvents, transactions } from "@/lib/db/schema";
 import { merchantPrefix } from "@/lib/finance/merchant";
 import { parseDollarAmount } from "@/lib/finance/money";
 import { transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
+import { parseJsonRequest } from "@/lib/http/request";
 
 const bodySchema = z.object({
   merchant: z.string().trim().min(1).max(240).optional(),
@@ -42,9 +43,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const { id } = await context.params;
-  const parsed = bodySchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid transaction update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, bodySchema, "transaction update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

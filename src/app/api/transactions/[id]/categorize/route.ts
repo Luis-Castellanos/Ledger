@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { auditEvents, categories, transactions } from "@/lib/db/schema";
 import { merchantPrefix } from "@/lib/finance/merchant";
 import { transactionTransferStatusSchema } from "@/lib/finance/transaction";
+import { parseJsonRequest } from "@/lib/http/request";
 
 const bodySchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
@@ -25,10 +26,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 
   const { id } = await context.params;
-  const parsed = bodySchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid categorize request", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, bodySchema, "categorize request");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();

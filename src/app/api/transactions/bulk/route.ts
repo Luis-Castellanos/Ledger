@@ -5,6 +5,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, categories, transactions } from "@/lib/db/schema";
 import { transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
+import { parseJsonRequest } from "@/lib/http/request";
 
 const bodySchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(2000),
@@ -23,9 +24,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = bodySchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid bulk transaction update", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const parsed = await parseJsonRequest(request, bodySchema, "bulk transaction update");
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const db = getDb();
