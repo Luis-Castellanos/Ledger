@@ -1,9 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Archive, Cloud, Database, Download, KeyRound, Save, ScrollText, ShieldCheck, UserRound } from "lucide-react";
+import { Archive, Download, KeyRound, Save, ScrollText } from "lucide-react";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
-import { getSetupReadiness, getSetupReadinessChecks, type SetupStatus, type SetupReadinessCheck } from "@/lib/setup/status";
 
 type SettingsState = {
   user: {
@@ -89,38 +88,22 @@ const fallbackAuditEvents: AuditEventSummary[] = [
   },
 ];
 
-const fallbackSetupStatus: SetupStatus = {
-  appUrlConfigured: false,
-  clerkConfigured: false,
-  clerkKeyMode: "missing",
-  databaseConfigured: false,
-  databaseReachable: null,
-  nodeEnv: "development",
-  vercelDetected: false,
-  vercelEnvironment: null,
-};
-
 export function SettingsWorkbench() {
   const [settings, setSettings] = useState<SettingsState>(fallbackSettings);
   const [formState, setFormState] = useState(fallbackSettings.ledger);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
   const [exportHistory, setExportHistory] = useState<ExportJobSummary[]>(fallbackExportJobs);
   const [auditTrail, setAuditTrail] = useState<AuditEventSummary[]>(fallbackAuditEvents);
-  const [setupStatus, setSetupStatus] = useState<SetupStatus>(fallbackSetupStatus);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasUserEditedSettings = useRef(false);
-  const setupReadiness = getSetupReadiness(setupStatus);
-  const releaseTasks = getReleaseTasks(setupStatus);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSettings() {
       try {
-        const [meResponse, setupResponse, exportJobsResponse, auditEventsResponse] = await Promise.all([
+        const [meResponse, exportJobsResponse, auditEventsResponse] = await Promise.all([
           fetch("/api/me", { headers: { Accept: "application/json" } }),
-          fetch("/api/setup/status", { headers: { Accept: "application/json" } }),
           fetch("/api/export-jobs", { headers: { Accept: "application/json" } }),
           fetch("/api/audit-events", { headers: { Accept: "application/json" } }),
         ]);
@@ -130,7 +113,6 @@ export function SettingsWorkbench() {
         }
 
         const payload = (await meResponse.json()) as SettingsState;
-        const setupPayload = setupResponse.ok ? ((await setupResponse.json()) as { status: SetupStatus }) : { status: fallbackSetupStatus };
         const exportJobsPayload = exportJobsResponse.ok
           ? ((await exportJobsResponse.json()) as { exportJobs: ExportJobSummary[] })
           : { exportJobs: [] };
@@ -143,10 +125,8 @@ export function SettingsWorkbench() {
             setSettings(payload);
             setFormState(payload.ledger);
           }
-          setSetupStatus(setupPayload.status);
           setExportHistory(exportJobsPayload.exportJobs);
           setAuditTrail(auditEventsPayload.auditEvents);
-          setDataSource("database");
         }
       } catch {
         if (isMounted) {
@@ -156,15 +136,6 @@ export function SettingsWorkbench() {
           }
           setExportHistory(fallbackExportJobs);
           setAuditTrail(fallbackAuditEvents);
-          void fetch("/api/setup/status", { headers: { Accept: "application/json" } })
-            .then((response) => (response.ok ? response.json() : null))
-            .then((payload: { status: SetupStatus } | null) => {
-              if (payload && isMounted) {
-                setSetupStatus(payload.status);
-              }
-            })
-            .catch(() => undefined);
-          setDataSource("demo");
         }
       }
     }
@@ -202,13 +173,11 @@ export function SettingsWorkbench() {
       const payload = (await response.json()) as { ledger: SettingsState["ledger"] };
       setSettings((current) => ({ ...current, ledger: payload.ledger }));
       setFormState(payload.ledger);
-      setDataSource("database");
       setMessage("Settings saved.");
     } catch {
       setSettings((current) => ({ ...current, ledger: parsed.data }));
       setFormState(parsed.data);
-      setDataSource("demo");
-      setMessage("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist settings.");
+      setMessage("Settings are saved for this session. Permanent saving is unavailable right now.");
     } finally {
       setIsSaving(false);
     }
@@ -217,19 +186,12 @@ export function SettingsWorkbench() {
   return (
     <div className="settings-grid">
       <section className="settings-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
-          <SettingsMetric label="Identity" value={settings.user.displayName ?? "Signed in user"} icon={<UserRound size={17} />} />
-          <SettingsMetric label="Persistence" value={dataSource === "database" ? "Database backed" : "Demo mode"} icon={<Database size={17} />} />
-          <SettingsMetric label="Release gate" value={`${setupReadiness.readyCount}/${setupReadiness.requiredCount} ready`} icon={<Cloud size={17} />} />
-        </div>
-
         <section className="panel settings-panel">
           <div className="panel-header accounts-toolbar">
             <div>
-              <p className="panel-label">Ledger settings</p>
-              <h2 className="panel-title">Ownership boundary</h2>
+              <p className="panel-label">Ledger</p>
+              <h2 className="panel-title">Preferences</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
           </div>
 
           <form className="account-form settings-form" onSubmit={handleSubmit}>
@@ -263,16 +225,6 @@ export function SettingsWorkbench() {
               {isSaving ? "Saving" : "Save settings"}
             </button>
           </form>
-
-          <div className="release-checklist" aria-label="Release checklist">
-            {releaseTasks.map((task) => (
-              <div className="release-checklist-item" data-state={task.done ? "ready" : "blocked"} key={task.label}>
-                <span>{task.done ? "Ready" : "Required"}</span>
-                <strong>{task.label}</strong>
-                <p>{task.detail}</p>
-              </div>
-            ))}
-          </div>
         </section>
 
         <section className="panel settings-panel" aria-label="Export history">
@@ -373,119 +325,9 @@ export function SettingsWorkbench() {
             </div>
           </div>
         </section>
-
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Setup</p>
-              <h2 className="panel-title">Production readiness</h2>
-            </div>
-            <div className="summary-icon">
-              <ShieldCheck size={17} />
-            </div>
-          </div>
-          <div className="settings-facts">
-            <SetupFact label="Clerk" ready={setupStatus.clerkConfigured} readyText="Configured" missingText="Missing keys" />
-            <div>
-              <span>Clerk keys</span>
-              <strong className={setupStatus.clerkKeyMode === "live" ? "setup-ready" : "setup-missing"}>{getClerkKeyModeLabel(setupStatus.clerkKeyMode)}</strong>
-            </div>
-            <SetupFact label="Production auth" ready={setupStatus.clerkKeyMode === "live"} readyText="Live keys set" missingText="Needs Clerk live keys" />
-            <SetupFact label="Neon URL" ready={setupStatus.databaseConfigured} readyText="Database URL set" missingText="Missing DATABASE_URL" />
-            <SetupFact
-              label="Neon connection"
-              ready={setupStatus.databaseReachable === true}
-              readyText="Reachable"
-              missingText={getDatabaseReachabilityLabel(setupStatus)}
-            />
-            <SetupFact label="App URL" ready={setupStatus.appUrlConfigured} readyText="Configured" missingText="Missing app URL" />
-            <div>
-              <span>Vercel</span>
-              <strong>{setupStatus.vercelDetected ? setupStatus.vercelEnvironment ?? "Detected" : "Local runtime"}</strong>
-            </div>
-            <div>
-              <span>Runtime</span>
-              <strong>{setupStatus.nodeEnv}</strong>
-            </div>
-          </div>
-        </section>
       </aside>
     </div>
   );
-}
-
-function getReleaseTasks(status: SetupStatus) {
-  return getSetupReadinessChecks(status).map((check) => ({
-    done: check.ready,
-    label: check.label,
-    detail: getReleaseTaskDetail(check),
-  }));
-}
-
-function getReleaseTaskDetail(check: SetupReadinessCheck) {
-  const details: Record<SetupReadinessCheck["key"], { ready: string; missing: string }> = {
-    appUrl: {
-      ready: "Redirects and export links have an app origin.",
-      missing: "Set NEXT_PUBLIC_APP_URL for the deployed app.",
-    },
-    clerkKeys: {
-      ready: "Authentication variables are present.",
-      missing: "Add Clerk publishable and secret keys.",
-    },
-    clerkLiveKeys: {
-      ready: "Live Clerk keys are active.",
-      missing: "Configure Clerk production and deploy live keys.",
-    },
-    database: {
-      ready: "Database URL is available to server routes.",
-      missing: "Add DATABASE_URL before DB-backed production use.",
-    },
-    databaseConnection: {
-      ready: "Server routes can reach Neon with the configured connection.",
-      missing: "Verify Neon connectivity before DB-backed production use.",
-    },
-    securityHeaders: {
-      ready: "CSP, frame, content type, referrer, permissions, and HSTS headers are configured.",
-      missing: "Configure release security headers before private beta.",
-    },
-    rateLimits: {
-      ready: "Import mutations and export generation have server-side request limits.",
-      missing: "Add server-side rate limits for import and export paths.",
-    },
-    observability: {
-      ready: "Server failures are logged with structured metadata and sensitive fields redacted.",
-      missing: "Add redacted server-side error logging before private beta.",
-    },
-  };
-
-  return check.ready ? details[check.key].ready : details[check.key].missing;
-}
-
-function getDatabaseReachabilityLabel(status: SetupStatus) {
-  if (!status.databaseConfigured) {
-    return "Missing DATABASE_URL";
-  }
-
-  if (status.databaseReachable === false) {
-    return "Connection failed";
-  }
-
-  return "Not checked";
-}
-
-function getClerkKeyModeLabel(mode: SetupStatus["clerkKeyMode"]) {
-  switch (mode) {
-    case "live":
-      return "Live keys";
-    case "test":
-      return "Development keys";
-    case "mixed":
-      return "Mixed key environments";
-    case "unknown":
-      return "Unknown key mode";
-    case "missing":
-      return "Missing keys";
-  }
 }
 
 function formatExportFormat(format: string) {
@@ -526,23 +368,4 @@ function formatAuditAction(action: string) {
     .split(".")
     .map((part) => part.replace("_", " "))
     .join(" ");
-}
-
-function SetupFact({ label, ready, readyText, missingText }: { label: string; ready: boolean; readyText: string; missingText: string }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong className={ready ? "setup-ready" : "setup-missing"}>{ready ? readyText : missingText}</strong>
-    </div>
-  );
-}
-
-function SettingsMetric({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <article className="stat-panel account-metric">
-      <div className="account-metric-icon account-metric-green">{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
-  );
 }

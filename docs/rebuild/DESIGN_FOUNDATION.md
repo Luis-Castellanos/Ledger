@@ -8,7 +8,14 @@ This document is intentionally more specific than the general UX principles. Its
 
 ## Product Feel
 
-Praxis Ledger should feel like a serious personal finance workstation: calm, precise, durable, and built for repeated use.
+Praxis Ledger should feel like a modern, refined banking app: calm, precise, durable, and built for repeated use.
+
+Reference qualities:
+
+- Robinhood-like clarity, speed, and modern product polish.
+- Fidelity-like trust, seriousness, and financial depth.
+- Efficient use of space without massive whitespace.
+- Refined banking/wealth-management feel rather than decorative dashboard concept.
 
 It should not feel like:
 
@@ -32,19 +39,24 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use a **calm financial workstation** as the base direction, with a small amount of editorial ledger warmth.
+Use a **modern refined banking app** as the base direction.
 
-Recommended blend:
+Current preference:
 
-- Direction 1: primary structure and density.
-- Direction 3: typography warmth and ledger-like trust.
-- Avoid making Direction 2 the default; reserve dark analytical views for future advanced reports or user-selected theme.
+- Mostly light interface.
+- Dense but readable work surfaces.
+- Excellent table hierarchy.
+- Compact dashboard summaries.
+- Restrained green brand accent.
+- Cool neutral surfaces over warm paper-like surfaces.
+- Dark mode can exist later, but should not drive the default design.
 
 Rationale:
 
 - The current dark design looks visually interesting, but it creates too much atmosphere around routine financial work.
-- A lighter workspace will make tables, forms, imports, and long review sessions easier.
-- A warm but restrained palette will differentiate the product without making it feel casual.
+- A refined banking direction better matches the product's need for trust, speed, and routine use.
+- A lighter, denser workspace will make tables, forms, imports, and long review sessions easier.
+- The design should feel polished and premium without sacrificing information density.
 
 ## Layout System
 
@@ -110,11 +122,11 @@ The product should not be one-note dark green or black.
 
 Base palette direction:
 
-- Background: warm off-white or very light neutral.
+- Background: white, cool off-white, or very light neutral.
 - Primary surface: white or near-white.
 - Secondary surface: soft stone/gray.
 - Text: near-black with clear hierarchy.
-- Borders: neutral gray with subtle warmth.
+- Borders: cool neutral gray.
 - Accent: restrained green/teal for positive states and brand anchor.
 - Supporting accents: blue, amber, red, violet, and slate for semantic use.
 
@@ -320,5 +332,5 @@ Design and implement these first. They will set the visual system for the rest o
 - Sidebar vs top navigation for desktop.
 - Dashboard first principles: overview-first vs action-queue-first.
 - Table density: compact by default vs comfortable by default.
-- How much warmth/editorial character the product should carry.
+- How close the product should feel to consumer banking vs brokerage workstation vs wealth-management portal.
 - Whether advanced analytical views get a darker mode later.
