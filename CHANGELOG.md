@@ -21,6 +21,7 @@
 - Gringotts-style Transactions register with date-grouped rows, active-row editing, bulk controls, account/tag context, and Fidelity-token styling.
 - Document evidence storage with Files and Upload workbenches, PDF duplicate preview, document metadata editing, soft delete, and source-evidence audit events.
 - Credit Cards and Payroll workbenches backed by current account, transaction, and document data with Fidelity-token register layouts.
+- Dashboard redesigned into a cleaner ledger overview with summary metrics, cashflow, recent activity, position breakdown, spending mix, and status coverage.
 
 ### Changed
 

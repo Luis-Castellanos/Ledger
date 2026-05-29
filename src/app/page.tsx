@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
@@ -121,7 +121,7 @@ export default function Home() {
         ? sampleDashboardTransactions
         : transactionRows.slice(0, 8).map((transaction) => ({
             merchant: transaction.merchant,
-            time: `${transaction.date} • ${transaction.account}`,
+            time: `${transaction.date} / ${transaction.account}`,
             amount: transaction.amountMinor,
             category: transaction.category,
             direction: transaction.amountMinor > 0 ? "in" : "out",
@@ -151,141 +151,125 @@ export default function Home() {
 
   return (
     <AppShell active="Dashboard">
-        <section className="min-w-0">
-          <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
-            <div>
-              <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Private beta ledger</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Monthly control room</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
-              <label className="search-field">
-                <Search size={16} />
-                <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
-              </label>
-              <a className="icon-button" aria-label="Export backup package" href="/api/exports?format=backup_package">
-                <Download size={17} />
-              </a>
-            </div>
-          </header>
-
-          <div className="grid min-h-[calc(100vh-7.5rem)] grid-cols-1 xl:grid-cols-[minmax(380px,0.84fr)_minmax(0,1.4fr)]">
-            <section className="grid min-w-0 auto-rows-min gap-0 border-b border-[var(--line)] xl:border-b-0 xl:border-r">
-              <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-                {dashboardModel.stats.map((stat) => (
-                  <article className="stat-panel" key={stat.label}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="panel-label">{stat.label}</p>
-                        <p className="mt-1 font-mono text-xl text-[var(--ink-strong)]">{stat.value}</p>
-                      </div>
-                      <span className={stat.delta.startsWith("+") ? "delta-up" : "delta-down"}>{stat.delta}</span>
-                    </div>
-                    <MiniLine trend={stat.trend} tone={stat.tone} />
-                  </article>
-                ))}
-              </div>
-
-              <article className="panel min-h-[560px] border-t border-[var(--line)]">
-                <div className="panel-header">
-                  <div>
-                    <p className="panel-label">Transactions</p>
-                    <h2 className="panel-title">Recent ledger activity</h2>
-                  </div>
-                  <Link className="text-button" href="/transactions">
-                    View all
-                  </Link>
-                </div>
-                <div className="transaction-list">
-                  {recentTransactions.map((transaction) => (
-                    <div className="transaction-row" key={`${transaction.merchant}-${transaction.time}`}>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="transaction-icon" style={{ "--tile": transaction.color } as React.CSSProperties}>
-                          {transaction.direction === "in" ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-[var(--ink-strong)]">{transaction.merchant}</p>
-                          <p className="truncate font-mono text-[11px] text-[var(--muted)]">{transaction.time}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={transaction.amount > 0 ? "amount-positive" : "amount-negative"}>{formatMoney(transaction.amount)}</p>
-                        <p className="font-mono text-[11px] text-[var(--muted)]">{transaction.category}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </section>
-
-            <section className="grid min-w-0 auto-rows-min gap-0">
-              <div className="grid grid-cols-1 border-b border-[var(--line)] lg:grid-cols-2 2xl:grid-cols-3">
-                <article className="panel min-h-[210px] lg:border-r lg:border-[var(--line)]">
-                  <div className="panel-header">
-                    <div>
-                      <p className="panel-label">Total spending</p>
-                      <h2 className="panel-title">{formatMoney(-dashboardModel.cashflow.outflow)}</h2>
-                    </div>
-                    <span className="period-control">This week</span>
-                  </div>
-                  <CategoryBars transactions={transactionRows} />
-                </article>
-                <article className="panel min-h-[210px] border-t border-[var(--line)] lg:border-r lg:border-t-0">
-                  <div className="panel-header">
-                    <div>
-                      <p className="panel-label">Savings</p>
-                      <h2 className="panel-title">{formatMoney(Math.max(dashboardModel.netCashflow, 0))}</h2>
-                    </div>
-                    <span className="period-control">This year</span>
-                  </div>
-                  <AreaLine tone="coral" />
-                </article>
-                <article className="panel min-h-[210px] border-t border-[var(--line)] lg:border-t-0">
-                  <div className="panel-header">
-                    <div>
-                      <p className="panel-label">Net worth</p>
-                      <h2 className="panel-title">{formatMoney(dashboardModel.position.assets - dashboardModel.position.liabilities)}</h2>
-                    </div>
-                    <span className="period-control">This year</span>
-                  </div>
-                  <AreaLine tone="green" />
-                </article>
-              </div>
-
-              <article className="panel min-h-[500px]">
-                <div className="panel-header">
-                  <div>
-                    <p className="panel-label">Cashflow</p>
-                    <h2 className="panel-title">{cashflowTitle}</h2>
-                  </div>
-                  <div className="segmented" aria-label="Cashflow range">
-                    <button>Day</button>
-                    <button>Week</button>
-                    <button>Month</button>
-                    <button className="active">Year</button>
-                  </div>
-                </div>
-                <StackedBarChart transactions={transactionRows} />
-              </article>
-
-              <section className="grid grid-cols-1 border-t border-[var(--line)] md:grid-cols-3">
-                {dashboardModel.activity.map((item) => (
-                  <article className="summary-cell" key={item.label}>
-                    <div className="flex items-center gap-3">
-                      <div className="summary-icon">
-                        {item.kind === "cash" ? <Banknote size={17} /> : item.kind === "rule" ? <Layers3 size={17} /> : <ShieldCheck size={17} />}
-                      </div>
-                      <div>
-                        <p className="panel-label">{item.label}</p>
-                        <p className="mt-1 text-sm text-[var(--ink-strong)]">{item.value}</p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            </section>
+      <section className="min-w-0">
+        <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
+          <div>
+            <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Personal ledger</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Overview</h1>
           </div>
-        </section>
+          <div className="flex items-center gap-2">
+            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <label className="search-field">
+              <Search size={16} />
+              <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
+            </label>
+            <a className="icon-button" aria-label="Export backup package" href="/api/exports?format=backup_package">
+              <Download size={17} />
+            </a>
+          </div>
+        </header>
+
+        <div className="transactions-grid">
+          <section className="transactions-main">
+            <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+              {dashboardModel.stats.map((stat) => (
+                <article className="stat-panel account-metric" key={stat.label}>
+                  <div className={`account-metric-icon account-metric-${stat.tone}`}>{stat.tone === "green" ? <Banknote size={17} /> : stat.tone === "coral" ? <ArrowUpRight size={17} /> : <Layers3 size={17} />}</div>
+                  <p className="panel-label">{stat.label}</p>
+                  <p className="panel-title">{stat.value}</p>
+                  <MiniLine trend={stat.trend} tone={stat.tone} />
+                </article>
+              ))}
+            </div>
+
+            <section className="panel dashboard-cashflow-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-label">Cashflow</p>
+                  <h2 className="panel-title">{cashflowTitle}</h2>
+                </div>
+                <span className="period-control">Year</span>
+              </div>
+              <StackedBarChart transactions={transactionRows} />
+            </section>
+
+            <section className="panel border-t border-[var(--line)]">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-label">Transactions</p>
+                  <h2 className="panel-title">Recent activity</h2>
+                </div>
+                <Link className="text-button" href="/transactions">
+                  View all
+                </Link>
+              </div>
+              <div className="transaction-list">
+                {recentTransactions.map((transaction) => (
+                  <div className="transaction-row" key={`${transaction.merchant}-${transaction.time}`}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="transaction-icon" style={{ "--tile": transaction.color } as React.CSSProperties}>
+                        {transaction.direction === "in" ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[var(--ink-strong)]">{transaction.merchant}</p>
+                        <p className="truncate font-mono text-[11px] text-[var(--muted)]">{transaction.time}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={transaction.amount > 0 ? "amount-positive" : "amount-negative"}>{formatMoney(transaction.amount)}</p>
+                      <p className="font-mono text-[11px] text-[var(--muted)]">{transaction.category}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </section>
+
+          <aside className="accounts-side">
+            <section className="panel account-form-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-label">Position</p>
+                  <h2 className="panel-title">{formatMoney(dashboardModel.position.assets - dashboardModel.position.liabilities)}</h2>
+                </div>
+              </div>
+              <AreaLine tone="green" />
+              <div className="file-evidence-list">
+                <div className="file-evidence-item">
+                  <span>Assets</span>
+                  <strong>{formatMoney(dashboardModel.position.assets)}</strong>
+                </div>
+                <div className="file-evidence-item">
+                  <span>Liabilities</span>
+                  <strong>{formatMoney(-dashboardModel.position.liabilities)}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="panel account-form-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-label">Spending</p>
+                  <h2 className="panel-title">{formatMoney(-dashboardModel.cashflow.outflow)}</h2>
+                </div>
+              </div>
+              <CategoryBars transactions={transactionRows} />
+            </section>
+
+            <section className="panel account-form-panel">
+              <p className="panel-label">Status</p>
+              <div className="file-evidence-list">
+                {dashboardModel.activity.map((item) => (
+                  <div className="file-evidence-item" key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
     </AppShell>
   );
 }

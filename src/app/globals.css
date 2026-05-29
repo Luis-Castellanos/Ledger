@@ -1348,6 +1348,10 @@ button {
   font-size: 14px;
 }
 
+.dashboard-cashflow-panel {
+  min-height: 500px;
+}
+
 .transaction-amount-actions button {
   width: 32px;
   height: 32px;
