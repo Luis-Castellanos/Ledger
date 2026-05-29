@@ -928,6 +928,11 @@ button {
   grid-template-columns: minmax(220px, 1.4fr) 150px 170px 190px 126px 130px 40px;
 }
 
+.payroll-register-table .transactions-table-head,
+.payroll-register-table .transactions-table-row {
+  grid-template-columns: minmax(190px, 1.3fr) minmax(150px, 0.9fr) 130px 116px 110px;
+}
+
 .imports-table-head,
 .imports-table-row {
   display: grid;
@@ -1271,6 +1276,76 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.credit-card-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.credit-card-panel {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.credit-card-art {
+  display: grid;
+  min-height: 150px;
+  align-content: space-between;
+  background:
+    linear-gradient(135deg, rgba(95, 159, 60, 0.34), rgba(36, 27, 22, 0.92)),
+    var(--panel-warm);
+  padding: 18px;
+  color: var(--ink-strong);
+}
+
+.credit-card-art span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.credit-card-art strong {
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.credit-card-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.credit-card-body h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 17px;
+}
+
+.credit-card-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.credit-card-facts span {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.credit-card-facts strong {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 14px;
 }
 
 .transaction-amount-actions button {

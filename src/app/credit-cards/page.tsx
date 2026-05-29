@@ -1,11 +1,22 @@
-import { MigrationPlaceholder } from "@/components/migration-placeholder";
+import { CreditCard } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { CreditCardsWorkbench } from "./credit-cards-workbench";
 
 export default function CreditCardsPage() {
   return (
-    <MigrationPlaceholder
-      active="Credit Cards"
-      description="Credit Cards will be ported from Gringotts with card metadata, limits, APR, rewards/benefits, utilization, and account-linked transaction views."
-      title="Credit Cards"
-    />
+    <AppShell active="Credit Cards">
+      <section className="min-w-0">
+        <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
+          <div>
+            <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Liability control</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Credit Cards</h1>
+          </div>
+          <div className="summary-icon">
+            <CreditCard size={17} />
+          </div>
+        </header>
+        <CreditCardsWorkbench />
+      </section>
+    </AppShell>
   );
 }
