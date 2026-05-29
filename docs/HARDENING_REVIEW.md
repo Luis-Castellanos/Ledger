@@ -21,6 +21,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Production transaction register failures now roll back optimistic status, category, transfer, tag, delete, restore, and edit changes.
 - Production file metadata, import commit/rollback, and ledger settings failures no longer report local-only success after failed server writes.
 - Production document uploads fail closed unless metadata-only uploads are explicitly enabled with `DOCUMENT_STORAGE_MODE=metadata-only`.
+- Production setup readiness now reports process-local rate limiting as not durable instead of treating it as release-ready.
 
 ## Remaining Review Items
 

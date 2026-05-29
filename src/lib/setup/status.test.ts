@@ -20,6 +20,7 @@ describe("getSetupStatus", () => {
       databaseConfigured: true,
       databaseReachable: null,
       nodeEnv: "production",
+      rateLimitStore: "memory",
       vercelDetected: true,
       vercelEnvironment: "preview",
     });
@@ -117,16 +118,25 @@ describe("getSetupStatus", () => {
           { key: "database", label: "Neon database URL", ready: true },
           { key: "databaseConnection", label: "Neon connection verified", ready: false },
           { key: "securityHeaders", label: "Security headers", ready: true },
-          { key: "rateLimits", label: "Import and export rate limits", ready: true },
+          { key: "rateLimits", label: "Durable rate limits", ready: false },
           { key: "observability", label: "Redacted server error logging", ready: true },
         ],
         ready: false,
-        readyCount: 7,
+        readyCount: 6,
         requiredCount: 8,
       },
     });
 
     expect(JSON.stringify(report)).not.toContain("sk_live_example");
     expect(JSON.stringify(report)).not.toContain("postgres://example");
+  });
+
+  it("requires durable rate limits for production readiness", () => {
+    const status = getSetupStatus({
+      NODE_ENV: "production",
+    });
+
+    expect(status.rateLimitStore).toBe("memory");
+    expect(getSetupReadiness(status).checks).toContainEqual({ key: "rateLimits", label: "Durable rate limits", ready: false });
   });
 });

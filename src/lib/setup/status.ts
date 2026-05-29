@@ -5,6 +5,7 @@ export type SetupStatus = {
   databaseConfigured: boolean;
   databaseReachable: boolean | null;
   nodeEnv: string;
+  rateLimitStore: "memory";
   vercelDetected: boolean;
   vercelEnvironment: string | null;
 };
@@ -50,6 +51,7 @@ export function getSetupStatus(env: SetupEnv = process.env): SetupStatus {
     databaseConfigured: Boolean(env.DATABASE_URL),
     databaseReachable: null,
     nodeEnv: env.NODE_ENV ?? "development",
+    rateLimitStore: "memory",
     vercelDetected: Boolean(env.VERCEL),
     vercelEnvironment: env.VERCEL_ENV ?? null,
   };
@@ -101,8 +103,8 @@ export function getSetupReadinessChecks(status: SetupStatus): SetupReadinessChec
     },
     {
       key: "rateLimits",
-      label: "Import and export rate limits",
-      ready: true,
+      label: status.nodeEnv === "production" ? "Durable rate limits" : "Import and export rate limits",
+      ready: status.nodeEnv !== "production",
     },
     {
       key: "observability",
