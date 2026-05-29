@@ -15,6 +15,7 @@ The existing app is treated as a research prototype: it proved the core product 
 - [../BACKUP_PACKAGE.md](../BACKUP_PACKAGE.md) — V1 backup export shape, manifest contract, privacy notes, and restore status.
 - [UX_UI_PRINCIPLES.md](./UX_UI_PRINCIPLES.md) — information architecture, screen-level UX direction, interaction standards, and visual design rules.
 - [DESIGN_FOUNDATION.md](./DESIGN_FOUNDATION.md) — concrete visual direction, layout rules, typography, color, component standards, and redesign roadmap.
+- [FIDELITY_REFERENCE_ANALYSIS.md](./FIDELITY_REFERENCE_ANALYSIS.md) — Fidelity-inspired dark institutional design analysis translated into reusable Praxis Ledger tokens, layout rules, and component patterns.
 - [ARCHITECTURE_ENGINEERING.md](./ARCHITECTURE_ENGINEERING.md) — system architecture, database principles, coding standards, testing, deployment, and operations.
 - [SECURITY_PRIVACY.md](./SECURITY_PRIVACY.md) — security posture, multi-user access control, secrets, AI usage, file handling, and release gates.
 - [AGENTIC_WORKFLOW.md](./AGENTIC_WORKFLOW.md) — AI-assisted development process, planning gates, prompt discipline, review loops, and progress ledger.

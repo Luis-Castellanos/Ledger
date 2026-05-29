@@ -12,10 +12,10 @@ Praxis Ledger should feel like a modern, refined banking app: calm, precise, dur
 
 Reference qualities:
 
-- Robinhood-like clarity, speed, and modern product polish.
-- Robinhood Legend-like modular desktop workspace: customizable-feeling panels, fast scanning, compact widgets, and crisp interaction surfaces.
+- Fidelity-like institutional density, card structure, tab treatment, line weight, and account-context layout.
+- Robinhood-like clarity, speed, and modern product polish where it improves everyday use.
 - Efficient use of space without massive whitespace.
-- Sleek modern finance feel rather than institutional bank conservatism.
+- Serious wealth-management feel without becoming brokerage or trading software.
 
 It should not feel like:
 
@@ -39,44 +39,43 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use a **sleek modern finance workspace** as the base direction, closer to Robinhood and Robinhood Legend than Fidelity.
+Use a **dark institutional finance workspace** as the base direction, informed by Fidelity's dense account-management UI and adapted to a personal finance ledger.
 
 Current preference:
 
-- Mostly light interface.
+- Dark institutional default.
 - Dense but readable work surfaces.
 - Excellent table hierarchy.
 - Compact dashboard summaries.
-- Restrained green brand accent.
-- Cool neutral surfaces over warm paper-like surfaces.
-- Dark charcoal navigation/chrome is acceptable when it gives the app a sharper modern finance feel.
-- Dark mode can exist later, but should not drive the default design.
+- Restrained green brand accent for active, healthy, and positive states.
+- Warm brown-black page canvas with graphite panels.
+- Larger, more legible typography than the current mono-heavy prototype.
+- Full-viewport app shell with no decorative outer gutters.
+- Light mode can exist later, but should not drive the immediate redesign.
 
 Rationale:
 
-- The current dark design looks visually interesting, but it creates too much atmosphere around routine financial work.
-- The light institutional/Fidelity direction is too basic and conservative for the desired product character.
-- A Robinhood/Legend-inspired direction better matches the desired sleekness, speed, and modernity.
-- A lighter, denser workspace will make tables, forms, imports, and long review sessions easier.
-- The design should feel polished and premium without sacrificing information density.
+- The current app has the right product skeleton, but the visual system is too thin and prototype-like.
+- The supplied Fidelity screenshots show stronger patterns for dense financial account management: tab hierarchy, action pills, rounded cards, readable tables, and account context.
+- Praxis should borrow the structural language and maturity, not Fidelity's brand, copy, logo, or exact trade dress.
+- The design should feel polished, premium, and durable without sacrificing information density.
 - The old Gringotts transaction layout had the right ledger-workbench instincts and should be preserved as the transaction-page interaction model.
 
 ## Selected Design Reference
 
 Working direction:
 
-- **Global app:** sleek modern finance workspace, closer to Robinhood and Robinhood Legend than Fidelity.
-- **Transactions:** Gringotts Vault-inspired ledger workbench.
+- **Global app:** dark institutional finance workspace informed by Fidelity's account-management density and component hierarchy.
+- **Transactions:** Gringotts Vault-inspired ledger workbench, restyled into the dark institutional system.
 
-This means the product should use modern finance-app cues: sharp modular panels, crisp white/light-gray surfaces, compact widgets, high-quality charts, controlled green accents, strong table hierarchy, subtle dark chrome, and precise labels.
+This means the product should use mature finance-app cues: full-viewport shell, top-level navigation, contextual account rail, rounded graphite panels, visible separators, green active tabs, compact filter pills, strong table hierarchy, and precise labels.
 
-It should not become a Robinhood clone or a trading app. The goal is the same level of polish, speed, and modern product feel, adapted to a personal finance ledger.
+It should not become a Fidelity clone, brokerage interface, or trading app. The goal is to translate useful patterns into a distinct Praxis Ledger product.
 
-### Reference Concept
+### Reference Documents
 
-The current expansion board is:
-
-`/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a19178c06e4819a89fe74ac27c1933f.png`
+- [FIDELITY_REFERENCE_ANALYSIS.md](./FIDELITY_REFERENCE_ANALYSIS.md)
+- Legacy generated concept board: `/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a19178c06e4819a89fe74ac27c1933f.png`
 
 ## Layout System
 
@@ -86,11 +85,11 @@ The app should occupy the full viewport. No decorative outer frame, browser-with
 
 Desktop default:
 
-- Persistent left navigation.
-- Top utility bar inside the main content area.
+- Top global navigation for primary product modules.
+- Contextual account rail on account-centric pages.
 - Main content uses a full-width work surface.
 - Page content can have max readable widths only where the task calls for it, such as settings forms.
-- Left navigation may use a deep navy/charcoal institutional treatment if the content area remains light.
+- Left navigation should not be overloaded with both app modules and account context.
 
 Tablet:
 
@@ -110,6 +109,7 @@ Mobile:
 - Use cards for repeated entities, modal content, compact summaries, and isolated actions.
 - Prefer full-width bands, table frames, split panes, and workbench sections for core workflows.
 - Border radius should be restrained: `6px` default, `8px` maximum for ordinary UI.
+- Fidelity-derived major panels may use larger radii, roughly `20-24px`, when the surface is a true card/workbench container.
 
 ## Typography
 
@@ -130,12 +130,12 @@ Rules:
 
 Starting scale:
 
-- Page title: `28-32px`, semibold.
-- Section title: `18-22px`, medium.
-- Table body: `13-14px`.
-- Table metadata: `12px`.
-- Metric value: `24-36px` depending on importance.
-- Navigation: `14px`.
+- Page title: `40-48px`, bold on primary dashboard/account pages.
+- Section title: `20-24px`, semibold/bold.
+- Table body: `16-18px`.
+- Table metadata: `13-15px`.
+- Metric value: `28-44px` depending on importance.
+- Navigation: `15-17px`.
 
 ## Color Direction
 
@@ -143,12 +143,13 @@ The product should not be one-note dark green or black.
 
 Base palette direction:
 
-- Background: white, cool off-white, or very light neutral.
-- Primary surface: white or near-white.
-- Secondary surface: soft stone/gray.
-- Text: near-black with clear hierarchy.
-- Borders: cool neutral gray.
-- Accent: restrained green/teal for positive states and brand anchor.
+- Background: warm dark brown-black.
+- Global chrome: deep charcoal.
+- Primary surface: graphite.
+- Secondary surface: slightly raised graphite or warm charcoal.
+- Text: warm off-white with clear hierarchy.
+- Borders: muted gray/brown with enough contrast to define panels.
+- Accent: restrained green for positive states, active tabs, and brand anchor.
 - Supporting accents: blue, amber, red, violet, and slate for semantic use.
 
 Semantic color rules:
@@ -216,7 +217,7 @@ Avoid:
 
 The transaction table is the most important V1 screen.
 
-Use the old Gringotts Vault transaction page as the interaction reference, restyled into the light institutional design system.
+Use the old Gringotts Vault transaction page as the interaction reference, restyled into the dark institutional design system.
 
 Preserve these Gringotts-derived concepts:
 
