@@ -5,6 +5,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
 import { detectDocumentType, validateDocumentIntake } from "@/lib/finance/document";
+import { parseFormDataRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
@@ -23,8 +24,12 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const formData = await request.formData();
-  const files = formData.getAll("files").filter((item): item is File => item instanceof File);
+  const parsedForm = await parseFormDataRequest(request, "document preview");
+  if (!parsedForm.ok) {
+    return parsedForm.response;
+  }
+
+  const files = parsedForm.data.getAll("files").filter((item): item is File => item instanceof File);
 
   const validation = validateDocumentIntake(files);
 

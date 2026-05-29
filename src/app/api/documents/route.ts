@@ -6,7 +6,7 @@ import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, documents } from "@/lib/db/schema";
 import { detectDocumentType, documentStatuses, documentTypes, validateDocumentIntake } from "@/lib/finance/document";
-import { parseJsonRequest } from "@/lib/http/request";
+import { parseFormDataRequest, parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 const documentUpdateSchema = z.object({
@@ -78,8 +78,12 @@ export async function POST(request: Request) {
     return rateLimitExceededResponse(rateLimit);
   }
 
-  const formData = await request.formData();
-  const files = formData.getAll("files").filter((item): item is File => item instanceof File);
+  const parsedForm = await parseFormDataRequest(request, "document upload");
+  if (!parsedForm.ok) {
+    return parsedForm.response;
+  }
+
+  const files = parsedForm.data.getAll("files").filter((item): item is File => item instanceof File);
 
   const validation = validateDocumentIntake(files);
 

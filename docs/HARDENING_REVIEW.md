@@ -12,6 +12,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Document upload and preview requests enforce file count, size, extension, and MIME allowlists before hashing file bytes.
 - Profile customization writes validate payload shape and size before persisting settings.
 - JSON mutation routes now share controlled body parsing so malformed payloads return `400` responses before schema validation.
+- Document upload and preview routes now return controlled `400` responses for malformed multipart bodies.
 
 ## Remaining Review Items
 

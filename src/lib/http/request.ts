@@ -11,6 +11,16 @@ export type ParsedJsonRequest<T> =
       response: NextResponse;
     };
 
+export type ParsedFormDataRequest =
+  | {
+      data: FormData;
+      ok: true;
+    }
+  | {
+      ok: false;
+      response: NextResponse;
+    };
+
 export async function parseJsonRequest<T>(request: Request, schema: ZodType<T>, label: string): Promise<ParsedJsonRequest<T>> {
   let body: unknown;
 
@@ -33,4 +43,15 @@ export async function parseJsonRequest<T>(request: Request, schema: ZodType<T>, 
   }
 
   return { data: parsed.data, ok: true };
+}
+
+export async function parseFormDataRequest(request: Request, label: string): Promise<ParsedFormDataRequest> {
+  try {
+    return { data: await request.formData(), ok: true };
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: `Malformed ${label} form data` }, { status: 400 }),
+    };
+  }
 }
