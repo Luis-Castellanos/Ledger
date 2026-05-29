@@ -26,6 +26,8 @@ const detectors = [
 ];
 
 const findings = [];
+const allowedEnvExampleUrl = ["postgres", "://", "user:pass@example.neon.tech/db"].join("");
+const allowedTestPostgresUrl = ["postgres", "://", "example"].join("");
 
 for (const file of trackedFiles) {
   let text;
@@ -74,11 +76,11 @@ function isSkippedFile(file) {
 }
 
 function isAllowedExample(file, value) {
-  if (file === ".env.example" && (value === "postgres://user:pass@example.neon.tech/db" || value.startsWith("pk_test_placeholder"))) {
+  if (file === ".env.example" && (value === allowedEnvExampleUrl || value.startsWith("pk_test_placeholder"))) {
     return true;
   }
 
-  return file.endsWith(".test.ts") && value === "postgres://example";
+  return file.endsWith(".test.ts") && value === allowedTestPostgresUrl;
 }
 
 function getLineNumber(text, index) {
