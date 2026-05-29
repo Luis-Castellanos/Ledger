@@ -15,11 +15,11 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Document upload and preview routes now return controlled `400` responses for malformed multipart bodies.
 - Runtime proxy responses now attach the configured CSP, HSTS, content type, frame, referrer, and permissions policy headers.
 - Export generation now uses `POST`; `GET /api/exports` is non-mutating and returns `405`.
+- Representative route-level tests now cover protected API `401` responses and export method guards.
 
 ## Remaining Review Items
 
 - Replace in-memory rate limiting before broad beta usage. Serverless instances do not share the current process-local counter.
 - Resolve migration journal drift in the current Neon database before relying on `drizzle-kit migrate` operationally.
-- Add route-level tests for representative API authorization paths beyond the pure helper tests.
 - Add production object storage for uploaded documents; current document rows store metadata and pending storage keys only.
 - Continue reducing optimistic local mutation fallbacks. Development demo mode is useful, but production should avoid local-only writes.

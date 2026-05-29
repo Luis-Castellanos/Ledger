@@ -23,6 +23,7 @@
 - Credit Cards and Payroll workbenches backed by current account, transaction, and document data with Fidelity-token register layouts.
 - Dashboard redesigned into a cleaner ledger overview with summary metrics, cashflow, recent activity, position breakdown, spending mix, and status coverage.
 - Hardening review notes documenting current security fixes and remaining release-readiness risks.
+- Route-level tests for protected API auth and export method behavior.
 
 ### Changed
 
