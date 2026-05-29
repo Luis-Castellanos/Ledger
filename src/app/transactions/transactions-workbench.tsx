@@ -189,40 +189,58 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
 
   async function updateStatus(id: string, status: TransactionStatus) {
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id, reviewStatus: status },
         onFailure: () => setMutationMessage("Transaction status stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setMutationMessage(productionFallbackMessage("Transaction status update"));
+      }
     }
   }
 
   async function updateCategory(id: string, category: string) {
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id, categoryName: category },
         onFailure: () => setMutationMessage("Category change stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setMutationMessage(productionFallbackMessage("Category change"));
+      }
     }
   }
 
   async function updateTransferStatus(id: string, transferStatus: NonNullable<TransactionRow["transferStatus"]>) {
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, transferStatus } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id, transferStatus },
         onFailure: () => setMutationMessage("Transfer classification stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setMutationMessage(productionFallbackMessage("Transfer classification"));
+      }
     }
   }
 
@@ -241,10 +259,11 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
 
     const selectedIds = selectedVisibleTransactions.map((transaction) => transaction.id);
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, ...patch } : transaction)));
 
     if (dataSource === "database") {
-      await Promise.all(
+      const persisted = await Promise.all(
         selectedIds.map((id) =>
           persistTransactionPatch({
             body: {
@@ -258,6 +277,17 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           }),
         ),
       );
+
+      if (persisted.some((result) => !result)) {
+        if (!canUseLocalFallback(dataSource)) {
+          setTransactions(previousTransactions);
+          setMutationMessage(productionFallbackMessage("Bulk transaction update"));
+          return;
+        }
+
+        setSelectedTransactionIds([]);
+        return;
+      }
     }
 
     setSelectedTransactionIds([]);
@@ -268,14 +298,20 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     const tags = parseTagList(tagText);
 
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, tags } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id, tags },
         onFailure: () => setMutationMessage("Tag change stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setMutationMessage(productionFallbackMessage("Tag change"));
+      }
     }
   }
 
@@ -287,17 +323,29 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     }
 
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
+    const previousSelectedTransactionId = selectedTransactionId;
+    const previousSelectedTransactionIds = selectedTransactionIds;
+    const previousLastDeletedTransaction = lastDeletedTransaction;
     setLastDeletedTransaction(transaction);
     setSelectedTransactionId((current) => (current === id ? null : current));
     setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
     setTransactions((current) => current.filter((row) => row.id !== id));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id, action: "delete" },
         onFailure: () => setMutationMessage("Delete stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setSelectedTransactionId(previousSelectedTransactionId);
+        setSelectedTransactionIds(previousSelectedTransactionIds);
+        setLastDeletedTransaction(previousLastDeletedTransaction);
+        setMutationMessage(productionFallbackMessage("Delete"));
+      }
     }
   }
 
@@ -307,16 +355,26 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
     }
 
     hasLocalEdits.current = true;
+    const previousTransactions = transactions;
+    const previousSelectedTransactionId = selectedTransactionId;
+    const previousLastDeletedTransaction = lastDeletedTransaction;
     setTransactions((current) => [lastDeletedTransaction, ...current]);
     setSelectedTransactionId(lastDeletedTransaction.id);
     setLastDeletedTransaction(null);
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: { id: lastDeletedTransaction.id, action: "restore" },
         onFailure: () => setMutationMessage("Restore stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setSelectedTransactionId(previousSelectedTransactionId);
+        setLastDeletedTransaction(previousLastDeletedTransaction);
+        setMutationMessage(productionFallbackMessage("Restore"));
+      }
     }
   }
 
@@ -439,10 +497,11 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
       merchant: merchantInput,
       notes: notesInput || undefined,
     };
+    const previousTransactions = transactions;
     setTransactions((current) => current.map((transaction) => (transaction.id === selected.id ? { ...transaction, ...patch } : transaction)));
 
     if (dataSource === "database") {
-      await persistTransactionPatch({
+      const persisted = await persistTransactionPatch({
         body: {
           id: selected.id,
           amount: amountInput,
@@ -453,6 +512,11 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         onFailure: () => setMutationMessage("Transaction edit stayed local because the API was unavailable."),
         onSuccess: () => setMutationMessage(null),
       });
+
+      if (!persisted && !canUseLocalFallback(dataSource)) {
+        setTransactions(previousTransactions);
+        setMutationMessage(productionFallbackMessage("Transaction edit"));
+      }
     }
   }
 
@@ -945,7 +1009,7 @@ async function persistTransactionPatch({
   };
   onFailure: () => void;
   onSuccess: () => void;
-}) {
+}): Promise<boolean> {
   try {
     const response = await fetch("/api/transactions", {
       method: "PATCH",
@@ -958,9 +1022,11 @@ async function persistTransactionPatch({
     }
 
     onSuccess();
+    return true;
   } catch {
     onFailure();
     // The optimistic UI remains usable in demo or temporarily offline states.
+    return false;
   }
 }
 

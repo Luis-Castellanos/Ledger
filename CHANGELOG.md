@@ -36,6 +36,7 @@
 - Export controls now generate files through `POST /api/exports` instead of mutating state through download links.
 - Production mutation failures now report errors instead of creating local-only financial records in core workbenches.
 - Production review actions now keep the current queue state when the backing API write fails.
+- Production transaction register edits now roll back optimistic UI changes when persistence fails.
 
 ### Security
 

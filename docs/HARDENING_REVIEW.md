@@ -18,10 +18,11 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Representative route-level tests now cover protected API `401` responses and export method guards.
 - Production mutation failures no longer create local-only accounts, snapshots, transactions, categories, merchant rules, import rows, import batches, or import mappings.
 - Production review workflow failures no longer advance or mutate the local review queue after failed merchant, status, transfer, or undo writes.
+- Production transaction register failures now roll back optimistic status, category, transfer, tag, delete, restore, and edit changes.
 
 ## Remaining Review Items
 
 - Replace in-memory rate limiting before broad beta usage. Serverless instances do not share the current process-local counter.
 - Resolve migration journal drift in the current Neon database before relying on `drizzle-kit migrate` operationally.
 - Add production object storage for uploaded documents; current document rows store metadata and pending storage keys only.
-- Continue reducing lower-risk optimistic local mutation fallbacks. Development demo mode is useful, but production should avoid local-only writes.
+- Continue reducing lower-risk optimistic local mutation fallbacks outside the core financial register. Development demo mode is useful, but production should avoid local-only writes.
