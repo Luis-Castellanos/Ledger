@@ -12,7 +12,7 @@ Praxis Ledger should feel like a modern, refined banking app: calm, precise, dur
 
 Reference qualities:
 
-- Gringotts Vault page architecture, information density, sidebar shell, and transaction workbench model.
+- Gringotts Vault sidebar shell, information density, and ledger workbench model.
 - Fidelity-like institutional palette, line weight, tab treatment, and mature account-management feel.
 - Efficient use of space without massive whitespace.
 - Serious wealth-management feel without becoming brokerage or trading software.
@@ -39,11 +39,12 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use **Gringotts Vault layouts with Fidelity-derived colors and surface treatment** as the base direction.
+Use **Gringotts Vault workbench layouts with Fidelity-derived colors and surface treatment** as the base direction, with a new dashboard design.
 
 Current preference:
 
-- Gringotts page structures copied forward as the layout reference.
+- Gringotts workbench page structures copied forward as the layout reference.
+- Dashboard redesigned from first principles.
 - Fidelity-derived dark institutional color system.
 - Dense but readable work surfaces.
 - Excellent table hierarchy.
@@ -56,11 +57,11 @@ Current preference:
 
 Rationale:
 
-- The old Gringotts app already solved many layout and workflow questions: sidebar-first navigation, compact KPI panels, dense account screens, and a strong transaction workbench.
+- The old Gringotts app already solved many layout and workflow questions: sidebar-first navigation, dense account screens, and a strong transaction workbench.
 - The supplied Fidelity screenshots provide the better color, border, tab, and surface direction for a mature finance product.
 - Praxis should reuse Gringotts layout ideas and Fidelity-like visual principles, without copying Fidelity's brand, copy, logo, or exact trade dress.
 - The design should feel polished, premium, and durable without sacrificing information density.
-- The Gringotts transaction layout should become the reference for all ledger workbench pages, not only Transactions.
+- The Gringotts transaction layout should become the reference for ledger workbench pages, not the dashboard.
 
 ## Selected Design Reference
 
@@ -68,9 +69,10 @@ Working direction:
 
 - **Global app:** Gringotts Vault app shell and page architecture, recolored with a Fidelity-derived dark institutional palette.
 - **Transactions:** Gringotts Vault transaction workbench, restyled with Fidelity-derived colors, borders, typography, and states.
-- **Other pages:** Gringotts-style workbench layouts adapted per domain instead of new generic dashboard/card layouts.
+- **Dashboard:** new design; do not copy the old Gringotts dashboard.
+- **Other pages:** Gringotts-style workbench layouts adapted per domain instead of generic card layouts.
 
-This means the product should use mature finance-app cues: full-viewport shell, persistent sidebar, compact page headers, dense KPI panels, rounded graphite work surfaces, visible separators, green active states, compact filter pills, strong table hierarchy, and precise labels.
+This means the product should use mature finance-app cues: full-viewport shell, persistent sidebar, compact page headers, rounded graphite work surfaces, visible separators, green active states, compact filter pills, strong table hierarchy, and precise labels.
 
 It should not become a Fidelity clone, brokerage interface, or trading app. It also should not copy Gringotts code wholesale when the new codebase has better production boundaries. The goal is to translate the Gringotts product layout into a distinct Praxis Ledger implementation.
 
@@ -201,6 +203,8 @@ Rules:
 Purpose: "What changed, and what needs attention?"
 
 Dashboard should become a command surface, not a poster.
+
+The dashboard is explicitly **not** a Gringotts dashboard port. It should be redesigned as the product's main command center using the Fidelity-derived visual system and the current product goals.
 
 Recommended sections:
 

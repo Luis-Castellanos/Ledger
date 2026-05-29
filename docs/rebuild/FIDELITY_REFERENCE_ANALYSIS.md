@@ -46,15 +46,16 @@ Avoid:
 
 ## Relationship To Gringotts
 
-Gringotts Vault is the layout source of truth:
+Gringotts Vault is the workbench layout source of truth:
 
 - Persistent left sidebar.
 - Compact page headers.
-- Dashboard KPI panels.
 - Dense account and transaction workbenches.
 - Date-grouped ledger rows.
 - Operational panels rather than marketing-style cards.
 - Generous card radii and compact finance controls.
+
+Exception: do not copy the Gringotts dashboard. Dashboard should be redesigned from first principles.
 
 Fidelity is the color and finish source:
 
@@ -236,6 +237,8 @@ Dashboard should answer:
 - Which accounts are stale?
 - Where did cash move?
 
+Do not port the old Gringotts dashboard layout. Use the Fidelity-derived visual system, but redesign the dashboard around Praxis Ledger's current product priorities.
+
 ### Transactions
 
 Use the old Gringotts Vault transaction-page layout as the interaction model, styled with the Fidelity-derived dark institutional system.
@@ -279,7 +282,7 @@ Do not show internal production readiness checks, provider keys, deployment stat
 2. Create shared tokens for color, typography, radius, borders, and component states.
 3. Normalize page headers, tabs, filters, and workbench panels to the Gringotts layout model.
 4. Restyle Transactions first, because it is the core product surface.
-5. Restyle Dashboard and Accounts next.
+5. Redesign Dashboard from first principles, then restyle Accounts.
 6. Normalize Settings into user-facing preferences.
 7. Add light mode later only after the dark institutional system is coherent.
 

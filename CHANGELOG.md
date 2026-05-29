@@ -16,7 +16,7 @@
 
 ### Changed
 
-- Design direction now uses Gringotts Vault page layouts with Fidelity-derived dark institutional colors.
+- Design direction now uses Gringotts Vault workbench layouts with Fidelity-derived dark institutional colors, while excluding the dashboard from the Gringotts port.
 - Shared app tokens now use the Fidelity-derived palette, stronger borders, larger radii, and wider Gringotts-style sidebar.
 - Transaction toolbar layout now wraps filter/sort controls instead of compressing labels.
 - Deployment verification docs now include the secret scan gate.
