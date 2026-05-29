@@ -17,6 +17,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Export generation now uses `POST`; `GET /api/exports` is non-mutating and returns `405`.
 - Representative route-level tests now cover protected API `401` responses and export method guards.
 - Production mutation failures no longer create local-only accounts, snapshots, transactions, categories, merchant rules, import rows, import batches, or import mappings.
+- Production review workflow failures no longer advance or mutate the local review queue after failed merchant, status, transfer, or undo writes.
 
 ## Remaining Review Items
 

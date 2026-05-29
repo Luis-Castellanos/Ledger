@@ -5,7 +5,7 @@ import { CheckCircle2, Edit3, RotateCcw, Search, Shuffle } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleTransactionRows } from "@/lib/finance/transaction-sample-data";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 type Category = {
   id: string;
@@ -175,6 +175,11 @@ export function ReviewWorkbench() {
       setIsEditingMerchant(false);
       setMessage("Merchant name saved.");
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setMessage("Merchant update could not be completed. Please try again.");
+        return;
+      }
+
       setMessage(dataSource === "demo" ? "Merchant name updated in demo mode." : "Merchant update stayed local because the API was unavailable.");
       setQueue((current) =>
         current && current.transaction
@@ -261,6 +266,11 @@ export function ReviewWorkbench() {
       setMessage(`${transaction.merchant} marked reviewed.`);
       await refreshAfterAction();
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setMessage("Review update could not be completed. Please try again.");
+        return;
+      }
+
       setMessage(dataSource === "demo" ? `${transaction.merchant} marked reviewed.` : "Review update stayed local because the API was unavailable.");
       await refreshAfterAction([...skipIds, transaction.id]);
     } finally {
@@ -286,6 +296,11 @@ export function ReviewWorkbench() {
       setMessage(`${transaction.merchant} excluded.`);
       await refreshAfterAction();
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setMessage("Exclude could not be completed. Please try again.");
+        return;
+      }
+
       setMessage(dataSource === "demo" ? `${transaction.merchant} excluded.` : "Exclude stayed local because the API was unavailable.");
       await refreshAfterAction([...skipIds, transaction.id]);
     } finally {
@@ -298,6 +313,7 @@ export function ReviewWorkbench() {
       return;
     }
     const nextTransfer = !transaction.isTransfer;
+    const previousQueue = queue;
     setQueue((current) => (current?.transaction ? { ...current, transaction: { ...current.transaction, isTransfer: nextTransfer } } : current));
 
     try {
@@ -311,18 +327,33 @@ export function ReviewWorkbench() {
       }
       setMessage(nextTransfer ? "Marked as transfer." : "Removed transfer flag.");
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setQueue(previousQueue);
+        setMessage("Transfer update could not be completed. Please try again.");
+        return;
+      }
+
       setMessage(dataSource === "demo" ? "Transfer flag updated in demo mode." : "Transfer flag stayed local because the API was unavailable.");
     }
   }
 
   async function undoRecent(id: string) {
     try {
-      await fetch(`/api/transactions/${id}/unreview`, {
+      const response = await fetch(`/api/transactions/${id}/unreview`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ clearCategory: false }),
       });
+
+      if (!response.ok) {
+        throw new Error("Undo failed");
+      }
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setMessage("Undo could not be completed. Please try again.");
+        return;
+      }
+
       // Demo mode still restores the queue via the local skip reset below.
     }
     setRecent((current) => current.filter((item) => item.id !== id));
