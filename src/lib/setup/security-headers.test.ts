@@ -28,6 +28,8 @@ describe("buildContentSecurityPolicy", () => {
     expect(policy).toContain("connect-src 'self'");
     expect(policy).toContain("https://*.clerk.accounts.dev");
     expect(policy).toContain("https://*.clerk.com");
+    expect(policy).toContain("https://clerk.praxisledger.app");
+    expect(policy).toContain("https://accounts.praxisledger.app");
     expect(policy).toContain("upgrade-insecure-requests");
   });
 });

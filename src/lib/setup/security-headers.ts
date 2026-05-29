@@ -3,7 +3,7 @@ export type SecurityHeader = {
   value: string;
 };
 
-const clerkSources = ["https://*.clerk.accounts.dev", "https://*.clerk.com"];
+const clerkSources = ["https://*.clerk.accounts.dev", "https://*.clerk.com", "https://clerk.praxisledger.app", "https://accounts.praxisledger.app"];
 
 export function buildContentSecurityPolicy() {
   const directives = [
