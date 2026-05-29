@@ -6,6 +6,7 @@ const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && 
 const isProduction = process.env.NODE_ENV === "production";
 const isPublicRoute = createRouteMatcher([...publicRoutePatterns]);
 const isHealthRoute = (pathname: string) => pathname === "/api/health";
+const isApiRoute = (pathname: string) => pathname.startsWith("/api/");
 
 const missingAuthProxy = (request: Request) => {
   if (isHealthRoute(new URL(request.url).pathname)) {
@@ -26,7 +27,11 @@ export default hasClerkConfig
       }
 
       if (!isPublicRoute(request)) {
-        await auth.protect();
+        if (isApiRoute(request.nextUrl.pathname)) {
+          await auth.protect();
+        } else {
+          await auth.protect({ unauthenticatedUrl: "/sign-in" });
+        }
       }
     })
   : missingAuthProxy;
