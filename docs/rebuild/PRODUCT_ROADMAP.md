@@ -179,6 +179,28 @@ Exit criteria:
 - App can build, lint, typecheck, and test in CI.
 - Security checklist is documented before feature work begins.
 
+### Phase 0.5: Design Foundation
+
+Goal: Replace prototype visual direction with a production-grade design language before expanding feature scope.
+
+Deliverables:
+
+- Design foundation document.
+- Chosen visual direction.
+- Color, typography, spacing, radius, table, chart, and form tokens.
+- Dashboard reference design.
+- Transactions reference design.
+- Import/review workflow design.
+- Empty/loading/error state standards.
+- Desktop and mobile shell rules.
+
+Exit criteria:
+
+- The team has chosen a default visual direction.
+- Dashboard and transactions have approved reference designs.
+- The app shell no longer carries prototype/mockup framing.
+- New feature work has clear component and layout standards to follow.
+
 ### Phase 1: Secure Ledger Foundation
 
 Goal: Create the trustworthy core.
