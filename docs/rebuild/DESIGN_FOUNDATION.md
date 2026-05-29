@@ -13,9 +13,9 @@ Praxis Ledger should feel like a modern, refined banking app: calm, precise, dur
 Reference qualities:
 
 - Robinhood-like clarity, speed, and modern product polish.
-- Fidelity-like trust, seriousness, and financial depth.
+- Robinhood Legend-like modular desktop workspace: customizable-feeling panels, fast scanning, compact widgets, and crisp interaction surfaces.
 - Efficient use of space without massive whitespace.
-- Refined banking/wealth-management feel rather than decorative dashboard concept.
+- Sleek modern finance feel rather than institutional bank conservatism.
 
 It should not feel like:
 
@@ -39,7 +39,7 @@ The product should borrow accounting discipline around source traceability, cont
 
 ## Recommended Direction
 
-Use a **light institutional banking app** as the base direction, with a stronger Fidelity-like wealth-management feel.
+Use a **sleek modern finance workspace** as the base direction, closer to Robinhood and Robinhood Legend than Fidelity.
 
 Current preference:
 
@@ -49,13 +49,14 @@ Current preference:
 - Compact dashboard summaries.
 - Restrained green brand accent.
 - Cool neutral surfaces over warm paper-like surfaces.
-- Deep navy or charcoal navigation accents are acceptable when they improve institutional trust.
+- Dark charcoal navigation/chrome is acceptable when it gives the app a sharper modern finance feel.
 - Dark mode can exist later, but should not drive the default design.
 
 Rationale:
 
 - The current dark design looks visually interesting, but it creates too much atmosphere around routine financial work.
-- A refined banking direction better matches the product's need for trust, speed, and routine use.
+- The light institutional/Fidelity direction is too basic and conservative for the desired product character.
+- A Robinhood/Legend-inspired direction better matches the desired sleekness, speed, and modernity.
 - A lighter, denser workspace will make tables, forms, imports, and long review sessions easier.
 - The design should feel polished and premium without sacrificing information density.
 - The old Gringotts transaction layout had the right ledger-workbench instincts and should be preserved as the transaction-page interaction model.
@@ -64,18 +65,18 @@ Rationale:
 
 Working direction:
 
-- **Global app:** light institutional banking, closer to Fidelity than Robinhood.
+- **Global app:** sleek modern finance workspace, closer to Robinhood and Robinhood Legend than Fidelity.
 - **Transactions:** Gringotts Vault-inspired ledger workbench.
 
-This means the product should use Fidelity-like trust cues: light surfaces, conservative spacing, strong table hierarchy, clear account balances, controlled green accent, understated navigation, and precise labels.
+This means the product should use modern finance-app cues: sharp modular panels, crisp white/light-gray surfaces, compact widgets, high-quality charts, controlled green accents, strong table hierarchy, subtle dark chrome, and precise labels.
 
-It should not become a Fidelity clone. The goal is the same category of trust and seriousness, adapted to a personal finance ledger.
+It should not become a Robinhood clone or a trading app. The goal is the same level of polish, speed, and modern product feel, adapted to a personal finance ledger.
 
 ### Reference Concept
 
 The current expansion board is:
 
-`/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a190f6afec8819a9b3d681851b47b81.png`
+`/Users/luis/.codex/generated_images/019e6a27-2460-7ef1-a727-588fb65859e7/ig_052ee9a1af1d3a53016a19178c06e4819a89fe74ac27c1933f.png`
 
 ## Layout System
 
