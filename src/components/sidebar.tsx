@@ -38,6 +38,7 @@ const fallbackProfile: ProfileData = {
   navHidden: [],
   navLayout: [],
 };
+const hasClerkClientConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export function Sidebar({ reviewCount }: { reviewCount?: number }) {
   const pathname = usePathname();
@@ -347,7 +348,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
         </Link>
         <ThemeToggle className="flex size-9 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary" />
         <div className="flex size-9 items-center justify-center">
-          <UserButton />
+          {hasClerkClientConfig ? <UserButton /> : <Avatar gradient={profile.avatarGradient} image={profile.avatarImage} kind={profile.avatarKind} name={profile.name} size={28} />}
         </div>
       </div>
 
