@@ -16,6 +16,7 @@
 - Gringotts-style sidebar foundation with resize, collapse, drag-reorder navigation, profile avatar/name display, theme toggle, and placeholder routes for Payroll, Credit Cards, Files, and Upload.
 - `ledger_settings` persistence table for profile, sidebar, and per-ledger UI preferences.
 - User-facing Settings workbench with Profile, Appearance, Sidebar, Ledger, Data & exports, and Audit trail subareas.
+- Gringotts-compatible transaction and review APIs for review queue context, merchant history, bulk edits, per-row edits, categorization, unreview, and rule recleaning.
 
 ### Changed
 
