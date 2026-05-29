@@ -15,6 +15,13 @@
       "when": 1779951862575,
       "tag": "0001_curved_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780063327488,
+      "tag": "0002_right_greymalkin",
+      "breakpoints": true
     }
   ]
 }

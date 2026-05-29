@@ -148,6 +148,22 @@ export const savedImportMappings = pgTable(
   }),
 );
 
+export const ledgerSettings = pgTable(
+  "ledger_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull().references(() => ledgers.id),
+    key: text("key").notNull(),
+    value: jsonb("value").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    keyUnique: uniqueIndex("ledger_settings_ledger_key_unique").on(table.ledgerId, table.key),
+    ledgerIdx: index("ledger_settings_ledger_idx").on(table.ledgerId),
+  }),
+);
+
 export const imports = pgTable(
   "imports",
   {
@@ -295,6 +311,7 @@ export const ledgerRelations = relations(ledgers, ({ one, many }) => ({
   categories: many(categories),
   merchants: many(merchants),
   merchantRules: many(merchantRules),
+  settings: many(ledgerSettings),
   imports: many(imports),
   transactions: many(transactions),
   balanceSnapshots: many(balanceSnapshots),

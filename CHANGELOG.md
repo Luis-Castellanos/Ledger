@@ -13,6 +13,8 @@
 - Net worth balance evidence labels for transaction-derived, manual snapshot, imported snapshot, and missing evidence values.
 - Tracked-file secret scan via `npm run secrets:scan`.
 - Production domain DNS setup for `praxisledger.app` and Clerk DNS records.
+- Gringotts-style sidebar foundation with resize, collapse, drag-reorder navigation, profile avatar/name display, theme toggle, and placeholder routes for Payroll, Credit Cards, Files, and Upload.
+- `ledger_settings` persistence table for profile, sidebar, and per-ledger UI preferences.
 
 ### Changed
 
