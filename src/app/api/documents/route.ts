@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, documents } from "@/lib/db/schema";
+import { canCreateDocumentMetadataOnly, documentStorageUnavailableResponse } from "@/lib/finance/document-storage";
 import { detectDocumentType, documentStatuses, documentTypes, validateDocumentIntake } from "@/lib/finance/document";
 import { parseFormDataRequest, parseJsonRequest } from "@/lib/http/request";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
@@ -76,6 +77,10 @@ export async function POST(request: Request) {
 
   if (!rateLimit.allowed) {
     return rateLimitExceededResponse(rateLimit);
+  }
+
+  if (!canCreateDocumentMetadataOnly()) {
+    return NextResponse.json(documentStorageUnavailableResponse(), { status: 503 });
   }
 
   const parsedForm = await parseFormDataRequest(request, "document upload");
