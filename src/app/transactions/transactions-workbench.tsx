@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckCircle2, CircleSlash, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState, type TransactionSortMode } from "@/lib/finance/transaction-filters";
@@ -146,6 +146,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const sortedTransactions = useMemo(() => {
     return [...filteredTransactions].sort((left, right) => compareTransactions(left, right, sortMode));
   }, [filteredTransactions, sortMode]);
+  const groupedTransactions = useMemo(() => groupTransactionsByDate(sortedTransactions), [sortedTransactions]);
 
   const selectedVisibleTransactions = sortedTransactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
   const selectedVisibleCount = selectedVisibleTransactions.length;
@@ -601,7 +602,8 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
               </span>
               <span>Merchant</span>
               <span>Category</span>
-              <span>Status / transfer</span>
+              <span>Status / movement</span>
+              <span>Account</span>
               <span>Amount</span>
             </div>
             {lastDeletedTransaction ? (
@@ -613,72 +615,104 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
                 </button>
               </div>
             ) : null}
-            {sortedTransactions.map((transaction) => (
-              <div className="transactions-table-row" role="row" key={transaction.id}>
-                <input
-                  aria-label={`Select ${transaction.merchant}`}
-                  checked={selectedTransactionIds.includes(transaction.id)}
-                  onChange={() => toggleTransactionSelection(transaction.id)}
-                  type="checkbox"
-                />
-                <div className="transaction-register-name">
-                  <p>{transaction.merchant}</p>
-                  <span>
-                    {transaction.date} • {transaction.account}
-                  </span>
+            {groupedTransactions.length ? (
+              groupedTransactions.map((group) => (
+                <div className="transaction-day-group" key={group.date}>
+                  <div className="transaction-date-header">
+                    <span>{formatLongDate(group.date)}</span>
+                    <strong className={group.totalMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(group.totalMinor)}</strong>
+                  </div>
+                  {group.transactions.map((transaction) => {
+                    const isSelected = selectedTransaction?.id === transaction.id;
+                    return (
+                      <div
+                        className={`transactions-table-row transaction-register-row ${isSelected ? "transaction-register-row-active" : ""} ${transaction.status === "needs_review" ? "transaction-register-row-review" : ""}`}
+                        key={transaction.id}
+                        onClick={() => startEditingTransaction(transaction)}
+                        role="row"
+                      >
+                        <input
+                          aria-label={`Select ${transaction.merchant}`}
+                          checked={selectedTransactionIds.includes(transaction.id)}
+                          onChange={() => toggleTransactionSelection(transaction.id)}
+                          onClick={(event) => event.stopPropagation()}
+                          type="checkbox"
+                        />
+                        <div className="transaction-register-name">
+                          <p>{transaction.merchant}</p>
+                          <span>{transaction.date} / {(transaction.tags ?? []).join(", ") || "No tags"}</span>
+                        </div>
+                        <select
+                          aria-label={`Category for ${transaction.merchant}`}
+                          onClick={(event) => event.stopPropagation()}
+                          value={transaction.category}
+                          onChange={(event) => updateCategory(transaction.id, event.target.value)}
+                        >
+                          {categoryOptions.map((category) => (
+                            <option value={category.name} key={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="transaction-status-stack">
+                          <select
+                            aria-label={`Status for ${transaction.merchant}`}
+                            onClick={(event) => event.stopPropagation()}
+                            value={transaction.status}
+                            onChange={(event) => updateStatus(transaction.id, event.target.value as TransactionStatus)}
+                          >
+                            {statuses.map((status) => (
+                              <option value={status.value} key={status.value}>
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label={`Transfer status for ${transaction.merchant}`}
+                            onClick={(event) => event.stopPropagation()}
+                            value={transaction.transferStatus ?? "none"}
+                            onChange={(event) => updateTransferStatus(transaction.id, event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
+                          >
+                            {transferStatuses.map((status) => (
+                              <option value={status.value} key={status.value}>
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="transaction-register-account">
+                          <span>{transaction.account}</span>
+                          <input
+                            aria-label={`Tags for ${transaction.merchant}`}
+                            defaultValue={(transaction.tags ?? []).join(", ")}
+                            onBlur={(event) => void updateTags(transaction.id, event.target.value)}
+                            onClick={(event) => event.stopPropagation()}
+                            placeholder="tags"
+                          />
+                        </div>
+                        <div className="transaction-amount-actions">
+                          <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
+                          <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={(event) => {
+                            event.stopPropagation();
+                            void deleteTransaction(transaction.id);
+                          }}>
+                            <Trash2 size={15} />
+                          </button>
+                          <button type="button" aria-label={`Edit ${transaction.merchant}`} onClick={(event) => {
+                            event.stopPropagation();
+                            startEditingTransaction(transaction);
+                          }}>
+                            <ReceiptText size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <select
-                  aria-label={`Category for ${transaction.merchant}`}
-                  value={transaction.category}
-                  onChange={(event) => updateCategory(transaction.id, event.target.value)}
-                >
-                  {categoryOptions.map((category) => (
-                    <option value={category.name} key={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="transaction-status-stack">
-                  <select
-                    aria-label={`Status for ${transaction.merchant}`}
-                    value={transaction.status}
-                    onChange={(event) => updateStatus(transaction.id, event.target.value as TransactionStatus)}
-                  >
-                    {statuses.map((status) => (
-                      <option value={status.value} key={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    aria-label={`Tags for ${transaction.merchant}`}
-                    defaultValue={(transaction.tags ?? []).join(", ")}
-                    onBlur={(event) => void updateTags(transaction.id, event.target.value)}
-                    placeholder="tags"
-                  />
-                  <select
-                    aria-label={`Transfer status for ${transaction.merchant}`}
-                    value={transaction.transferStatus ?? "none"}
-                    onChange={(event) => updateTransferStatus(transaction.id, event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
-                  >
-                    {transferStatuses.map((status) => (
-                      <option value={status.value} key={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="transaction-amount-actions">
-                  <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
-                  <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={() => deleteTransaction(transaction.id)}>
-                    <Trash2 size={15} />
-                  </button>
-                  <button type="button" aria-label={`Edit ${transaction.merchant}`} onClick={() => startEditingTransaction(transaction)}>
-                    <ReceiptText size={15} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="transaction-empty-state">No transactions match the current filters.</div>
+            )}
           </div>
         </section>
       </section>
@@ -693,6 +727,11 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           </div>
           {selectedTransaction ? (
             <div className="account-form">
+              <div className="transaction-selected-summary">
+                <span>{selectedTransaction.account}</span>
+                <strong className={selectedTransaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(selectedTransaction.amountMinor)}</strong>
+                <p>{selectedTransaction.category}</p>
+              </div>
               <label>
                 <span>Date</span>
                 <input
@@ -806,21 +845,6 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
             </button>
           </form>
         </section>
-
-        <section className="panel account-form-panel">
-          <div className="account-checklist-item">
-            <ReceiptText size={17} />
-            <span>Every transaction remains tied to one account source.</span>
-          </div>
-          <div className="account-checklist-item">
-            <CheckCircle2 size={17} />
-            <span>Review status is explicit before reporting trusts the row.</span>
-          </div>
-          <div className="account-checklist-item">
-            <CircleSlash size={17} />
-            <span>Excluded rows stay visible without affecting totals.</span>
-          </div>
-        </section>
       </aside>
     </div>
   );
@@ -876,6 +900,21 @@ function compareTransactions(left: TransactionRow, right: TransactionRow, sortMo
   }
 
   return right.date.localeCompare(left.date) || left.merchant.localeCompare(right.merchant);
+}
+
+function groupTransactionsByDate(transactions: TransactionRow[]) {
+  const groups = new Map<string, { date: string; totalMinor: number; transactions: TransactionRow[] }>();
+  for (const transaction of transactions) {
+    const group = groups.get(transaction.date) ?? { date: transaction.date, totalMinor: 0, transactions: [] };
+    group.totalMinor += transaction.amountMinor;
+    group.transactions.push(transaction);
+    groups.set(transaction.date, group);
+  }
+  return Array.from(groups.values());
+}
+
+function formatLongDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
 async function persistTransactionPatch({

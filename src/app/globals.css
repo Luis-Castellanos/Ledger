@@ -915,7 +915,7 @@ button {
 
 .transaction-register-table .transactions-table-head,
 .transaction-register-table .transactions-table-row {
-  grid-template-columns: 28px minmax(150px, 1.2fr) 145px 126px 128px;
+  grid-template-columns: 28px minmax(210px, 1.4fr) 160px 150px minmax(150px, 0.9fr) 132px;
 }
 
 .import-preview-table .transactions-table-head,
@@ -963,6 +963,59 @@ button {
 
 .transactions-table-row:hover {
   background: rgba(255, 255, 255, 0.035);
+}
+
+.transaction-day-group {
+  border-bottom: 1px solid rgba(214, 226, 217, 0.08);
+}
+
+.transaction-day-group:last-child {
+  border-bottom: 0;
+}
+
+.transaction-date-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(214, 226, 217, 0.08);
+  background: rgba(255, 255, 255, 0.028);
+  padding: 9px 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.transaction-date-header strong {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.transaction-register-row {
+  cursor: pointer;
+}
+
+.transaction-register-row-active {
+  background: rgba(95, 159, 60, 0.12);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.transaction-register-row-active:hover {
+  background: rgba(95, 159, 60, 0.16);
+}
+
+.transaction-register-row-review {
+  background-image: linear-gradient(90deg, rgba(214, 173, 88, 0.1), transparent 46%);
+}
+
+.transaction-empty-state {
+  padding: 42px 10px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
 }
 
 .transaction-undo-banner {
@@ -1026,6 +1079,32 @@ button {
   gap: 8px;
 }
 
+.transaction-register-account {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.transaction-register-account span {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-register-account input {
+  height: 32px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ink-strong);
+  padding: 0 10px;
+  outline: none;
+}
+
 .transaction-amount-actions button {
   width: 32px;
   height: 32px;
@@ -1059,6 +1138,26 @@ button {
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.transaction-selected-summary {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.028);
+  padding: 13px;
+}
+
+.transaction-selected-summary span,
+.transaction-selected-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.transaction-selected-summary strong {
+  font-size: 22px;
 }
 
 .imports-table select {
