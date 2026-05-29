@@ -13,6 +13,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Profile customization writes validate payload shape and size before persisting settings.
 - JSON mutation routes now share controlled body parsing so malformed payloads return `400` responses before schema validation.
 - Document upload and preview routes now return controlled `400` responses for malformed multipart bodies.
+- Runtime proxy responses now attach the configured CSP, HSTS, content type, frame, referrer, and permissions policy headers.
 
 ## Remaining Review Items
 

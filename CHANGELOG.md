@@ -40,3 +40,4 @@
 - Validate profile customization payload size and shape before persisting ledger settings.
 - Return controlled `400` responses for malformed JSON bodies across mutation APIs.
 - Return controlled `400` responses for malformed document upload multipart bodies.
+- Attach configured security headers from the runtime proxy.

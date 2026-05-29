@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test("dashboard shell renders", async ({ page }) => {
-  await page.goto("/");
+  const response = await page.goto("/");
+
+  expect(response?.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(response?.headers()["x-frame-options"]).toBe("DENY");
 
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await expect(page.getByText("Recent activity")).toBeVisible();
