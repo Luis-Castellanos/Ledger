@@ -5,13 +5,14 @@ import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, documents } from "@/lib/db/schema";
+import { detectDocumentType, documentStatuses, documentTypes } from "@/lib/finance/document";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 const documentUpdateSchema = z.object({
   id: z.string().uuid(),
   accountId: z.string().uuid().nullable().optional(),
-  detectedType: z.enum(["bank", "credit_card", "investment", "paystub", "loan", "tax", "insurance", "unknown"]).optional(),
-  status: z.enum(["uploaded", "parsed", "deferred", "duplicate", "failed"]).optional(),
+  detectedType: z.enum(documentTypes).optional(),
+  status: z.enum(documentStatuses).optional(),
   statementPeriod: z.string().max(80).nullable().optional(),
   detectedIssuer: z.string().max(160).nullable().optional(),
 });
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
   for (const file of files) {
     const bytes = Buffer.from(await file.arrayBuffer());
     const fileSha256 = createHash("sha256").update(bytes).digest("hex");
-    const detected = detectDocument(file.name, file.type);
+    const detected = detectDocumentType(file.name, file.type);
     const [existing] = await db
       .select({ id: documents.id, status: documents.status })
       .from(documents)
@@ -254,23 +255,6 @@ export async function DELETE(request: Request) {
   });
 
   return NextResponse.json({ document });
-}
-
-function detectDocument(fileName: string, mimeType: string) {
-  const lower = fileName.toLowerCase();
-  const issuer =
-    ["fidelity", "chase", "american express", "amex", "capital one", "citi", "discover", "apple", "schwab"].find((name) =>
-      lower.includes(name.replace(/\s+/g, "")) || lower.includes(name),
-    ) ?? null;
-
-  if (!lower.endsWith(".pdf") && mimeType !== "application/pdf") {
-    return { type: "unknown", issuer, deferred: true };
-  }
-  if (lower.includes("paystub") || lower.includes("payroll")) return { type: "paystub", issuer, deferred: true };
-  if (lower.includes("credit") || lower.includes("card") || lower.includes("amex")) return { type: "credit_card", issuer, deferred: false };
-  if (lower.includes("brokerage") || lower.includes("ira") || lower.includes("investment") || lower.includes("fidelity")) return { type: "investment", issuer, deferred: false };
-  if (lower.includes("loan") || lower.includes("mortgage")) return { type: "loan", issuer, deferred: true };
-  return { type: "bank", issuer, deferred: false };
 }
 
 function summarizeDocumentResults(results: Array<{ status: string }>) {

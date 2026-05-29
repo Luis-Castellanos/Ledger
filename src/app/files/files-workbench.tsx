@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Search, Trash2 } from "lucide-react";
+import { documentStatuses, documentTypes, labelizeDocumentValue } from "@/lib/finance/document";
 
 type DocumentRow = {
   id: string;
@@ -65,9 +66,6 @@ const sampleDocuments: DocumentRow[] = [
     accountType: "credit_card",
   },
 ];
-
-const documentTypes = ["bank", "credit_card", "investment", "paystub", "loan", "tax", "insurance", "unknown"];
-const statusOptions = ["uploaded", "parsed", "deferred", "duplicate", "failed"];
 
 export function FilesWorkbench() {
   const [documents, setDocuments] = useState<DocumentRow[]>(sampleDocuments);
@@ -203,9 +201,9 @@ export function FilesWorkbench() {
               </label>
               <select aria-label="File status filter" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="all">All statuses</option>
-                {statusOptions.map((option) => (
+                {documentStatuses.map((option) => (
                   <option value={option} key={option}>
-                    {labelize(option)}
+                    {labelizeDocumentValue(option)}
                   </option>
                 ))}
               </select>
@@ -213,7 +211,7 @@ export function FilesWorkbench() {
                 <option value="all">All types</option>
                 {documentTypes.map((option) => (
                   <option value={option} key={option}>
-                    {labelize(option)}
+                    {labelizeDocumentValue(option)}
                   </option>
                 ))}
               </select>
@@ -239,7 +237,7 @@ export function FilesWorkbench() {
                 <select aria-label={`Document type for ${document.fileName}`} value={document.detectedType} onChange={(event) => void updateDocument(document.id, { detectedType: event.target.value })}>
                   {documentTypes.map((option) => (
                     <option value={option} key={option}>
-                      {labelize(option)}
+                      {labelizeDocumentValue(option)}
                     </option>
                   ))}
                 </select>
@@ -259,9 +257,9 @@ export function FilesWorkbench() {
                   placeholder="MM/DD/YYYY - MM/DD/YYYY"
                 />
                 <select aria-label={`Status for ${document.fileName}`} value={document.status} onChange={(event) => void updateDocument(document.id, { status: event.target.value })}>
-                  {statusOptions.map((option) => (
+                  {documentStatuses.map((option) => (
                     <option value={option} key={option}>
-                      {labelize(option)}
+                      {labelizeDocumentValue(option)}
                     </option>
                   ))}
                 </select>
@@ -287,7 +285,7 @@ export function FilesWorkbench() {
           <div className="file-evidence-list">
             {documentTypes.slice(0, 6).map((option) => (
               <div className="file-evidence-item" key={option}>
-                <span>{labelize(option)}</span>
+                <span>{labelizeDocumentValue(option)}</span>
                 <strong>{documents.filter((document) => document.detectedType === option).length}</strong>
               </div>
             ))}
@@ -318,8 +316,4 @@ function fmtBytes(n: number) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
-}
-
-function labelize(value: string) {
-  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

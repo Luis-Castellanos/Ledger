@@ -28,6 +28,7 @@ type BackupPackageV1 = {
     categories: unknown[];
     transactions: unknown[];
     savedImportMappings: unknown[];
+    documents: unknown[];
     imports: unknown[];
     importRows: unknown[];
     auditEvents: unknown[];
@@ -49,6 +50,7 @@ type BackupPackageV1 = {
 - `categories`
 - `transactions`
 - `savedImportMappings`
+- `documents`
 - `imports`
 - `importRows`
 - `auditEvents`
@@ -57,6 +59,7 @@ Audit events are included by default because source traceability is part of the 
 
 Transaction rows include the V1 `tags` array when present. Transactions CSV exports serialize tags in a `tags` column using `; ` between tag values.
 Saved import mappings are included so CSV intake profiles can be rebuilt alongside staged import history.
+Document rows include source-evidence metadata such as filename, SHA-256 fingerprint, detected type, statement period, linked account, parser status, and storage key. Backup packages do not embed raw statement file bytes in V1.
 
 ## Privacy Notes
 

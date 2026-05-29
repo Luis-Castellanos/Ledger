@@ -4,6 +4,7 @@ import { and, eq, isNull, inArray } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
+import { detectDocumentType } from "@/lib/finance/document";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     : [];
   const duplicateFingerprints = new Set(existing.map((item) => item.fileSha256));
   const results = fingerprints.map(({ file, sha256 }) => {
-    const detected = detectPreviewType(file.name, file.type);
+    const detected = detectDocumentType(file.name, file.type);
     const duplicate = duplicateFingerprints.has(sha256);
     return {
       fileName: file.name,
@@ -69,21 +70,4 @@ export async function POST(request: Request) {
     ),
     results,
   });
-}
-
-function detectPreviewType(fileName: string, mimeType: string) {
-  const lower = fileName.toLowerCase();
-  const issuer =
-    ["fidelity", "chase", "american express", "amex", "capital one", "citi", "discover", "apple", "schwab"].find((name) =>
-      lower.includes(name.replace(/\s+/g, "")) || lower.includes(name),
-    ) ?? null;
-
-  if (!lower.endsWith(".pdf") && mimeType !== "application/pdf") {
-    return { type: "unknown", issuer, deferred: true };
-  }
-  if (lower.includes("paystub") || lower.includes("payroll")) return { type: "paystub", issuer, deferred: true };
-  if (lower.includes("credit") || lower.includes("card") || lower.includes("amex")) return { type: "credit_card", issuer, deferred: false };
-  if (lower.includes("brokerage") || lower.includes("ira") || lower.includes("investment") || lower.includes("fidelity")) return { type: "investment", issuer, deferred: false };
-  if (lower.includes("loan") || lower.includes("mortgage")) return { type: "loan", issuer, deferred: true };
-  return { type: "bank", issuer, deferred: false };
 }
