@@ -7,7 +7,7 @@ import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { parseCsvImportRows, type CsvImportColumnMapping, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
 import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
 import { formatMoney } from "@/lib/finance/money";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const categories = ["Uncategorized", ...defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)])];
 const statuses = [
@@ -135,6 +135,7 @@ export function ImportsWorkbench() {
 
   async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
     hasLocalEdits.current = true;
+    const previousRows = rows;
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
     setMutationMessage(null);
 
@@ -146,6 +147,12 @@ export function ImportsWorkbench() {
           body: JSON.stringify({ id, category: patch.category, status: patch.status }),
         });
       } catch {
+        if (!canUseLocalFallback(dataSource)) {
+          setRows(previousRows);
+          setError(productionFallbackMessage("Import row update"));
+          return;
+        }
+
         setError("Import row update stayed local because the API was unavailable.");
       }
     }
@@ -166,6 +173,7 @@ export function ImportsWorkbench() {
 
     const selectedIds = selectedVisibleRows.map((row) => row.id);
     hasLocalEdits.current = true;
+    const previousRows = rows;
     setRows((current) => current.map((row) => (selectedIds.includes(row.id) ? { ...row, ...patch } : row)));
     setMutationMessage(null);
 
@@ -185,6 +193,12 @@ export function ImportsWorkbench() {
           ),
         );
       } catch {
+        if (!canUseLocalFallback(dataSource)) {
+          setRows(previousRows);
+          setError(productionFallbackMessage("Bulk import row update"));
+          return;
+        }
+
         setDataSource(fallbackDataSource());
         setError(demoFallback("Bulk import row update stayed local because the API was unavailable.", productionFallbackMessage("Bulk import row update")));
         return;
@@ -261,6 +275,11 @@ export function ImportsWorkbench() {
         setError(null);
         return;
       }
+    }
+
+    if (!canUseLocalFallback(dataSource)) {
+      setError(productionFallbackMessage("Import staging"));
+      return;
     }
 
     const batch = {
@@ -343,6 +362,11 @@ export function ImportsWorkbench() {
           return;
         }
       }
+    }
+
+    if (!canUseLocalFallback(dataSource)) {
+      setError(productionFallbackMessage("CSV staging"));
+      return;
     }
 
     const batch = {
@@ -466,8 +490,16 @@ export function ImportsWorkbench() {
           return;
         }
       } catch {
-        // Fall through to local mapping so the workflow remains usable.
+        if (!canUseLocalFallback(dataSource)) {
+          setError(productionFallbackMessage("Import mapping save"));
+          return;
+        }
       }
+    }
+
+    if (!canUseLocalFallback(dataSource)) {
+      setError(productionFallbackMessage("Import mapping save"));
+      return;
     }
 
     setImportMappings((current) => [localMapping, ...current]);

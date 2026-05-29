@@ -10,6 +10,10 @@ export function fallbackDataSource(): DataSourceState {
   return allowDemoFallback ? "demo" : "unavailable";
 }
 
+export function canUseLocalFallback(source: DataSourceState): boolean {
+  return allowDemoFallback || source === "demo";
+}
+
 export function productionFallbackMessage(action: string): string {
   return `${action} could not be completed. Please try again.`;
 }

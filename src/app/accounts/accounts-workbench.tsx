@@ -22,7 +22,7 @@ import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-da
 import { createAccountSchema, createBalanceSnapshotSchema } from "@/lib/finance/account";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const accountTypes = [
   { label: "Checking", value: "checking" },
@@ -228,6 +228,11 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
       setError(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Account save"));
+        return;
+      }
+
       const nextAccount: AccountRow = {
         id: `local_${Date.now()}`,
         name: parsed.data.name,
@@ -254,6 +259,7 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
 
   async function updateAccountLifecycle(id: string, action: "close" | "reopen") {
     hasLocalEdits.current = true;
+    const previousAccounts = accounts;
     setAccounts((current) => current.map((account) => (account.id === id ? { ...account, status: action === "close" ? "closed" : "active", lastActivity: action === "close" ? "Closed today" : "Reopened today" } : account)));
 
     if (dataSource === "database") {
@@ -265,6 +271,12 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
         });
         setError(null);
       } catch {
+        if (!canUseLocalFallback(dataSource)) {
+          setAccounts(previousAccounts);
+          setError(productionFallbackMessage("Account lifecycle update"));
+          return;
+        }
+
         setError("Account lifecycle update stayed local because the API was unavailable.");
       }
     }
@@ -307,6 +319,11 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
       setSnapshotForm((current) => ({ ...current, balance: "" }));
       setError(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Balance snapshot save"));
+        return;
+      }
+
       const snapshot: DatabaseSnapshot = {
         id: `local_snapshot_${account.id}_${parsed.data.asOfDate}`,
         ledgerId: "local",

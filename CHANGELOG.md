@@ -34,6 +34,7 @@
 - Deployment verification docs now include the secret scan gate.
 - Production workbenches now show empty/error states instead of synthetic demo financial data after API failures.
 - Export controls now generate files through `POST /api/exports` instead of mutating state through download links.
+- Production mutation failures now report errors instead of creating local-only financial records in core workbenches.
 
 ### Security
 

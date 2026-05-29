@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { createCategorySchema, createMerchantRuleSchema, updateCategorySchema, type CreateCategoryInput } from "@/lib/finance/rules";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
   {
@@ -166,6 +166,11 @@ export function RulesWorkbench() {
       setDataSource("database");
       setError(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Category save"));
+        return;
+      }
+
       const localCategory = {
         id: `local_category_${Date.now()}`,
         name: parsed.data.name,
@@ -230,6 +235,11 @@ export function RulesWorkbench() {
       setDataSource("database");
       setError(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Category update"));
+        return;
+      }
+
       setCategories((current) => current.map((category) => (category.id === id ? { ...category, ...parsed.data } : category)));
       setCategoryEdits((current) => {
         const next = { ...current };
@@ -269,6 +279,11 @@ export function RulesWorkbench() {
       setDataSource("database");
       setError(null);
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Merchant rule save"));
+        return;
+      }
+
       setRules((current) => [
         {
           id: `local_rule_${Date.now()}`,
@@ -310,6 +325,11 @@ export function RulesWorkbench() {
       setError(null);
       setDataSource("database");
     } catch {
+      if (!canUseLocalFallback(dataSource)) {
+        setApplyMessage(productionFallbackMessage("Rule application"));
+        return;
+      }
+
       setApplyMessage(demoFallback("Demo preview only. Configure Clerk and DATABASE_URL to apply rules to transactions.", productionFallbackMessage("Rule application")));
       setDataSource(fallbackDataSource());
     } finally {

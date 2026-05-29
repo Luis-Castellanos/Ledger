@@ -8,7 +8,7 @@ import { defaultTransactionFilters, type DirectionFilter, type TransactionFilter
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
 import { createManualTransactionSchema, parseTagList } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
 const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
@@ -363,6 +363,11 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
           setError(null);
           return;
         }
+      }
+
+      if (!canUseLocalFallback(dataSource)) {
+        setError(productionFallbackMessage("Transaction save"));
+        return;
       }
 
       const amountMinor = parseDollarAmount(formState.amount);
