@@ -1,544 +1,654 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, CircleSlash, GitBranch, ListChecks, Search, Tags, Wand2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Edit3, RotateCcw, Search, Shuffle } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
+import { sampleTransactionRows } from "@/lib/finance/transaction-sample-data";
 
-const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
-const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
+type Category = {
+  id: string;
+  name: string;
+  slug?: string;
+  color?: string | null;
+};
+
+type ReviewTransaction = {
+  id: string;
+  date: string;
+  amount: number;
+  amountMinor: number;
+  merchant: string;
+  rawDescription: string;
+  isTransfer: boolean;
+  transferStatus?: "none" | "transfer";
+  tags: string[];
+  notes?: string | null;
+  account: {
+    id: string;
+    displayName: string;
+    type: string;
+  };
+};
+
+type SimilarTransaction = {
+  id: string;
+  date: string;
+  amount: number;
+  amountMinor?: number;
+  merchant: string;
+  rawDescription: string;
+  needsReview: boolean;
+  category: Category | null;
+};
+
+type SuggestedCategory = Category & {
+  confidence?: number;
+  basedOn: number;
+};
+
+type QueueResponse = {
+  remaining: number;
+  transaction: ReviewTransaction | null;
+  similar: SimilarTransaction[];
+  suggestedCategory: SuggestedCategory | null;
+  merchantPrefix?: string;
+};
+
+type RecentlyReviewed = {
+  id: string;
+  merchant: string;
+  categoryName: string | null;
+  amountMinor: number;
+  reviewedAt: string;
+};
+
+const fallbackCategoryOptions: Category[] = defaultCategoryTree
+  .flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)])
+  .map((name) => ({ id: name, name, slug: name.toLowerCase().replace(/\s+/g, "-"), color: null }));
 
 export function ReviewWorkbench() {
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
-  const [query, setQuery] = useState("");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [queue, setQueue] = useState<QueueResponse | null>(null);
+  const [categories, setCategories] = useState<Category[]>(fallbackCategoryOptions);
+  const [skipIds, setSkipIds] = useState<string[]>([]);
+  const [pendingCategoryId, setPendingCategoryId] = useState<string | null>(null);
+  const [isEditingMerchant, setIsEditingMerchant] = useState(false);
+  const [merchantDraft, setMerchantDraft] = useState("");
+  const [recent, setRecent] = useState<RecentlyReviewed[]>([]);
+  const [session, setSession] = useState({ reviewed: 0, skipped: 0 });
   const [message, setMessage] = useState<string | null>(null);
-  const [lastReviewAction, setLastReviewAction] = useState<ReviewUndoAction | null>(null);
-  const [selectedReviewIds, setSelectedReviewIds] = useState<string[]>([]);
-  const [bulkCategory, setBulkCategory] = useState(fallbackCategoryOptions[0]?.name ?? "Groceries");
-  const hasLocalEdits = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [dataSource, setDataSource] = useState<"database" | "demo">("database");
+
+  async function loadQueue(nextSkipIds = skipIds) {
+    try {
+      const skipParam = nextSkipIds.length ? `?skip=${encodeURIComponent(nextSkipIds.join(","))}` : "";
+      const [queueResponse, categoriesResponse] = await Promise.all([
+        fetch(`/api/review/queue${skipParam}`, { headers: { Accept: "application/json" } }),
+        fetch("/api/categories", { headers: { Accept: "application/json" } }),
+      ]);
+
+      if (!queueResponse.ok || !categoriesResponse.ok) {
+        throw new Error("Review APIs unavailable");
+      }
+
+      const queuePayload = (await queueResponse.json()) as { data: QueueResponse };
+      const categoriesPayload = (await categoriesResponse.json()) as { categories: Category[] };
+      setQueue(queuePayload.data);
+      setCategories(categoriesPayload.categories.length ? categoriesPayload.categories : fallbackCategoryOptions);
+      setPendingCategoryId(queuePayload.data.suggestedCategory?.id ?? null);
+      setMerchantDraft(queuePayload.data.transaction?.merchant ?? "");
+      setDataSource("database");
+    } catch {
+      setQueue(buildDemoQueue(nextSkipIds));
+      setCategories(fallbackCategoryOptions);
+      setDataSource("demo");
+    }
+  }
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadTransactions() {
-      try {
-        const [transactionsResponse, categoriesResponse] = await Promise.all([
-          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
-          fetch("/api/categories", { headers: { Accept: "application/json" } }),
-        ]);
-
-        if (!transactionsResponse.ok || !categoriesResponse.ok) {
-          throw new Error("Transaction API unavailable");
-        }
-
-        const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
-        const categoriesPayload = (await categoriesResponse.json()) as { categories: DatabaseCategory[] };
-        const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
-
-        if (isMounted && !hasLocalEdits.current) {
-          setTransactions(transactionsPayload.transactions);
-          setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
-          setBulkCategory(nextCategories[0]?.name ?? fallbackCategoryOptions[0]?.name ?? "Groceries");
-          setDataSource("database");
-        }
-      } catch {
-        if (isMounted && !hasLocalEdits.current) {
-          setTransactions(sampleTransactionRows);
-          setDataSource("demo");
-        }
-      }
-    }
-
-    void loadTransactions();
-
-    return () => {
-      isMounted = false;
-    };
+    queueMicrotask(() => {
+      void loadQueue([]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const reviewRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    return transactions.filter((transaction) => {
-      const needsReview = transaction.status === "needs_review";
-      const matchesQuery =
-        !normalizedQuery ||
-        [transaction.merchant, transaction.account, transaction.category, transaction.date].some((value) => value.toLowerCase().includes(normalizedQuery));
-
-      return needsReview && matchesQuery;
-    });
-  }, [query, transactions]);
-
-  const reviewedCount = transactions.filter((transaction) => transaction.status === "reviewed").length;
-  const excludedCount = transactions.filter((transaction) => transaction.status === "excluded").length;
-  const selectedReviewRows = reviewRows.filter((transaction) => selectedReviewIds.includes(transaction.id));
-  const selectedReviewCount = selectedReviewRows.length;
-  const allReviewRowsSelected = reviewRows.length > 0 && selectedReviewCount === reviewRows.length;
-
-  function toggleReviewSelection(id: string) {
-    setSelectedReviewIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
-  }
-
-  function toggleAllReviewSelection() {
-    setSelectedReviewIds(allReviewRowsSelected ? [] : reviewRows.map((transaction) => transaction.id));
-  }
-
-  async function updateReview(id: string, status: "reviewed" | "excluded") {
-    hasLocalEdits.current = true;
-    const previousTransaction = transactions.find((transaction) => transaction.id === id);
-
-    if (!previousTransaction) {
-      return;
-    }
-
-    setLastReviewAction({
-      transactions: [{ id, previousStatus: previousTransaction.status }],
-      merchant: previousTransaction.merchant,
-      nextStatus: status,
-    });
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
-    setSelectedReviewIds((current) => current.filter((selectedId) => selectedId !== id));
-
-    if (dataSource === "database") {
-      try {
-        const response = await fetch("/api/transactions", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ id, reviewStatus: status }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Review update failed");
+  const transaction = queue?.transaction ?? null;
+  const suggested = queue?.suggestedCategory ?? null;
+  const similar = queue?.similar ?? [];
+  const remaining = queue?.remaining ?? 0;
+  const quickCategories = useMemo(() => {
+    const preferred = [suggested?.id, ...categories.map((category) => category.id)].filter(Boolean) as string[];
+    const seen = new Set<string>();
+    return preferred
+      .map((id) => categories.find((category) => category.id === id) ?? (suggested?.id === id ? suggested : null))
+      .filter((category): category is Category => {
+        if (!category || seen.has(category.id)) {
+          return false;
         }
+        seen.add(category.id);
+        return true;
+      })
+      .slice(0, 9);
+  }, [categories, suggested]);
+  const progress = session.reviewed + remaining === 0 ? 100 : Math.round((session.reviewed / Math.max(session.reviewed + remaining, 1)) * 100);
 
-        setMessage(`${previousTransaction.merchant} marked ${getReviewStatusLabel(status)}.`);
-      } catch {
-        setDataSource("demo");
-        setMessage("Review decision stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(`${previousTransaction.merchant} marked ${getReviewStatusLabel(status)}.`);
-    }
+  async function refreshAfterAction(nextSkipIds = skipIds) {
+    setPendingCategoryId(null);
+    await loadQueue(nextSkipIds);
   }
 
-  async function applyToSimilar(id: string) {
-    hasLocalEdits.current = true;
-    const sourceTransaction = transactions.find((transaction) => transaction.id === id);
-
-    if (!sourceTransaction) {
+  function skipCurrent() {
+    if (!transaction) {
       return;
     }
-
-    const normalizedMerchant = normalizeMerchant(sourceTransaction.merchant);
-    const similarTransactions = transactions.filter(
-      (transaction) => transaction.status === "needs_review" && normalizeMerchant(transaction.merchant) === normalizedMerchant,
-    );
-
-    if (similarTransactions.length === 0) {
-      setMessage(`No similar unreviewed ${sourceTransaction.merchant} transactions found.`);
-      return;
-    }
-
-    const nextStatus = "reviewed";
-    setLastReviewAction({
-      transactions: similarTransactions.map((transaction) => ({ id: transaction.id, previousStatus: transaction.status })),
-      merchant: sourceTransaction.merchant,
-      nextStatus,
-    });
-    setTransactions((current) =>
-      current.map((transaction) =>
-        similarTransactions.some((similarTransaction) => similarTransaction.id === transaction.id)
-          ? { ...transaction, category: sourceTransaction.category, status: nextStatus }
-          : transaction,
-      ),
-    );
-
-    if (dataSource === "database") {
-      try {
-        await Promise.all(
-          similarTransactions.map((transaction) =>
-            fetch("/api/transactions", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ id: transaction.id, categoryName: sourceTransaction.category, reviewStatus: nextStatus }),
-            }).then((response) => {
-              if (!response.ok) {
-                throw new Error("Similar review update failed");
-              }
-            }),
-          ),
-        );
-
-        setMessage(`${similarTransactions.length} similar ${sourceTransaction.merchant} transactions reviewed.`);
-      } catch {
-        setDataSource("demo");
-        setMessage("Similar review stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(`${similarTransactions.length} similar ${sourceTransaction.merchant} transactions reviewed.`);
-    }
+    const nextSkipIds = [...skipIds, transaction.id];
+    setSkipIds(nextSkipIds);
+    setSession((current) => ({ ...current, skipped: current.skipped + 1 }));
+    setMessage(`${transaction.merchant} skipped for this session.`);
+    void refreshAfterAction(nextSkipIds);
   }
 
-  async function createRuleFromTransaction(id: string) {
-    hasLocalEdits.current = true;
-    const transaction = transactions.find((row) => row.id === id);
-    const category = transaction ? categoryOptions.find((option) => option.name === transaction.category) : null;
-
-    if (!transaction || !category) {
-      setMessage("Choose a category before creating a rule.");
+  async function commitMerchant() {
+    if (!transaction || !merchantDraft.trim()) {
       return;
     }
 
-    if (dataSource !== "database") {
-      setMessage(`Rule preview created for ${transaction.merchant}. Configure Clerk and DATABASE_URL to persist rules.`);
-      return;
-    }
-
+    setBusy(true);
     try {
-      const response = await fetch("/api/merchant-rules", {
-        method: "POST",
+      const response = await fetch(`/api/transactions/${transaction.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          name: `${transaction.merchant} rule`,
-          matchType: "contains",
-          matchValue: transaction.merchant,
-          categoryId: category.id,
-          priority: 100,
-        }),
+        body: JSON.stringify({ merchant: merchantDraft.trim() }),
       });
 
       if (!response.ok) {
-        throw new Error("Rule creation failed");
+        throw new Error("Merchant update failed");
       }
 
-      setMessage(`Rule created for ${transaction.merchant}.`);
+      setQueue((current) =>
+        current && current.transaction
+          ? { ...current, transaction: { ...current.transaction, merchant: merchantDraft.trim(), rawDescription: merchantDraft.trim() } }
+          : current,
+      );
+      setIsEditingMerchant(false);
+      setMessage("Merchant name saved.");
     } catch {
-      setDataSource("demo");
-      setMessage("Rule creation stayed local because the API was unavailable.");
+      setMessage(dataSource === "demo" ? "Merchant name updated in demo mode." : "Merchant update stayed local because the API was unavailable.");
+      setQueue((current) =>
+        current && current.transaction
+          ? { ...current, transaction: { ...current.transaction, merchant: merchantDraft.trim(), rawDescription: merchantDraft.trim() } }
+          : current,
+      );
+      setIsEditingMerchant(false);
+    } finally {
+      setBusy(false);
     }
   }
 
-  async function undoLastReviewAction() {
-    if (!lastReviewAction) {
+  async function commitCategory(categoryId: string, options: { applyToSimilar?: boolean } = {}) {
+    if (!transaction) {
       return;
     }
 
-    hasLocalEdits.current = true;
-    const action = lastReviewAction;
-    setLastReviewAction(null);
-    setTransactions((current) =>
-      current.map((transaction) => {
-        const previous = action.transactions.find((item) => item.id === transaction.id);
-        return previous ? { ...transaction, status: previous.previousStatus } : transaction;
-      }),
+    const category = categories.find((item) => item.id === categoryId) ?? suggested;
+    if (!category) {
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}/categorize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ categoryName: category.name, applyToSimilar: Boolean(options.applyToSimilar), isTransfer: transaction.isTransfer }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Category update failed");
+      }
+
+      setRecent((current) => [
+        { id: transaction.id, merchant: transaction.merchant, categoryName: category.name, amountMinor: transaction.amountMinor, reviewedAt: new Date().toISOString() },
+        ...current.slice(0, 7),
+      ]);
+      setSession((current) => ({ ...current, reviewed: current.reviewed + 1 }));
+      setMessage(`${transaction.merchant} reviewed as ${category.name}.`);
+      await refreshAfterAction();
+    } catch {
+      if (dataSource === "demo") {
+        setRecent((current) => [
+          { id: transaction.id, merchant: transaction.merchant, categoryName: category.name, amountMinor: transaction.amountMinor, reviewedAt: new Date().toISOString() },
+          ...current.slice(0, 7),
+        ]);
+        setSession((current) => ({ ...current, reviewed: current.reviewed + 1 }));
+        setMessage(`${transaction.merchant} reviewed as ${category.name}.`);
+        await refreshAfterAction([...skipIds, transaction.id]);
+      } else {
+        setMessage("Category update stayed local because the API was unavailable.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function markReviewed() {
+    if (!transaction) {
+      return;
+    }
+    const categoryId = pendingCategoryId ?? suggested?.id ?? null;
+    if (categoryId) {
+      await commitCategory(categoryId);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ reviewStatus: "reviewed" }),
+      });
+      if (!response.ok) {
+        throw new Error("Review update failed");
+      }
+      setRecent((current) => [
+        { id: transaction.id, merchant: transaction.merchant, categoryName: null, amountMinor: transaction.amountMinor, reviewedAt: new Date().toISOString() },
+        ...current.slice(0, 7),
+      ]);
+      setSession((current) => ({ ...current, reviewed: current.reviewed + 1 }));
+      setMessage(`${transaction.merchant} marked reviewed.`);
+      await refreshAfterAction();
+    } catch {
+      setMessage(dataSource === "demo" ? `${transaction.merchant} marked reviewed.` : "Review update stayed local because the API was unavailable.");
+      await refreshAfterAction([...skipIds, transaction.id]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function excludeCurrent() {
+    if (!transaction) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ reviewStatus: "excluded" }),
+      });
+      if (!response.ok) {
+        throw new Error("Exclude update failed");
+      }
+      setSession((current) => ({ ...current, reviewed: current.reviewed + 1 }));
+      setMessage(`${transaction.merchant} excluded.`);
+      await refreshAfterAction();
+    } catch {
+      setMessage(dataSource === "demo" ? `${transaction.merchant} excluded.` : "Exclude stayed local because the API was unavailable.");
+      await refreshAfterAction([...skipIds, transaction.id]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleTransfer() {
+    if (!transaction) {
+      return;
+    }
+    const nextTransfer = !transaction.isTransfer;
+    setQueue((current) => (current?.transaction ? { ...current, transaction: { ...current.transaction, isTransfer: nextTransfer } } : current));
+
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ transferStatus: nextTransfer ? "transfer" : "none" }),
+      });
+      if (!response.ok) {
+        throw new Error("Transfer update failed");
+      }
+      setMessage(nextTransfer ? "Marked as transfer." : "Removed transfer flag.");
+    } catch {
+      setMessage(dataSource === "demo" ? "Transfer flag updated in demo mode." : "Transfer flag stayed local because the API was unavailable.");
+    }
+  }
+
+  async function undoRecent(id: string) {
+    try {
+      await fetch(`/api/transactions/${id}/unreview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ clearCategory: false }),
+      });
+    } catch {
+      // Demo mode still restores the queue via the local skip reset below.
+    }
+    setRecent((current) => current.filter((item) => item.id !== id));
+    setSkipIds((current) => current.filter((item) => item !== id));
+    setSession((current) => ({ ...current, reviewed: Math.max(0, current.reviewed - 1) }));
+    setMessage("Review decision undone.");
+    await loadQueue(skipIds.filter((item) => item !== id));
+  }
+
+  if (!transaction) {
+    return (
+      <div className="p-5 lg:p-7">
+        <section className="rounded-xl border border-border-subtle bg-surface-1 p-8 text-center">
+          <CheckCircle2 className="mx-auto text-accent-300" size={28} />
+          <h2 className="mt-3 text-[22px] font-semibold text-text-primary">Review queue clear</h2>
+          <p className="mx-auto mt-2 max-w-md text-[13px] text-text-tertiary">There are no unresolved transactions in the current queue.</p>
+          <button className="mt-5 rounded-lg border border-border-subtle px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface-2" onClick={() => void loadQueue([])} type="button">
+            Reload queue
+          </button>
+        </section>
+      </div>
     );
-
-    if (dataSource === "database") {
-      try {
-        await Promise.all(
-          action.transactions.map((transaction) =>
-            fetch("/api/transactions", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ id: transaction.id, reviewStatus: transaction.previousStatus }),
-            }).then((response) => {
-              if (!response.ok) {
-                throw new Error("Review undo failed");
-              }
-            }),
-          ),
-        );
-
-        setMessage("Review decision undone.");
-      } catch {
-        setDataSource("demo");
-        setMessage("Review undo stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(null);
-    }
   }
 
-  async function updateCategory(id: string, category: string) {
-    hasLocalEdits.current = true;
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
-
-    if (dataSource === "database") {
-      try {
-        const response = await fetch("/api/transactions", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ id, categoryName: category }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Category update failed");
-        }
-
-        setMessage("Category change saved.");
-      } catch {
-        setDataSource("demo");
-        setMessage("Category change stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(null);
-    }
-  }
-
-  async function updateBulkCategory() {
-    if (selectedReviewRows.length === 0) {
-      return;
-    }
-
-    const selectedIds = selectedReviewRows.map((transaction) => transaction.id);
-    hasLocalEdits.current = true;
-    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, category: bulkCategory } : transaction)));
-
-    if (dataSource === "database") {
-      try {
-        await Promise.all(selectedIds.map((id) => persistReviewPatch({ id, categoryName: bulkCategory })));
-        setMessage(`${selectedIds.length} selected transactions recategorized.`);
-      } catch {
-        setDataSource("demo");
-        setMessage("Bulk category change stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(`${selectedIds.length} selected transactions recategorized.`);
-    }
-  }
-
-  async function updateBulkReview(status: "reviewed" | "excluded") {
-    if (selectedReviewRows.length === 0) {
-      return;
-    }
-
-    const selectedRows = selectedReviewRows;
-    const selectedIds = selectedRows.map((transaction) => transaction.id);
-    hasLocalEdits.current = true;
-    setLastReviewAction({
-      transactions: selectedRows.map((transaction) => ({ id: transaction.id, previousStatus: transaction.status })),
-      merchant: `${selectedRows.length} selected rows`,
-      nextStatus: status,
-    });
-    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, status } : transaction)));
-    setSelectedReviewIds([]);
-
-    if (dataSource === "database") {
-      try {
-        await Promise.all(selectedIds.map((id) => persistReviewPatch({ id, reviewStatus: status })));
-        setMessage(`${selectedIds.length} selected transactions marked ${getReviewStatusLabel(status)}.`);
-      } catch {
-        setDataSource("demo");
-        setMessage("Bulk review decision stayed local because the API was unavailable.");
-      }
-    } else {
-      setMessage(`${selectedIds.length} selected transactions marked ${getReviewStatusLabel(status)}.`);
-    }
-  }
+  const selectedCategory = categories.find((category) => category.id === pendingCategoryId) ?? null;
+  const amountNegative = transaction.amountMinor < 0;
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
-          <ReviewMetric label="Needs review" value={`${reviewRows.length} rows`} icon={<ListChecks size={17} />} tone="violet" />
-          <ReviewMetric label="Reviewed" value={`${reviewedCount} rows`} icon={<CheckCircle2 size={17} />} tone="green" />
-          <ReviewMetric label="Excluded" value={`${excludedCount} rows`} icon={<CircleSlash size={17} />} tone="coral" />
+    <div className="p-5 lg:p-7">
+      <div className="mb-5">
+        <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+          <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${progress}%` }} />
         </div>
-
-        <section className="panel transactions-table-panel">
-          <div className="panel-header accounts-toolbar">
-            <div>
-              <p className="panel-label">Review queue</p>
-              <h2 className="panel-title">Unresolved transactions</h2>
-            </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search unresolved transactions" placeholder="Search queue" value={query} onChange={(event) => setQuery(event.target.value)} />
-            </label>
+        <div className="mt-3 flex flex-col gap-2 text-[13px] text-text-tertiary md:flex-row md:items-center md:justify-between">
+          <div>
+            <strong className="tabular-nums text-text-primary">{remaining}</strong> remaining
+            <span className="mx-2 text-text-muted">·</span>
+            <strong className="tabular-nums text-text-primary">{session.reviewed}</strong> done
+            <span className="mx-2 text-text-muted">·</span>
+            <strong className="tabular-nums text-text-primary">{session.skipped}</strong> skipped
           </div>
-          {message ? <p className={isReviewSuccessMessage(message) ? "form-success" : "form-error"}>{message}</p> : null}
-          {lastReviewAction ? (
-            <div className="transaction-undo-banner">
-              <span>
-                Last review action: {lastReviewAction.merchant} {getReviewStatusLabel(lastReviewAction.nextStatus)}.
-              </span>
-              <button type="button" onClick={undoLastReviewAction}>
-                Undo review
+          <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+        </div>
+      </div>
+
+      {message ? <div className="mb-5 rounded-lg border border-border-subtle bg-surface-1 px-4 py-3 text-[13px] text-text-secondary">{message}</div> : null}
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="rounded-2xl border border-border-subtle bg-surface-1 p-5 lg:p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-[18px] font-semibold text-accent-300">
+                {(transaction.merchant || transaction.rawDescription).charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                {isEditingMerchant ? (
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      autoFocus
+                      className="min-w-0 flex-1 rounded-lg border border-border-strong bg-surface-base px-3 py-2 text-[15px] font-semibold text-text-primary outline-none"
+                      onChange={(event) => setMerchantDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          void commitMerchant();
+                        }
+                        if (event.key === "Escape") {
+                          setIsEditingMerchant(false);
+                        }
+                      }}
+                      value={merchantDraft}
+                    />
+                    <button className="rounded-lg bg-accent-500 px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-50" disabled={busy} onClick={() => void commitMerchant()} type="button">
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-[22px] font-semibold tracking-normal text-text-primary">{transaction.merchant}</h2>
+                    <button className="rounded-md border border-border-subtle p-1.5 text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary" onClick={() => setIsEditingMerchant(true)} type="button" aria-label="Edit merchant">
+                      <Edit3 size={14} />
+                    </button>
+                  </div>
+                )}
+                <p className="mt-1 text-[13px] text-text-tertiary">
+                  {formatDate(transaction.date)} · {transaction.account.displayName}
+                </p>
+              </div>
+            </div>
+            <div className="text-left md:text-right">
+              <div className={`text-[26px] font-semibold tabular-nums ${amountNegative ? "text-negative" : "text-positive"}`}>
+                {formatMoney(transaction.amountMinor)}
+              </div>
+              <div className="mt-1 text-[12px] text-text-muted">{transaction.account.type}</div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-border-subtle bg-surface-base px-4 py-3">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">Original statement</p>
+            <p className="mt-2 break-words font-mono text-[13px] text-text-secondary">{transaction.rawDescription}</p>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">Category</p>
+            {suggested ? (
+              <div className="mt-3 flex flex-col gap-3 rounded-lg border border-accent-500/30 bg-accent-soft px-4 py-3 md:flex-row md:items-center">
+                <div className="flex-1 text-[13px] text-accent-300">
+                  Suggested: <strong className="text-accent-200">{iconFor(suggested.name)} {suggested.name}</strong>
+                  <span className="text-text-tertiary"> based on {suggested.basedOn} similar transaction{suggested.basedOn === 1 ? "" : "s"}.</span>
+                </div>
+                <button className="rounded-lg bg-accent-500 px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50" disabled={busy} onClick={() => void commitCategory(suggested.id)} type="button">
+                  Apply
+                </button>
+              </div>
+            ) : null}
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickCategories.map((category) => {
+                const selected = pendingCategoryId === category.id;
+                return (
+                  <button
+                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[14px] transition-colors ${
+                      selected ? "border-accent-500 bg-accent-soft text-accent-300" : "border-border-subtle bg-surface-base text-text-secondary hover:border-border-strong"
+                    }`}
+                    key={category.id}
+                    onClick={() => setPendingCategoryId(category.id)}
+                    type="button"
+                  >
+                    <span>{iconFor(category.name)}</span>
+                    <span>{category.name}</span>
+                  </button>
+                );
+              })}
+              <CategorySearch categories={categories} onPick={setPendingCategoryId} pendingCategoryId={pendingCategoryId} />
+            </div>
+            {selectedCategory ? <p className="mt-3 text-[12px] text-text-tertiary">Pending category: <span className="text-text-primary">{selectedCategory.name}</span></p> : null}
+          </div>
+
+          <button
+            className="mt-5 flex w-full items-center gap-3 rounded-lg border border-border-subtle bg-surface-base px-4 py-3 text-left transition-colors hover:bg-surface-2"
+            onClick={() => void toggleTransfer()}
+            type="button"
+          >
+            <Shuffle size={18} />
+            <span className="flex-1">
+              <span className="block text-[14px] font-medium text-text-primary">Mark as transfer</span>
+              <span className="mt-1 block text-[12px] text-text-tertiary">Excludes from spending and income totals.</span>
+            </span>
+            <span className={`relative h-6 w-11 rounded-full transition-colors ${transaction.isTransfer ? "bg-accent-500" : "bg-surface-3"}`}>
+              <span className={`absolute top-0.5 size-5 rounded-full bg-white transition-[left] ${transaction.isTransfer ? "left-[22px]" : "left-0.5"}`} />
+            </span>
+          </button>
+
+          <div className="mt-6 flex flex-col gap-3 border-t border-border-subtle pt-5 md:flex-row md:items-center md:justify-between">
+            <p className="text-[12px] text-text-muted">{selectedCategory ? `${selectedCategory.name} is ready to apply.` : "Choose a category or mark the transaction reviewed as-is."}</p>
+            <div className="flex flex-wrap gap-2">
+              <button className="rounded-lg border border-border-subtle px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface-2" onClick={skipCurrent} type="button">
+                Skip
+              </button>
+              <button className="rounded-lg border border-border-subtle px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors hover:bg-surface-2 disabled:opacity-50" disabled={busy} onClick={() => void excludeCurrent()} type="button">
+                Exclude
+              </button>
+              <button className="rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50" disabled={busy} onClick={() => void markReviewed()} type="button">
+                Mark reviewed
               </button>
             </div>
-          ) : null}
-          <div className="transaction-undo-banner review-bulk-bar">
-            <span>{selectedReviewCount} selected</span>
-            <select aria-label="Bulk review category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
-              {categoryOptions.map((category) => (
-                <option value={category.name} key={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={updateBulkCategory} disabled={selectedReviewCount === 0}>
-              Set category
-            </button>
-            <button type="button" onClick={() => updateBulkReview("reviewed")} disabled={selectedReviewCount === 0}>
-              Mark reviewed
-            </button>
-            <button type="button" onClick={() => updateBulkReview("excluded")} disabled={selectedReviewCount === 0}>
-              Exclude
-            </button>
-          </div>
-
-          <div className="transactions-table review-queue-table" role="table" aria-label="Review queue">
-            <div className="transactions-table-head" role="row">
-              <span>
-                <input
-                  aria-label="Select all review rows"
-                  checked={allReviewRowsSelected}
-                  onChange={toggleAllReviewSelection}
-                  type="checkbox"
-                />
-              </span>
-              <span>Merchant</span>
-              <span>Category</span>
-              <span>Status</span>
-              <span>Amount</span>
-            </div>
-            {reviewRows.map((transaction) => (
-              <div className="transactions-table-row" role="row" key={transaction.id}>
-                <input
-                  aria-label={`Select ${transaction.merchant}`}
-                  checked={selectedReviewIds.includes(transaction.id)}
-                  onChange={() => toggleReviewSelection(transaction.id)}
-                  type="checkbox"
-                />
-                <div className="transaction-register-name">
-                  <p>{transaction.merchant}</p>
-                  <span>
-                    {transaction.date} • {transaction.account}
-                  </span>
-                </div>
-                <select
-                  aria-label={`Category for ${transaction.merchant}`}
-                  value={transaction.category}
-                  onChange={(event) => updateCategory(transaction.id, event.target.value)}
-                >
-                  {categoryOptions.map((category) => (
-                    <option value={category.name} key={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="review-actions">
-                  <button type="button" aria-label={`Mark ${transaction.merchant} reviewed`} onClick={() => updateReview(transaction.id, "reviewed")}>
-                    <CheckCircle2 size={15} />
-                  </button>
-                  <button type="button" aria-label={`Exclude ${transaction.merchant}`} onClick={() => updateReview(transaction.id, "excluded")}>
-                    <CircleSlash size={15} />
-                  </button>
-                  <button type="button" aria-label={`Apply ${transaction.merchant} to similar`} onClick={() => applyToSimilar(transaction.id)}>
-                    <Wand2 size={15} />
-                  </button>
-                  <button type="button" aria-label={`Create rule from ${transaction.merchant}`} onClick={() => createRuleFromTransaction(transaction.id)}>
-                    <GitBranch size={15} />
-                  </button>
-                </div>
-                <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
-              </div>
-            ))}
           </div>
         </section>
-      </section>
 
-      <aside className="accounts-side">
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Controls</p>
-              <h2 className="panel-title">Review policy</h2>
+        <aside className="flex flex-col gap-5">
+          <section className="rounded-2xl border border-border-subtle bg-surface-1 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">Similar transactions</p>
+              <span className="text-[12px] text-text-muted">{similar.length}</span>
             </div>
-            <div className="summary-icon">
-              <Tags size={17} />
+            <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+              {similar.length ? (
+                similar.map((item) => (
+                  <div className="grid grid-cols-[1fr_auto] gap-3 rounded-lg bg-surface-base px-3 py-2 text-[13px]" key={item.id}>
+                    <div className="min-w-0">
+                      <p className="truncate text-text-secondary">{item.merchant}</p>
+                      <p className="mt-0.5 text-[11px] text-text-muted">{formatDate(item.date)} · {item.category?.name ?? "Uncategorized"}</p>
+                    </div>
+                    <strong className={(item.amountMinor ?? Math.round(item.amount * 100)) < 0 ? "text-negative" : "text-positive"}>
+                      {formatMoney(item.amountMinor ?? Math.round(item.amount * 100))}
+                    </strong>
+                  </div>
+                ))
+              ) : (
+                <p className="py-5 text-center text-[13px] text-text-muted">No similar transactions found.</p>
+              )}
             </div>
-          </div>
-          <div className="account-checklist-item">
-            <CheckCircle2 size={17} />
-            <span>Reviewed transactions are trusted by reports.</span>
-          </div>
-          <div className="account-checklist-item">
-            <CircleSlash size={17} />
-            <span>Excluded rows stay visible but leave cashflow totals.</span>
-          </div>
-          <div className="account-checklist-item">
-            <ListChecks size={17} />
-            <span>Every decision remains tied to the transaction row.</span>
-          </div>
-        </section>
-      </aside>
+            {suggested && similar.some((item) => item.needsReview) ? (
+              <button className="mt-3 w-full rounded-lg border border-accent-500/30 bg-accent-soft px-3 py-2 text-[13px] font-medium text-accent-300 disabled:opacity-50" disabled={busy} onClick={() => void commitCategory(suggested.id, { applyToSimilar: true })} type="button">
+                Apply {suggested.name} to unresolved similars
+              </button>
+            ) : null}
+          </section>
+
+          <section className="rounded-2xl border border-border-subtle bg-surface-1 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">Recently reviewed</p>
+              <span className="text-[12px] text-text-muted">Undo</span>
+            </div>
+            <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+              {recent.length ? (
+                recent.map((item) => (
+                  <button className="grid grid-cols-[1fr_auto] gap-3 rounded-lg bg-surface-base px-3 py-2 text-left text-[13px] transition-colors hover:bg-surface-2" key={`${item.id}-${item.reviewedAt}`} onClick={() => void undoRecent(item.id)} type="button">
+                    <div className="min-w-0">
+                      <p className="truncate text-text-secondary">{item.merchant}</p>
+                      <p className="mt-0.5 text-[11px] text-text-muted">{item.categoryName ?? "Reviewed"}</p>
+                    </div>
+                    <RotateCcw className="text-text-muted" size={15} />
+                  </button>
+                ))
+              ) : (
+                <p className="py-5 text-center text-[13px] text-text-muted">Nothing reviewed this session.</p>
+              )}
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
 
-type DatabaseCategory = {
-  id: string;
-  name: string;
-};
+function CategorySearch({ categories, pendingCategoryId, onPick }: { categories: Category[]; pendingCategoryId: string | null; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const matches = categories.filter((category) => category.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 30);
 
-type CategoryOption = {
-  id: string;
-  name: string;
-};
-
-type ReviewUndoAction = {
-  merchant: string;
-  transactions: Array<{
-    id: string;
-    previousStatus: TransactionRow["status"];
-  }>;
-  nextStatus: "reviewed" | "excluded";
-};
-
-function getReviewStatusLabel(status: ReviewUndoAction["nextStatus"]) {
-  return status === "reviewed" ? "reviewed" : "excluded";
-}
-
-function normalizeMerchant(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function isReviewSuccessMessage(message: string) {
   return (
-    message.endsWith("saved.") ||
-    message.endsWith("reviewed.") ||
-    message.endsWith("excluded.") ||
-    message.endsWith("undone.") ||
-    message.endsWith("recategorized.") ||
-    message.endsWith("persist rules.") ||
-    message.startsWith("Rule preview created") ||
-    message.startsWith("Rule created")
+    <div className="relative">
+      <button className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-base px-3.5 py-2 text-[14px] text-text-secondary transition-colors hover:border-border-strong" onClick={() => setOpen((current) => !current)} type="button">
+        <Search size={14} />
+        Search
+      </button>
+      {open ? (
+        <>
+          <button aria-label="Close category search" className="fixed inset-0 z-30 cursor-default" onClick={() => setOpen(false)} type="button" />
+          <div className="absolute left-0 top-full z-40 mt-2 w-[360px] max-w-[calc(100vw-3rem)] rounded-xl border border-border-strong bg-surface-1 p-2 shadow-2xl">
+            <input
+              autoFocus
+              className="mb-2 w-full rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-[13px] text-text-primary outline-none"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search categories"
+              value={query}
+            />
+            <div className="max-h-72 overflow-y-auto">
+              {matches.map((category) => (
+                <button
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] transition-colors hover:bg-surface-2 ${
+                    pendingCategoryId === category.id ? "text-accent-300" : "text-text-secondary"
+                  }`}
+                  key={category.id}
+                  onClick={() => {
+                    onPick(category.id);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  type="button"
+                >
+                  <span>{iconFor(category.name)}</span>
+                  <span>{category.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
-async function persistReviewPatch(body: { id: string; categoryName?: string; reviewStatus?: "reviewed" | "excluded" | "needs_review" }) {
-  const response = await fetch("/api/transactions", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body),
-  });
+function buildDemoQueue(skipIds: string[]): QueueResponse {
+  const rows = sampleTransactionRows.filter((row) => row.status === "needs_review" && !skipIds.includes(row.id));
+  const row = rows[0] ?? null;
 
-  if (!response.ok) {
-    throw new Error("Review update failed");
+  if (!row) {
+    return { remaining: 0, transaction: null, similar: [], suggestedCategory: null };
   }
+
+  const similar = sampleTransactionRows
+    .filter((candidate) => candidate.id !== row.id && candidate.merchant.split(" ")[0] === row.merchant.split(" ")[0])
+    .map((candidate) => ({
+      id: candidate.id,
+      date: candidate.date,
+      amount: candidate.amountMinor / 100,
+      amountMinor: candidate.amountMinor,
+      merchant: candidate.merchant,
+      rawDescription: candidate.merchant,
+      needsReview: candidate.status === "needs_review",
+      category: { id: candidate.category, name: candidate.category },
+    }));
+
+  return {
+    remaining: rows.length,
+    transaction: {
+      id: row.id,
+      date: row.date,
+      amount: row.amountMinor / 100,
+      amountMinor: row.amountMinor,
+      merchant: row.merchant,
+      rawDescription: row.merchant,
+      isTransfer: row.transferStatus === "transfer",
+      transferStatus: row.transferStatus ?? "none",
+      tags: row.tags ?? [],
+      notes: null,
+      account: { id: row.account, displayName: row.account, type: "manual" },
+    },
+    similar,
+    suggestedCategory: fallbackCategoryOptions.find((category) => category.name === row.category)
+      ? { ...fallbackCategoryOptions.find((category) => category.name === row.category)!, basedOn: Math.max(similar.length, 1) }
+      : null,
+    merchantPrefix: row.merchant.split(" ").slice(0, 2).join(" "),
+  };
 }
 
-function ReviewMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
-  return (
-    <article className="stat-panel account-metric">
-      <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
-  );
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+function iconFor(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("grocery") || lower.includes("shopping")) return "$";
+  if (lower.includes("payroll") || lower.includes("income")) return "+";
+  if (lower.includes("transfer")) return "T";
+  if (lower.includes("subscription")) return "R";
+  if (lower.includes("interest")) return "%";
+  return ".";
 }
