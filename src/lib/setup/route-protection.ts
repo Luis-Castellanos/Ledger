@@ -5,3 +5,34 @@ export const proxyMatcher = [
   "/(api|trpc)(.*)",
   "/__clerk/(.*)",
 ] as const;
+
+const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+
+export function shouldBlockCrossSiteApiRequest(request: Request) {
+  const url = new URL(request.url);
+
+  if (!url.pathname.startsWith("/api/")) {
+    return false;
+  }
+
+  const createsExportArtifact = url.pathname === "/api/exports";
+  const isStateChanging = !safeMethods.has(request.method.toUpperCase()) || createsExportArtifact;
+
+  if (!isStateChanging) {
+    return false;
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site");
+
+  if (fetchSite === "cross-site") {
+    return true;
+  }
+
+  const origin = request.headers.get("origin");
+
+  if (origin && origin !== url.origin) {
+    return true;
+  }
+
+  return false;
+}

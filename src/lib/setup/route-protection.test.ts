@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { proxyMatcher, publicRoutePatterns } from "./route-protection";
+import { proxyMatcher, publicRoutePatterns, shouldBlockCrossSiteApiRequest } from "./route-protection";
 
 describe("route protection policy", () => {
   it("keeps the app protected by default", () => {
@@ -13,5 +13,51 @@ describe("route protection policy", () => {
     expect(proxyMatcher).toContain("/(api|trpc)(.*)");
     expect(proxyMatcher).toContain("/__clerk/(.*)");
     expect(proxyMatcher.indexOf("/__clerk/(.*)")).toBeGreaterThan(proxyMatcher.indexOf("/(api|trpc)(.*)"));
+  });
+});
+
+describe("cross-site API request guard", () => {
+  it("blocks cross-site mutating API requests", () => {
+    const request = new Request("https://praxisledger.app/api/transactions", {
+      method: "POST",
+      headers: { "sec-fetch-site": "cross-site" },
+    });
+
+    expect(shouldBlockCrossSiteApiRequest(request)).toBe(true);
+  });
+
+  it("blocks cross-origin API writes even when fetch metadata is unavailable", () => {
+    const request = new Request("https://praxisledger.app/api/accounts", {
+      method: "PATCH",
+      headers: { origin: "https://attacker.example" },
+    });
+
+    expect(shouldBlockCrossSiteApiRequest(request)).toBe(true);
+  });
+
+  it("treats export downloads as state-changing because they create export and audit records", () => {
+    const request = new Request("https://praxisledger.app/api/exports?format=backup_package", {
+      headers: { "sec-fetch-site": "cross-site" },
+    });
+
+    expect(shouldBlockCrossSiteApiRequest(request)).toBe(true);
+  });
+
+  it("allows same-origin reads and writes", () => {
+    expect(
+      shouldBlockCrossSiteApiRequest(
+        new Request("https://praxisledger.app/api/transactions", {
+          headers: { "sec-fetch-site": "same-origin" },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldBlockCrossSiteApiRequest(
+        new Request("https://praxisledger.app/api/transactions", {
+          method: "POST",
+          headers: { origin: "https://praxisledger.app" },
+        }),
+      ),
+    ).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { CreditCard, Search, TrendingUp } from "lucide-react";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 type AccountRow = {
   id: string;
@@ -31,10 +32,10 @@ const demoCards: AccountRow[] = sampleAccounts
   }));
 
 export function CreditCardsWorkbench() {
-  const [accounts, setAccounts] = useState<AccountRow[]>(demoCards);
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [accounts, setAccounts] = useState<AccountRow[]>(() => demoFallback(demoCards, []));
+  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
   const [query, setQuery] = useState("");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
 
   useEffect(() => {
     let mounted = true;
@@ -52,13 +53,15 @@ export function CreditCardsWorkbench() {
         const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
         if (mounted) {
           const creditAccounts = accountsPayload.accounts.filter((account) => account.type.includes("credit") || account.assetClass === "liability");
-          setAccounts(creditAccounts.length ? creditAccounts : demoCards);
+          setAccounts(creditAccounts.length ? creditAccounts : demoFallback(demoCards, []));
           setTransactions(transactionsPayload.transactions);
           setDataSource("database");
         }
       } catch {
         if (mounted) {
-          setDataSource("demo");
+          setAccounts(demoFallback(demoCards, []));
+          setTransactions(demoFallback(sampleTransactionRows, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -112,7 +115,7 @@ export function CreditCardsWorkbench() {
               <p className="panel-label">Credit cards</p>
               <h2 className="panel-title">Card register</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />

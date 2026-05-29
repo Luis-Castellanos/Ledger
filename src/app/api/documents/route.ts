@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, documents } from "@/lib/db/schema";
-import { detectDocumentType, documentStatuses, documentTypes } from "@/lib/finance/document";
+import { detectDocumentType, documentStatuses, documentTypes, validateDocumentIntake } from "@/lib/finance/document";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 const documentUpdateSchema = z.object({
@@ -80,8 +80,10 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const files = formData.getAll("files").filter((item): item is File => item instanceof File);
 
-  if (!files.length) {
-    return NextResponse.json({ error: "No files provided" }, { status: 400 });
+  const validation = validateDocumentIntake(files);
+
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
   const db = getDb();

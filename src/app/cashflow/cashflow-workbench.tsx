@@ -5,10 +5,11 @@ import { ArrowDownLeft, ArrowUpRight, BadgeDollarSign, Landmark, ReceiptText } f
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 import { buildCashflowSummary } from "@/lib/finance/reports";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 export function CashflowWorkbench() {
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
 
   useEffect(() => {
     let isMounted = true;
@@ -29,8 +30,8 @@ export function CashflowWorkbench() {
         }
       } catch {
         if (isMounted) {
-          setTransactions(sampleTransactionRows);
-          setDataSource("demo");
+          setTransactions(demoFallback(sampleTransactionRows, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -61,7 +62,7 @@ export function CashflowWorkbench() {
               <p className="panel-label">Cashflow</p>
               <h2 className="panel-title">Category movement</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
           </div>
           <div className="cashflow-bars" aria-label="Cashflow by category">
             {categoryRows.map(([category, amount]) => (

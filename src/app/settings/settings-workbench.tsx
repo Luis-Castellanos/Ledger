@@ -7,6 +7,7 @@ import { ALL_NAV_ITEMS, ITEM_BY_HREF, normalizeSections } from "@/components/nav
 import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme";
 import { AVATAR_GRADIENTS, PROFILE_EVENT, type AvatarKind, type ProfileData } from "@/lib/profile/avatars";
 import { updateLedgerSettingsSchema } from "@/lib/finance/settings";
+import { demoFallback } from "@/lib/demo-fallback";
 
 type SettingsState = {
   user: {
@@ -126,8 +127,8 @@ async function fileToAvatarDataUrl(file: File): Promise<string> {
 
 export function SettingsWorkbench() {
   const [activeTab, setActiveTab] = useState<SettingTab>("profile");
-  const [settings, setSettings] = useState<SettingsState>(fallbackSettings);
-  const [formState, setFormState] = useState(fallbackSettings.ledger);
+  const [settings, setSettings] = useState<SettingsState>(() => demoFallback(fallbackSettings, { user: { email: "", displayName: null }, ledger: fallbackSettings.ledger }));
+  const [formState, setFormState] = useState(() => demoFallback(fallbackSettings.ledger, fallbackSettings.ledger));
   const [profileDraft, setProfileDraft] = useState<ProfileData>(fallbackProfile);
   const [theme, setTheme] = useState(() => {
     if (typeof window === "undefined") {
@@ -135,8 +136,8 @@ export function SettingsWorkbench() {
     }
     return window.localStorage.getItem(THEME_STORAGE_KEY) || DEFAULT_THEME;
   });
-  const [exportHistory, setExportHistory] = useState<ExportJobSummary[]>(fallbackExportJobs);
-  const [auditTrail, setAuditTrail] = useState<AuditEventSummary[]>(fallbackAuditEvents);
+  const [exportHistory, setExportHistory] = useState<ExportJobSummary[]>(() => demoFallback(fallbackExportJobs, []));
+  const [auditTrail, setAuditTrail] = useState<AuditEventSummary[]>(() => demoFallback(fallbackAuditEvents, []));
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasUserEditedSettings = useRef(false);
@@ -178,11 +179,11 @@ export function SettingsWorkbench() {
       } catch {
         if (isMounted) {
           if (!hasUserEditedSettings.current) {
-            setSettings(fallbackSettings);
-            setFormState(fallbackSettings.ledger);
+            setSettings(demoFallback(fallbackSettings, { user: { email: "", displayName: null }, ledger: fallbackSettings.ledger }));
+            setFormState(demoFallback(fallbackSettings.ledger, fallbackSettings.ledger));
           }
-          setExportHistory(fallbackExportJobs);
-          setAuditTrail(fallbackAuditEvents);
+          setExportHistory(demoFallback(fallbackExportJobs, []));
+          setAuditTrail(demoFallback(fallbackAuditEvents, []));
         }
       }
     }

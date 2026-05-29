@@ -5,11 +5,12 @@ import { ArrowDownLeft, ArrowUpRight, CalendarDays, Landmark, ShieldCheck, Walle
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { formatMoney } from "@/lib/finance/money";
 import { buildNetWorthSummary, getBalanceEvidenceSource, type BalanceEvidenceSource } from "@/lib/finance/reports";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 export function NetWorthWorkbench() {
-  const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
+  const [accounts, setAccounts] = useState<AccountRow[]>(() => demoFallback(sampleAccounts, []));
   const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
 
   useEffect(() => {
     let isMounted = true;
@@ -37,8 +38,8 @@ export function NetWorthWorkbench() {
         }
       } catch {
         if (isMounted) {
-          setAccounts(sampleAccounts);
-          setDataSource("demo");
+          setAccounts(demoFallback(sampleAccounts, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -91,7 +92,7 @@ export function NetWorthWorkbench() {
               <p className="panel-label">Net worth</p>
               <h2 className="panel-title">Account position</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
           </div>
           <div className="accounts-table net-worth-table" role="table" aria-label="Net worth accounts">
             <div className="accounts-table-head" role="row">

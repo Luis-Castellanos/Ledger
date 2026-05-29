@@ -5,6 +5,7 @@ import { CheckCircle2, Edit3, RotateCcw, Search, Shuffle } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleTransactionRows } from "@/lib/finance/transaction-sample-data";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 type Category = {
   id: string;
@@ -69,7 +70,7 @@ const fallbackCategoryOptions: Category[] = defaultCategoryTree
 
 export function ReviewWorkbench() {
   const [queue, setQueue] = useState<QueueResponse | null>(null);
-  const [categories, setCategories] = useState<Category[]>(fallbackCategoryOptions);
+  const [categories, setCategories] = useState<Category[]>(() => demoFallback(fallbackCategoryOptions, []));
   const [skipIds, setSkipIds] = useState<string[]>([]);
   const [pendingCategoryId, setPendingCategoryId] = useState<string | null>(null);
   const [isEditingMerchant, setIsEditingMerchant] = useState(false);
@@ -78,7 +79,7 @@ export function ReviewWorkbench() {
   const [session, setSession] = useState({ reviewed: 0, skipped: 0 });
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("database");
+  const [dataSource, setDataSource] = useState<DataSourceState>("database");
 
   async function loadQueue(nextSkipIds = skipIds) {
     try {
@@ -100,9 +101,9 @@ export function ReviewWorkbench() {
       setMerchantDraft(queuePayload.data.transaction?.merchant ?? "");
       setDataSource("database");
     } catch {
-      setQueue(buildDemoQueue(nextSkipIds));
-      setCategories(fallbackCategoryOptions);
-      setDataSource("demo");
+      setQueue(demoFallback(buildDemoQueue(nextSkipIds), { remaining: 0, transaction: null, similar: [], suggestedCategory: null }));
+      setCategories(demoFallback(fallbackCategoryOptions, []));
+      setDataSource(fallbackDataSource());
     }
   }
 
@@ -363,7 +364,7 @@ export function ReviewWorkbench() {
             <span className="mx-2 text-text-muted">·</span>
             <strong className="tabular-nums text-text-primary">{session.skipped}</strong> skipped
           </div>
-          <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+          <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
         </div>
       </div>
 

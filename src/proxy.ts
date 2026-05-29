@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { publicRoutePatterns } from "@/lib/setup/route-protection";
+import { publicRoutePatterns, shouldBlockCrossSiteApiRequest } from "@/lib/setup/route-protection";
 
 const hasClerkConfig = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
 const isProduction = process.env.NODE_ENV === "production";
@@ -22,6 +22,10 @@ const missingAuthProxy = (request: Request) => {
 
 export default hasClerkConfig
   ? clerkMiddleware(async (auth, request) => {
+      if (shouldBlockCrossSiteApiRequest(request)) {
+        return NextResponse.json({ error: "Cross-site API request blocked." }, { status: 403 });
+      }
+
       if (isHealthRoute(request.nextUrl.pathname)) {
         return NextResponse.next();
       }

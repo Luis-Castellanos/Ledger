@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FileText, Landmark, Search } from "lucide-react";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 type DocumentRow = {
   id: string;
@@ -28,10 +29,10 @@ const demoPayrollDocs: DocumentRow[] = [
 ];
 
 export function PayrollWorkbench() {
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
-  const [documents, setDocuments] = useState<DocumentRow[]>(demoPayrollDocs);
+  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
+  const [documents, setDocuments] = useState<DocumentRow[]>(() => demoFallback(demoPayrollDocs, []));
   const [query, setQuery] = useState("");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
 
   useEffect(() => {
     let mounted = true;
@@ -52,12 +53,14 @@ export function PayrollWorkbench() {
         if (mounted) {
           setTransactions(transactionsPayload.transactions);
           const paystubs = documentsPayload.documents.filter((document) => document.detectedType === "paystub");
-          setDocuments(paystubs.length ? paystubs : demoPayrollDocs);
+          setDocuments(paystubs.length ? paystubs : demoFallback(demoPayrollDocs, []));
           setDataSource("database");
         }
       } catch {
         if (mounted) {
-          setDataSource("demo");
+          setTransactions(demoFallback(sampleTransactionRows, []));
+          setDocuments(demoFallback(demoPayrollDocs, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -108,7 +111,7 @@ export function PayrollWorkbench() {
               <p className="panel-label">Payroll</p>
               <h2 className="panel-title">Deposit register</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />

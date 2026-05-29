@@ -8,6 +8,7 @@ import { defaultTransactionFilters, type DirectionFilter, type TransactionFilter
 import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
 import { createManualTransactionSchema, parseTagList } from "@/lib/finance/transaction";
 import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
 const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
@@ -35,9 +36,9 @@ const sortOptions = [
 ] satisfies { label: string; value: TransactionSortMode }[];
 
 export function TransactionsWorkbench({ initialFilters = defaultTransactionFilters }: { initialFilters?: TransactionFilterState }) {
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
-  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(fallbackCategoryOptions);
+  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(() => demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(() => demoFallback(fallbackCategoryOptions, []));
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState(initialFilters.query);
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>(initialFilters.status);
@@ -50,17 +51,17 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const [error, setError] = useState<string | null>(null);
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(sampleTransactionRows[0]?.id ?? null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(() => demoFallback(sampleTransactionRows[0]?.id ?? null, null));
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [bulkCategory, setBulkCategory] = useState("Groceries");
   const [bulkStatus, setBulkStatus] = useState<TransactionStatus>("reviewed");
   const [bulkTransferStatus, setBulkTransferStatus] = useState<NonNullable<TransactionRow["transferStatus"]>>("none");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [isSaving, setIsSaving] = useState(false);
   const [formState, setFormState] = useState({
     date: new Date().toISOString().slice(0, 10),
     merchant: "",
-    accountId: sampleAccounts[0]?.name ?? "",
+    accountId: demoFallback(sampleAccounts[0]?.name ?? "", ""),
     category: "Groceries",
     amount: "",
     tags: "",
@@ -94,8 +95,8 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
 
         if (isMounted && !hasLocalEdits.current) {
-          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
-          setCategoryOptions(nextCategories.length > 0 ? nextCategories : fallbackCategoryOptions);
+          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
+          setCategoryOptions(nextCategories.length > 0 ? nextCategories : demoFallback(fallbackCategoryOptions, []));
           setTransactions(transactionsPayload.transactions);
           setSelectedTransactionId(transactionsPayload.transactions[0]?.id ?? null);
           setBulkCategory(getDefaultCategoryName(nextCategories));
@@ -108,7 +109,10 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         }
       } catch {
         if (isMounted) {
-          setDataSource("demo");
+          setTransactions(demoFallback(sampleTransactionRows, []));
+          setAccountOptions(demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
+          setCategoryOptions(demoFallback(fallbackCategoryOptions, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -376,7 +380,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         },
         ...current,
       ]);
-      setDataSource("demo");
+      setDataSource(fallbackDataSource());
       setFormState({
         date: new Date().toISOString().slice(0, 10),
         merchant: "",
@@ -385,7 +389,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
         amount: "",
         tags: "",
       });
-      setError(dataSource === "database" ? "Saved in local demo mode because the transaction API rejected the write." : null);
+      setError(dataSource === "database" ? demoFallback("Saved in local demo mode because the transaction API rejected the write.", productionFallbackMessage("Transaction save")) : null);
     } catch {
       setError("Enter a valid signed dollar amount.");
     } finally {
@@ -462,7 +466,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
               <p className="panel-label">Transactions</p>
               <h2 className="panel-title">Register</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />

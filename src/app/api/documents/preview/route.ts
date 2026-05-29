@@ -4,7 +4,7 @@ import { and, eq, isNull, inArray } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { documents } from "@/lib/db/schema";
-import { detectDocumentType } from "@/lib/finance/document";
+import { detectDocumentType, validateDocumentIntake } from "@/lib/finance/document";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
@@ -26,8 +26,10 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const files = formData.getAll("files").filter((item): item is File => item instanceof File);
 
-  if (!files.length) {
-    return NextResponse.json({ error: "No files provided" }, { status: 400 });
+  const validation = validateDocumentIntake(files);
+
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
   const fingerprints = await Promise.all(

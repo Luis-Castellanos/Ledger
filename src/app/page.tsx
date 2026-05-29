@@ -8,12 +8,13 @@ import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDash
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 export default function Home() {
-  const [accountRows, setAccountRows] = useState<AccountRow[]>(sampleAccounts);
-  const [transactionRows, setTransactionRows] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [accountRows, setAccountRows] = useState<AccountRow[]>(() => demoFallback(sampleAccounts, []));
+  const [transactionRows, setTransactionRows] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
   const [snapshotRows, setSnapshotRows] = useState<DatabaseSnapshot[]>([]);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -45,10 +46,10 @@ export default function Home() {
         }
       } catch {
         if (isMounted) {
-          setAccountRows(sampleAccounts);
-          setTransactionRows(sampleTransactionRows);
+          setAccountRows(demoFallback(sampleAccounts, []));
+          setTransactionRows(demoFallback(sampleTransactionRows, []));
           setSnapshotRows([]);
-          setDataSource("demo");
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -108,7 +109,7 @@ export default function Home() {
     const activity = [
       { label: "Snapshot coverage", value: `${snapshotCoverage}% of accounts`, kind: "cash" },
       { label: "Review queue", value: `${cashflow.review} transactions`, kind: "rule" },
-      { label: "Persistence", value: dataSource === "database" ? "DB backed" : "Demo mode", kind: "shield" },
+      { label: "Persistence", value: dataSourceLabel(dataSource), kind: "shield" },
     ];
 
     return { cashflow, netCashflow, position, snapshotCoverage, stats, activity };
@@ -158,7 +159,7 @@ export default function Home() {
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Overview</h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <label className="search-field">
               <Search size={16} />
               <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />

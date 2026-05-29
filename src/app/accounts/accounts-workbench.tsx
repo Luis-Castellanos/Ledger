@@ -22,6 +22,7 @@ import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-da
 import { createAccountSchema, createBalanceSnapshotSchema } from "@/lib/finance/account";
 import { formatMoney } from "@/lib/finance/money";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const accountTypes = [
   { label: "Checking", value: "checking" },
@@ -41,9 +42,9 @@ const assetClasses = [
 
 export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: string }) {
   const initialSelectedAccountId = getInitialAccountId(initialAccount);
-  const [accounts, setAccounts] = useState<AccountRow[]>(sampleAccounts);
+  const [accounts, setAccounts] = useState<AccountRow[]>(() => demoFallback(sampleAccounts, []));
   const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
-  const [transactions, setTransactions] = useState<TransactionRow[]>(sampleTransactionRows);
+  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState(initialSelectedAccountId);
@@ -56,12 +57,12 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
     currency: "USD",
   });
   const [snapshotForm, setSnapshotForm] = useState({
-    accountId: sampleAccounts[0]?.id ?? "",
+    accountId: demoFallback(sampleAccounts[0]?.id ?? "", ""),
     asOfDate: new Date().toISOString().slice(0, 10),
     balance: "",
   });
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
 
@@ -109,8 +110,9 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
         }
       } catch {
         if (isMounted) {
-          setTransactions(sampleTransactionRows);
-          setDataSource("demo");
+          setAccounts(demoFallback(sampleAccounts, []));
+          setTransactions(demoFallback(sampleTransactionRows, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -242,9 +244,9 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
       setAccounts((current) => [nextAccount, ...current]);
       setSelectedAccountId(nextAccount.id);
       setSnapshotForm((current) => ({ ...current, accountId: nextAccount.id }));
-      setDataSource("demo");
+      setDataSource(fallbackDataSource());
       setFormState({ name: "", institution: "", mask: "", type: "checking", assetClass: "asset", currency: "USD" });
-      setError("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist accounts.");
+      setError(demoFallback("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist accounts.", productionFallbackMessage("Account save")));
     } finally {
       setIsSaving(false);
     }
@@ -318,9 +320,9 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
       };
 
       upsertSnapshot(snapshot);
-      setDataSource("demo");
+      setDataSource(fallbackDataSource());
       setSnapshotForm((current) => ({ ...current, balance: "" }));
-      setError("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist balance snapshots.");
+      setError(demoFallback("Saved in local demo mode. Configure Clerk and DATABASE_URL to persist balance snapshots.", productionFallbackMessage("Balance snapshot save")));
     } finally {
       setIsSavingSnapshot(false);
     }
@@ -357,7 +359,7 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
               <p className="panel-label">Accounts</p>
               <h2 className="panel-title">Balance control file</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <label className="search-field">
               <Search size={16} />
               <input aria-label="Search accounts" placeholder="Search accounts" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -665,7 +667,7 @@ function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = 
 }
 
 function getInitialAccountId(initialAccount: string) {
-  return sampleAccounts.find((account) => account.name === initialAccount)?.id ?? sampleAccounts[0]?.id ?? "";
+  return demoFallback(sampleAccounts.find((account) => account.name === initialAccount)?.id ?? sampleAccounts[0]?.id ?? "", "");
 }
 
 function AccountMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {

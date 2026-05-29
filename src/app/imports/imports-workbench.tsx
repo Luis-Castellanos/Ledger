@@ -7,6 +7,7 @@ import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { parseCsvImportRows, type CsvImportColumnMapping, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
 import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
 import { formatMoney } from "@/lib/finance/money";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const categories = ["Uncategorized", ...defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)])];
 const statuses = [
@@ -31,12 +32,12 @@ const fallbackImportMappings: ImportMappingSummary[] = [
 ];
 
 export function ImportsWorkbench() {
-  const [rows, setRows] = useState<ImportPreviewRow[]>(sampleImportRows);
-  const [batches, setBatches] = useState<ImportBatch[]>(sampleImportBatches);
-  const [selectedBatchId, setSelectedBatchId] = useState(sampleImportBatches[0]?.id ?? "");
-  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
-  const [importMappings, setImportMappings] = useState<ImportMappingSummary[]>(fallbackImportMappings);
-  const [selectedMappingId, setSelectedMappingId] = useState(fallbackImportMappings[0]?.id ?? "none");
+  const [rows, setRows] = useState<ImportPreviewRow[]>(() => demoFallback(sampleImportRows, []));
+  const [batches, setBatches] = useState<ImportBatch[]>(() => demoFallback(sampleImportBatches, []));
+  const [selectedBatchId, setSelectedBatchId] = useState(() => demoFallback(sampleImportBatches[0]?.id ?? "", ""));
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(() => demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
+  const [importMappings, setImportMappings] = useState<ImportMappingSummary[]>(() => demoFallback(fallbackImportMappings, []));
+  const [selectedMappingId, setSelectedMappingId] = useState(() => demoFallback(fallbackImportMappings[0]?.id ?? "none", "none"));
   const [mappingForm, setMappingForm] = useState({
     name: "Standard CSV",
     date: "Date",
@@ -48,8 +49,8 @@ export function ImportsWorkbench() {
   });
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState(sampleAccounts[0]?.name ?? "");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [selectedAccountId, setSelectedAccountId] = useState(() => demoFallback(sampleAccounts[0]?.name ?? "", ""));
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [error, setError] = useState<string | null>(null);
   const [mutationMessage, setMutationMessage] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -80,10 +81,10 @@ export function ImportsWorkbench() {
         const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
 
         if (isMounted && !hasLocalEdits.current) {
-          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : sampleAccounts.map((account) => ({ id: account.name, name: account.name })));
+          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
           setSelectedAccountId(nextAccounts[0]?.id ?? selectedAccountId);
-          setImportMappings(mappingsPayload.mappings.length > 0 ? mappingsPayload.mappings : fallbackImportMappings);
-          setSelectedMappingId(mappingsPayload.mappings[0]?.id ?? fallbackImportMappings[0]?.id ?? "none");
+          setImportMappings(mappingsPayload.mappings.length > 0 ? mappingsPayload.mappings : demoFallback(fallbackImportMappings, []));
+          setSelectedMappingId(mappingsPayload.mappings[0]?.id ?? demoFallback(fallbackImportMappings[0]?.id ?? "none", "none"));
           setBatches(importsPayload.batches);
           setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
           setRows(importsPayload.rows);
@@ -91,7 +92,11 @@ export function ImportsWorkbench() {
         }
       } catch {
         if (isMounted) {
-          setDataSource("demo");
+          setRows(demoFallback(sampleImportRows, []));
+          setBatches(demoFallback(sampleImportBatches, []));
+          setAccountOptions(demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
+          setImportMappings(demoFallback(fallbackImportMappings, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -180,8 +185,8 @@ export function ImportsWorkbench() {
           ),
         );
       } catch {
-        setDataSource("demo");
-        setError("Bulk import row update stayed local because the API was unavailable.");
+        setDataSource(fallbackDataSource());
+        setError(demoFallback("Bulk import row update stayed local because the API was unavailable.", productionFallbackMessage("Bulk import row update")));
         return;
       }
     }
@@ -270,8 +275,8 @@ export function ImportsWorkbench() {
     setRows((current) => [nextRow, ...current]);
     setBatches((current) => [batch, ...current]);
     setSelectedBatchId(batch.id);
-    setDataSource("demo");
-    setError(dataSource === "database" ? "Import stayed local because the API rejected the staged rows." : null);
+    setDataSource(fallbackDataSource());
+    setError(dataSource === "database" ? demoFallback("Import stayed local because the API rejected the staged rows.", productionFallbackMessage("Import staging")) : null);
   }
 
   async function stageCsvFile(file: File | null) {
@@ -352,10 +357,10 @@ export function ImportsWorkbench() {
     setRows(nextRows);
     setBatches((current) => [batch, ...current]);
     setSelectedBatchId(batch.id);
-    setDataSource("demo");
+    setDataSource(fallbackDataSource());
     setError(
       dataSource === "database"
-        ? "CSV stayed local because the import API rejected the staged rows."
+        ? demoFallback("CSV stayed local because the import API rejected the staged rows.", productionFallbackMessage("CSV staging"))
         : rejectedRows.length > 0
           ? `${rejectedRows.length} row${rejectedRows.length === 1 ? "" : "s"} need correction before commit.`
           : null,
@@ -393,7 +398,7 @@ export function ImportsWorkbench() {
     }
 
     setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
-    setDataSource("demo");
+    setDataSource(fallbackDataSource());
     setIsImportActionPending(false);
   }
 
@@ -467,8 +472,8 @@ export function ImportsWorkbench() {
 
     setImportMappings((current) => [localMapping, ...current]);
     setSelectedMappingId(localMapping.id);
-    setDataSource("demo");
-    setError(dataSource === "database" ? "Mapping stayed local because the API was unavailable." : null);
+    setDataSource(fallbackDataSource());
+    setError(dataSource === "database" ? demoFallback("Mapping stayed local because the API was unavailable.", productionFallbackMessage("Import mapping save")) : null);
   }
 
   const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
@@ -489,7 +494,7 @@ export function ImportsWorkbench() {
               <p className="panel-label">Staging</p>
               <h2 className="panel-title">Import review</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { createCategorySchema, createMerchantRuleSchema, updateCategorySchema, type CreateCategoryInput } from "@/lib/finance/rules";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
 
 const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
   {
@@ -66,11 +67,11 @@ const flowTypes = [
 ] satisfies { label: string; value: CreateCategoryInput["flowType"] }[];
 
 export function RulesWorkbench() {
-  const [categories, setCategories] = useState<CategoryRow[]>(fallbackCategories);
-  const [rules, setRules] = useState<MerchantRuleRow[]>(fallbackRules);
+  const [categories, setCategories] = useState<CategoryRow[]>(() => demoFallback(fallbackCategories, []));
+  const [rules, setRules] = useState<MerchantRuleRow[]>(() => demoFallback(fallbackRules, []));
   const hasLocalEdits = useRef(false);
   const [query, setQuery] = useState("");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [error, setError] = useState<string | null>(null);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [isApplyingRules, setIsApplyingRules] = useState(false);
@@ -80,7 +81,7 @@ export function RulesWorkbench() {
     name: "",
     matchType: "contains",
     matchValue: "",
-    categoryId: fallbackCategories[0]?.id ?? "",
+    categoryId: demoFallback(fallbackCategories[0]?.id ?? "", ""),
     priority: 100,
   });
 
@@ -109,7 +110,9 @@ export function RulesWorkbench() {
         }
       } catch {
         if (isMounted) {
-          setDataSource("demo");
+          setCategories(demoFallback(fallbackCategories, []));
+          setRules(demoFallback(fallbackRules, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -175,8 +178,8 @@ export function RulesWorkbench() {
 
       setCategories((current) => [localCategory, ...current]);
       setRuleForm((current) => ({ ...current, categoryId: localCategory.id }));
-      setDataSource("demo");
-      setError("Saved locally. Configure Clerk and DATABASE_URL to persist categories.");
+      setDataSource(fallbackDataSource());
+      setError(demoFallback("Saved locally. Configure Clerk and DATABASE_URL to persist categories.", productionFallbackMessage("Category save")));
     }
 
     setCategoryForm({ name: "", flowType: "expense", color: "#57b89d" });
@@ -233,8 +236,8 @@ export function RulesWorkbench() {
         delete next[id];
         return next;
       });
-      setDataSource("demo");
-      setError("Category update stayed local. Configure Clerk and DATABASE_URL to persist category edits.");
+      setDataSource(fallbackDataSource());
+      setError(demoFallback("Category update stayed local. Configure Clerk and DATABASE_URL to persist category edits.", productionFallbackMessage("Category update")));
     }
   }
 
@@ -281,8 +284,8 @@ export function RulesWorkbench() {
         },
         ...current,
       ]);
-      setDataSource("demo");
-      setError("Saved locally. Configure Clerk and DATABASE_URL to persist merchant rules.");
+      setDataSource(fallbackDataSource());
+      setError(demoFallback("Saved locally. Configure Clerk and DATABASE_URL to persist merchant rules.", productionFallbackMessage("Merchant rule save")));
     }
 
     setRuleForm((current) => ({ ...current, name: "", matchValue: "", priority: 100 }));
@@ -307,8 +310,8 @@ export function RulesWorkbench() {
       setError(null);
       setDataSource("database");
     } catch {
-      setApplyMessage("Demo preview only. Configure Clerk and DATABASE_URL to apply rules to transactions.");
-      setDataSource("demo");
+      setApplyMessage(demoFallback("Demo preview only. Configure Clerk and DATABASE_URL to apply rules to transactions.", productionFallbackMessage("Rule application")));
+      setDataSource(fallbackDataSource());
     } finally {
       setIsApplyingRules(false);
     }
@@ -329,7 +332,7 @@ export function RulesWorkbench() {
               <p className="panel-label">Merchant rules</p>
               <h2 className="panel-title">Classification control file</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <label className="search-field">
               <Search size={16} />
               <input aria-label="Search rules" placeholder="Search rules" value={query} onChange={(event) => setQuery(event.target.value)} />

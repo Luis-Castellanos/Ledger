@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectDocumentType, labelizeDocumentValue } from "./document";
+import { detectDocumentType, labelizeDocumentValue, maxDocumentFilesPerRequest, maxDocumentUploadBytes, validateDocumentIntake } from "./document";
 
 describe("detectDocumentType", () => {
   it("detects common statement families from filenames", () => {
@@ -18,5 +18,27 @@ describe("labelizeDocumentValue", () => {
   it("formats enum values for display", () => {
     expect(labelizeDocumentValue("credit_card")).toBe("Credit Card");
     expect(labelizeDocumentValue("deferred")).toBe("Deferred");
+  });
+});
+
+describe("validateDocumentIntake", () => {
+  it("accepts supported document files", () => {
+    expect(validateDocumentIntake([{ name: "statement.pdf", size: 2048, type: "application/pdf" }]).valid).toBe(true);
+  });
+
+  it("rejects empty, oversized, unsupported, or excessive upload batches", () => {
+    expect(validateDocumentIntake([])).toEqual({ valid: false, error: "No files provided" });
+    expect(validateDocumentIntake([{ name: "empty.pdf", size: 0, type: "application/pdf" }]).valid).toBe(false);
+    expect(validateDocumentIntake([{ name: "huge.pdf", size: maxDocumentUploadBytes + 1, type: "application/pdf" }]).valid).toBe(false);
+    expect(validateDocumentIntake([{ name: "malware.exe", size: 2048, type: "application/octet-stream" }]).valid).toBe(false);
+    expect(
+      validateDocumentIntake(
+        Array.from({ length: maxDocumentFilesPerRequest + 1 }, (_, index) => ({
+          name: `statement-${index}.pdf`,
+          size: 2048,
+          type: "application/pdf",
+        })),
+      ).valid,
+    ).toBe(false);
   });
 });

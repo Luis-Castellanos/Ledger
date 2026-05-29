@@ -1,8 +1,14 @@
 export const documentTypes = ["bank", "credit_card", "investment", "paystub", "loan", "tax", "insurance", "unknown"] as const;
 export const documentStatuses = ["uploaded", "parsed", "deferred", "duplicate", "failed"] as const;
+export const maxDocumentFilesPerRequest = 5;
+export const maxDocumentUploadBytes = 10 * 1024 * 1024;
 
 export type DocumentType = (typeof documentTypes)[number];
 export type DocumentStatus = (typeof documentStatuses)[number];
+export type DocumentIntakeFile = Pick<File, "name" | "size" | "type">;
+
+const allowedDocumentExtensions = new Set([".csv", ".pdf", ".txt"]);
+const allowedDocumentMimeTypes = new Set(["text/csv", "application/csv", "application/pdf", "text/plain", "application/octet-stream"]);
 
 const issuerMatchers = [
   { label: "fidelity", values: ["fidelity"] },
@@ -33,4 +39,37 @@ export function detectDocumentType(fileName: string, mimeType = ""): { type: Doc
 
 export function labelizeDocumentValue(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function validateDocumentIntake(files: DocumentIntakeFile[]) {
+  if (files.length === 0) {
+    return { valid: false, error: "No files provided" } as const;
+  }
+
+  if (files.length > maxDocumentFilesPerRequest) {
+    return { valid: false, error: `Upload ${maxDocumentFilesPerRequest} files or fewer at a time.` } as const;
+  }
+
+  for (const file of files) {
+    if (file.size <= 0) {
+      return { valid: false, error: `${file.name} is empty.` } as const;
+    }
+
+    if (file.size > maxDocumentUploadBytes) {
+      return { valid: false, error: `${file.name} exceeds the 10 MB file limit.` } as const;
+    }
+
+    if (!isAllowedDocumentFile(file)) {
+      return { valid: false, error: `${file.name} is not an allowed document type.` } as const;
+    }
+  }
+
+  return { valid: true } as const;
+}
+
+function isAllowedDocumentFile(file: DocumentIntakeFile) {
+  const lowerName = file.name.toLowerCase();
+  const extensionAllowed = [...allowedDocumentExtensions].some((extension) => lowerName.endsWith(extension));
+  const mimeTypeAllowed = allowedDocumentMimeTypes.has((file.type || "application/octet-stream").toLowerCase());
+  return extensionAllowed && mimeTypeAllowed;
 }

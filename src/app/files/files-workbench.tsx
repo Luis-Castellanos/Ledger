@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Search, Trash2 } from "lucide-react";
 import { documentStatuses, documentTypes, labelizeDocumentValue } from "@/lib/finance/document";
+import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 type DocumentRow = {
   id: string;
@@ -68,12 +69,12 @@ const sampleDocuments: DocumentRow[] = [
 ];
 
 export function FilesWorkbench() {
-  const [documents, setDocuments] = useState<DocumentRow[]>(sampleDocuments);
+  const [documents, setDocuments] = useState<DocumentRow[]>(() => demoFallback(sampleDocuments, []));
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
-  const [dataSource, setDataSource] = useState<"database" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,13 +94,14 @@ export function FilesWorkbench() {
         const documentsPayload = (await documentsResponse.json()) as { documents: DocumentRow[] };
         const accountsPayload = (await accountsResponse.json()) as { accounts: AccountOption[] };
         if (mounted) {
-          setDocuments(documentsPayload.documents.length ? documentsPayload.documents : sampleDocuments);
+          setDocuments(documentsPayload.documents.length ? documentsPayload.documents : demoFallback(sampleDocuments, []));
           setAccounts(accountsPayload.accounts);
           setDataSource("database");
         }
       } catch {
         if (mounted) {
-          setDataSource("demo");
+          setDocuments(demoFallback(sampleDocuments, []));
+          setDataSource(fallbackDataSource());
         }
       }
     }
@@ -193,7 +195,7 @@ export function FilesWorkbench() {
               <p className="panel-label">Files</p>
               <h2 className="panel-title">Document register</h2>
             </div>
-            <span className={dataSource === "database" ? "status-chip status-chip-live" : "status-chip"}>{dataSource === "database" ? "DB backed" : "Demo mode"}</span>
+            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
             <div className="transaction-controls">
               <label className="search-field">
                 <Search size={16} />

@@ -22,6 +22,7 @@
 - Document evidence storage with Files and Upload workbenches, PDF duplicate preview, document metadata editing, soft delete, and source-evidence audit events.
 - Credit Cards and Payroll workbenches backed by current account, transaction, and document data with Fidelity-token register layouts.
 - Dashboard redesigned into a cleaner ledger overview with summary metrics, cashflow, recent activity, position breakdown, spending mix, and status coverage.
+- Hardening review notes documenting current security fixes and remaining release-readiness risks.
 
 ### Changed
 
@@ -30,3 +31,10 @@
 - Settings no longer leads with internal production-readiness diagnostics.
 - Transaction toolbar layout now wraps filter/sort controls instead of compressing labels.
 - Deployment verification docs now include the secret scan gate.
+- Production workbenches now show empty/error states instead of synthetic demo financial data after API failures.
+
+### Security
+
+- Block cross-site API writes and export-generation requests at the proxy layer.
+- Validate document upload count, size, extension, and MIME type before hashing file bytes.
+- Validate profile customization payload size and shape before persisting ledger settings.
