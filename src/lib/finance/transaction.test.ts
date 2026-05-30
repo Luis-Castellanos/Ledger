@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTransactionDedupeKey,
+  buildUpdatedTransactionDedupeKey,
   createManualTransactionApiSchema,
   createManualTransactionSchema,
   parseTagList,
@@ -85,6 +86,30 @@ describe("buildTransactionDedupeKey", () => {
     expect(buildTransactionDedupeKey({ ...input, date: "2026-05-28" })).not.toBe(key);
     expect(buildTransactionDedupeKey({ ...input, amountMinor: -3146 })).not.toBe(key);
     expect(buildTransactionDedupeKey({ ...input, rawDescription: "Different Store" })).not.toBe(key);
+  });
+});
+
+describe("buildUpdatedTransactionDedupeKey", () => {
+  const current = {
+    ledgerId: "550e8400-e29b-41d4-a716-446655440000",
+    accountId,
+    date: "2026-05-27",
+    amountMinor: -3145,
+    rawDescription: "Local Bookstore",
+  };
+
+  it("preserves the current identity when no dedupe fields change", () => {
+    expect(buildUpdatedTransactionDedupeKey(current, {})).toBe(buildTransactionDedupeKey(current));
+  });
+
+  it("rebuilds the key from patched identity fields", () => {
+    expect(buildUpdatedTransactionDedupeKey(current, { amountMinor: -1200, rawDescription: "Updated Merchant" })).toBe(
+      buildTransactionDedupeKey({
+        ...current,
+        amountMinor: -1200,
+        rawDescription: "Updated Merchant",
+      }),
+    );
   });
 });
 

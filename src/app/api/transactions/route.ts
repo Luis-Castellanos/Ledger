@@ -3,7 +3,12 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, transactions } from "@/lib/db/schema";
-import { buildTransactionDedupeKey, createManualTransactionApiSchema, updateTransactionReviewSchema } from "@/lib/finance/transaction";
+import {
+  buildTransactionDedupeKey,
+  buildUpdatedTransactionDedupeKey,
+  createManualTransactionApiSchema,
+  updateTransactionReviewSchema,
+} from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
@@ -199,11 +204,30 @@ export async function PATCH(request: Request) {
         .where(and(eq(categories.ledgerId, context.ledger.id), eq(categories.name, parsed.data.categoryName), isNull(categories.deletedAt)))
         .limit(1)
     : [];
+  const identityChanged = parsed.data.date !== undefined || parsed.data.merchant !== undefined || parsed.data.amount !== undefined;
 
   const transactionUpdate = {
     ...(parsed.data.date ? { date: parsed.data.date } : {}),
     ...(parsed.data.merchant ? { rawDescription: parsed.data.merchant, displayName: parsed.data.merchant } : {}),
     ...(parsed.data.amount !== undefined ? { amountMinor: parsed.data.amount } : {}),
+    ...(identityChanged
+      ? {
+          dedupeKey: buildUpdatedTransactionDedupeKey(
+            {
+              ledgerId: existingTransaction.ledgerId,
+              accountId: existingTransaction.accountId,
+              date: existingTransaction.date,
+              amountMinor: existingTransaction.amountMinor,
+              rawDescription: existingTransaction.rawDescription,
+            },
+            {
+              date: parsed.data.date,
+              rawDescription: parsed.data.merchant,
+              amountMinor: parsed.data.amount,
+            },
+          ),
+        }
+      : {}),
     ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
     ...(parsed.data.reviewStatus ? { reviewStatus: parsed.data.reviewStatus } : {}),
     ...(parsed.data.transferStatus ? { transferStatus: parsed.data.transferStatus } : {}),

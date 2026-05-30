@@ -58,6 +58,14 @@ export type CreateManualTransactionInput = z.infer<typeof createManualTransactio
 export type UpdateTransactionReviewInput = z.infer<typeof updateTransactionReviewSchema>;
 export type TransactionTransferStatus = z.infer<typeof transactionTransferStatusSchema>;
 
+type TransactionDedupeIdentity = {
+  ledgerId: string;
+  accountId: string;
+  date: string;
+  amountMinor: number;
+  rawDescription: string;
+};
+
 export function buildTransactionDedupeKey(input: {
   ledgerId: string;
   accountId: string;
@@ -73,6 +81,19 @@ export function buildTransactionDedupeKey(input: {
     normalizeDedupeDescription(input.rawDescription),
   ].join("|");
   return createHash("sha256").update(payload).digest("hex");
+}
+
+export function buildUpdatedTransactionDedupeKey(
+  current: TransactionDedupeIdentity,
+  patch: Partial<Omit<TransactionDedupeIdentity, "ledgerId">>,
+) {
+  return buildTransactionDedupeKey({
+    ledgerId: current.ledgerId,
+    accountId: patch.accountId ?? current.accountId,
+    date: patch.date ?? current.date,
+    amountMinor: patch.amountMinor ?? current.amountMinor,
+    rawDescription: patch.rawDescription ?? current.rawDescription,
+  });
 }
 
 export function parseTagList(value: string) {

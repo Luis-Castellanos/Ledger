@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, transactions } from "@/lib/db/schema";
 import { merchantPrefix } from "@/lib/finance/merchant";
 import { parseDollarAmount } from "@/lib/finance/money";
-import { transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
+import { buildUpdatedTransactionDedupeKey, transactionStatusSchema, transactionTransferStatusSchema } from "@/lib/finance/transaction";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
@@ -78,11 +78,32 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const reviewStatus = parsed.data.reviewStatus ?? (parsed.data.needsReview === undefined ? undefined : parsed.data.needsReview ? "needs_review" : "reviewed");
   const transferStatus = parsed.data.transferStatus ?? (parsed.data.isTransfer === undefined ? undefined : parsed.data.isTransfer ? "transfer" : "none");
+  const identityChanged =
+    parsed.data.merchant !== undefined || parsed.data.accountId !== undefined || parsed.data.date !== undefined || parsed.data.amount !== undefined;
   const update = {
     ...(parsed.data.merchant ? { rawDescription: parsed.data.merchant, displayName: parsed.data.merchant } : {}),
     ...(parsed.data.accountId ? { accountId: parsed.data.accountId } : {}),
     ...(parsed.data.date ? { date: parsed.data.date } : {}),
     ...(parsed.data.amount !== undefined ? { amountMinor: parsed.data.amount } : {}),
+    ...(identityChanged
+      ? {
+          dedupeKey: buildUpdatedTransactionDedupeKey(
+            {
+              ledgerId: existing.ledgerId,
+              accountId: existing.accountId,
+              date: existing.date,
+              amountMinor: existing.amountMinor,
+              rawDescription: existing.rawDescription,
+            },
+            {
+              accountId: parsed.data.accountId,
+              date: parsed.data.date,
+              amountMinor: parsed.data.amount,
+              rawDescription: parsed.data.merchant,
+            },
+          ),
+        }
+      : {}),
     ...(reviewStatus ? { reviewStatus } : {}),
     ...(transferStatus ? { transferStatus } : {}),
     ...(parsed.data.tags ? { tags: parsed.data.tags } : {}),
@@ -101,9 +122,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (parsed.data.merchant && parsed.data.applyMerchantToSimilar) {
     const prefix = merchantPrefix(existing.rawDescription);
     if (prefix) {
-      const others = await db
-        .update(transactions)
-        .set({ rawDescription: parsed.data.merchant, displayName: parsed.data.merchant, updatedAt: new Date() })
+      const similar = await db
+        .select({
+          id: transactions.id,
+          ledgerId: transactions.ledgerId,
+          accountId: transactions.accountId,
+          date: transactions.date,
+          amountMinor: transactions.amountMinor,
+          rawDescription: transactions.rawDescription,
+        })
+        .from(transactions)
         .where(
           and(
             eq(transactions.ledgerId, current.ledger.id),
@@ -112,9 +140,24 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
             ne(transactions.id, id),
             sql`${transactions.rawDescription} ILIKE ${prefix + "%"}`,
           ),
-        )
-        .returning({ id: transactions.id });
-      applied.push(...others);
+        );
+
+      for (const row of similar) {
+        const [updated] = await db
+          .update(transactions)
+          .set({
+            rawDescription: parsed.data.merchant,
+            displayName: parsed.data.merchant,
+            dedupeKey: buildUpdatedTransactionDedupeKey(row, { rawDescription: parsed.data.merchant }),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(transactions.id, row.id), eq(transactions.ledgerId, current.ledger.id), isNull(transactions.deletedAt)))
+          .returning({ id: transactions.id });
+
+        if (updated) {
+          applied.push(updated);
+        }
+      }
     }
   }
 
