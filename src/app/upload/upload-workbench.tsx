@@ -110,9 +110,9 @@ export function UploadWorkbench() {
   }
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <section className="panel upload-workbench-panel">
+    <div className="transactions-grid fidelity-register-grid">
+      <section className="transactions-main fidelity-register-main">
+        <section className="panel upload-workbench-panel fidelity-register-panel">
           <div
             className={`upload-dropzone ${dragging ? "upload-dropzone-active" : ""}`}
             onClick={() => inputRef.current?.click()}

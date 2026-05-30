@@ -188,15 +188,15 @@ export function FilesWorkbench() {
   }
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+    <div className="transactions-grid fidelity-register-grid">
+      <section className="transactions-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-three">
           <FileMetric label="Files" value={String(metrics.total)} />
           <FileMetric label="Parsed" value={String(metrics.parsed)} />
           <FileMetric label="Deferred" value={String(metrics.deferred)} />
         </div>
 
-        <section className="panel transactions-table-panel">
+        <section className="panel transactions-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Files</p>

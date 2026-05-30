@@ -101,15 +101,15 @@ export function CreditCardsWorkbench() {
   );
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+    <div className="transactions-grid fidelity-register-grid">
+      <section className="transactions-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-three">
           <CardMetric label="Cards" value={String(cards.length)} icon={<CreditCard size={17} />} />
           <CardMetric label="Current balance" value={formatMoney(totals.balanceMinor)} icon={<TrendingUp size={17} />} />
           <CardMetric label="Card spend" value={formatMoney(-totals.spendMinor)} icon={<CreditCard size={17} />} />
         </div>
 
-        <section className="panel transactions-table-panel">
+        <section className="panel transactions-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Credit cards</p>
