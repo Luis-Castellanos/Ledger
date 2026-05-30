@@ -39,6 +39,18 @@ export async function POST(request: NextRequest) {
   const body = parsed.data;
   let categoryId = body.categoryId;
 
+  if (body.categoryId) {
+    const [category] = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.id, body.categoryId), eq(categories.ledgerId, context.ledger.id), isNull(categories.deletedAt)))
+      .limit(1);
+
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+  }
+
   if (body.categoryName) {
     const [category] = await db
       .select({ id: categories.id })
@@ -61,7 +73,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No changes specified" }, { status: 400 });
   }
 
-  const existing = await db.select().from(transactions).where(and(eq(transactions.ledgerId, context.ledger.id), inArray(transactions.id, body.ids)));
+  const existing = await db
+    .select()
+    .from(transactions)
+    .where(and(eq(transactions.ledgerId, context.ledger.id), isNull(transactions.deletedAt), inArray(transactions.id, body.ids)));
   const updated = await db
     .update(transactions)
     .set(update)

@@ -32,6 +32,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Mutating account, category, profile, settings, balance, transaction, import-row, rule, and document metadata routes now share per-user rate limiting instead of leaving lower-risk write paths unbounded.
 - Soft-deletable document, merchant, and transaction uniqueness now uses partial indexes so deleted records do not block valid replacement records.
 - Manual transaction dedupe keys are now deterministic hashes of ledger, account, date, amount, and normalized description instead of timestamp-based unique strings.
+- Bulk transaction category updates now verify category ownership before writing foreign keys, preventing cross-ledger category references.
 
 ## Remaining Review Items
 
