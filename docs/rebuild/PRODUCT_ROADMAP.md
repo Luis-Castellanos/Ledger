@@ -28,6 +28,7 @@ Vault is not a budgeting coach first. It is a financial operating system: record
 6. **Power can be progressive.** Simple flows first; advanced controls available when needed.
 7. **Multi-user from the data model up.** Even if v1 starts single-user, households, ownership, roles, and permissions must not be retrofitted later.
 8. **Local confidence before integrations.** Manual and file-based workflows should be excellent before Plaid-style sync.
+9. **Operator privacy is a product requirement.** Hosted users should eventually have credible protection not only from other users, but from casual operator access to raw financial data.
 
 ## Target Users
 
@@ -64,7 +65,7 @@ Needs:
 - Backup and restore.
 - Minimal vendor lock-in.
 - Strong secrets and key management.
-- A credible path toward operator-blind or operator-minimized data access so the service owner cannot casually inspect personal financial data.
+- A credible path toward operator-blind or operator-minimized data access so the service owner cannot casually inspect personal financial data, even with routine production access.
 
 ## Product Scope Model
 

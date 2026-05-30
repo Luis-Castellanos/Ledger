@@ -35,6 +35,7 @@ A spouse, partner, or trusted household member who may need shared visibility in
 - Support a full monthly workflow: import, review, categorize, report, export.
 - Make every important number traceable to transactions.
 - Establish strong auth, authorization, and user data isolation.
+- Make the current privacy boundary explicit: V1 protects users from each other, while later releases must reduce or eliminate operator visibility into raw financial data.
 - Build the system with migrations, tests, CI, and security gates from day one.
 - Preserve the prototype's best product insights without inheriting prototype sprawl.
 
@@ -57,8 +58,26 @@ V1 will not include:
 - Subscription payments.
 - Public marketing site.
 - Multi-currency beyond storing a currency code.
+- Operator-blind encryption or user-held key management.
 
 These are future roadmap items.
+
+## Privacy Boundary
+
+V1 must isolate each user's ledger from every other user through authentication, server-side authorization, ledger-scoped data access, and production environment controls. That is the release-blocking privacy requirement for the first production foundation.
+
+V1 does not yet make financial data unreadable to the application operator. A database administrator or production operator with sufficient access could still inspect plaintext transactions, balances, imports, notes, and related financial records.
+
+Post-V1, Vault should add a dedicated privacy track for operator-minimized data access:
+
+- Field-level encryption for highly sensitive financial fields.
+- Envelope encryption with per-user or per-ledger data keys.
+- Key-wrapping outside the primary database.
+- A documented choice between service-held, user-held, or split-held keys.
+- Recovery, rotation, backup, export, and support workflows that still work under the selected key model.
+- Tests proving encrypted fields are not stored in plaintext.
+
+The product should not ship bank sync, AI-assisted categorization, or broader public-beta usage without revisiting this operator-privacy model.
 
 ## Product Positioning
 
