@@ -7,7 +7,7 @@ export default function RulesPage() {
   return (
     <AppShell active="Rules">
       <section className="min-w-0">
-        <header className="flex min-h-[76px] items-start justify-between gap-4 border-b border-[var(--line)] bg-[rgba(32,25,19,0.62)] px-5 py-4 lg:px-7">
+        <header className="fidelity-dashboard-header flex min-h-[92px] items-start justify-between gap-4 px-8 py-6">
           <div>
             <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Classification controls</p>
             <h1 className="mt-1 text-[30px] font-semibold leading-tight tracking-normal text-[var(--ink-strong)]">Rules</h1>

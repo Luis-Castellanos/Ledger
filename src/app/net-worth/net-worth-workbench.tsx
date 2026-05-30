@@ -78,15 +78,15 @@ export function NetWorthWorkbench() {
   const accountsWithoutSnapshots = Math.max(accounts.length - latestSnapshotByAccount.size, 0);
 
   return (
-    <div className="accounts-grid">
-      <section className="accounts-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+    <div className="accounts-grid fidelity-register-grid">
+      <section className="accounts-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-three">
           <NetWorthMetric label="Assets" value={formatMoney(summary.assets)} icon={<ArrowUpRight size={17} />} tone="green" />
           <NetWorthMetric label="Liabilities" value={formatMoney(-summary.liabilities)} icon={<ArrowDownLeft size={17} />} tone="coral" />
           <NetWorthMetric label="Net worth" value={formatMoney(summary.netWorth)} icon={<ShieldCheck size={17} />} tone="violet" />
         </div>
 
-        <section className="panel accounts-table-panel">
+        <section className="panel accounts-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Net worth</p>

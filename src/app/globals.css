@@ -1205,6 +1205,32 @@ button {
   color: var(--ink-strong);
 }
 
+.fidelity-register-panel .cashflow-bars {
+  margin-top: 8px;
+}
+
+.fidelity-register-panel .cashflow-row {
+  min-height: 72px;
+  border-bottom-color: var(--line);
+  padding: 18px 10px;
+}
+
+.fidelity-register-panel .cashflow-row > span {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.fidelity-register-panel .cashflow-row > div {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.fidelity-register-panel .cashflow-row > div i {
+  border-radius: inherit;
+  background: var(--accent-500);
+}
+
 .fidelity-activity-panel {
   border: 1px solid var(--line-strong);
   border-radius: 18px;

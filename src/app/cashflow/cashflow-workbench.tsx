@@ -48,15 +48,15 @@ export function CashflowWorkbench() {
   const categoryRows = [...summary.byCategory.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 8);
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+    <div className="transactions-grid fidelity-register-grid">
+      <section className="transactions-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-three">
           <CashflowMetric label="Inflow" value={formatMoney(summary.inflow)} icon={<ArrowDownLeft size={17} />} tone="green" href="/transactions?direction=inflow" />
           <CashflowMetric label="Outflow" value={formatMoney(-summary.outflow)} icon={<ArrowUpRight size={17} />} tone="coral" href="/transactions?direction=outflow" />
           <CashflowMetric label="Net cashflow" value={formatMoney(summary.inflow - summary.outflow)} icon={<BadgeDollarSign size={17} />} tone="violet" href="/transactions?transfer=none" />
         </div>
 
-        <section className="panel transactions-table-panel">
+        <section className="panel transactions-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Cashflow</p>
