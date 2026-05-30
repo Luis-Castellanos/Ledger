@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckCircle2, Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
+import { Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { sampleAccounts } from "@/lib/finance/account-sample-data";
 import { defaultCategoryTree } from "@/lib/finance/default-categories";
 import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState, type TransactionSortMode } from "@/lib/finance/transaction-filters";
@@ -163,29 +163,6 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   const selectedTransaction = useMemo(() => {
     return transactions.find((transaction) => transaction.id === selectedTransactionId) ?? transactions[0] ?? null;
   }, [selectedTransactionId, transactions]);
-
-  const totals = useMemo(() => {
-    return transactions.reduce(
-      (summary, transaction) => {
-        if (transaction.status === "excluded" || transaction.transferStatus === "transfer") {
-          return summary;
-        }
-
-        if (transaction.amountMinor > 0) {
-          summary.inflow += transaction.amountMinor;
-        } else {
-          summary.outflow += Math.abs(transaction.amountMinor);
-        }
-
-        if (transaction.status === "needs_review") {
-          summary.review += 1;
-        }
-
-        return summary;
-      },
-      { inflow: 0, outflow: 0, review: 0 },
-    );
-  }, [transactions]);
 
   async function updateStatus(id: string, status: TransactionStatus) {
     hasLocalEdits.current = true;
@@ -523,13 +500,7 @@ export function TransactionsWorkbench({ initialFilters = defaultTransactionFilte
   return (
     <div className="transactions-grid">
       <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
-          <TransactionMetric label="Inflow" value={formatMoney(totals.inflow)} icon={<ArrowDownLeft size={17} />} tone="green" />
-          <TransactionMetric label="Outflow" value={formatMoney(-totals.outflow)} icon={<ArrowUpRight size={17} />} tone="coral" />
-          <TransactionMetric label="Review queue" value={`${totals.review} rows`} icon={<CheckCircle2 size={17} />} tone="violet" />
-        </div>
-
-        <section className="panel transactions-table-panel">
+        <section className="panel transactions-table-panel fidelity-activity-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Transactions</p>
@@ -1028,14 +999,4 @@ async function persistTransactionPatch({
     // The optimistic UI remains usable in demo or temporarily offline states.
     return false;
   }
-}
-
-function TransactionMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
-  return (
-    <article className="stat-panel account-metric">
-      <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
-  );
 }
