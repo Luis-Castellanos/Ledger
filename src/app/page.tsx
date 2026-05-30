@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, Upload, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export-button";
@@ -9,7 +9,7 @@ import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDash
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
+import { demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
 
 export default function Home() {
   const [accountRows, setAccountRows] = useState<AccountRow[]>(() => demoFallback(sampleAccounts, []));
@@ -110,11 +110,11 @@ export default function Home() {
     const activity = [
       { label: "Snapshot coverage", value: `${snapshotCoverage}% of accounts`, kind: "cash" },
       { label: "Review queue", value: `${cashflow.review} transactions`, kind: "rule" },
-      { label: "Persistence", value: dataSourceLabel(dataSource), kind: "shield" },
+      { label: "Tracked accounts", value: `${accountRows.length} accounts`, kind: "shield" },
     ];
 
     return { cashflow, netCashflow, position, snapshotCoverage, stats, activity };
-  }, [accountRows, dataSource, snapshotRows, transactionRows]);
+  }, [accountRows, snapshotRows, transactionRows]);
 
   const recentTransactions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -154,21 +154,49 @@ export default function Home() {
   return (
     <AppShell active="Dashboard">
       <section className="min-w-0">
-        <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
-          <div>
-            <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Personal ledger</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Overview</h1>
+        <header className="border-b border-[var(--line)] bg-[rgba(32,25,19,0.62)] px-5 pb-0 pt-5 lg:px-7">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Personal ledger</p>
+              <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-normal text-[var(--ink-strong)]">All accounts</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="search-field">
+                <Search size={16} />
+                <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
+              </label>
+              <ExportButton className="icon-button" aria-label="Export backup package" format="backup_package">
+                <Download size={17} />
+              </ExportButton>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
-            </label>
-            <ExportButton className="icon-button" aria-label="Export backup package" format="backup_package">
-              <Download size={17} />
-            </ExportButton>
+          <div className="fidelity-action-bar">
+            <Link className="fidelity-pill" href="/transactions">
+              <Banknote size={16} />
+              Transactions
+            </Link>
+            <Link className="fidelity-pill" href="/imports">
+              <Upload size={16} />
+              Import
+            </Link>
+            <Link className="fidelity-pill" href="/accounts">
+              <WalletCards size={16} />
+              Accounts
+            </Link>
+            <Link className="fidelity-pill" href="/review">
+              <Layers3 size={16} />
+              Review
+            </Link>
           </div>
+          <nav className="page-tabs" aria-label="Dashboard sections">
+            <Link className="active" href="/">
+              Summary
+            </Link>
+            <Link href="/transactions">Activity</Link>
+            <Link href="/accounts">Balances</Link>
+            <Link href="/cashflow">Cashflow</Link>
+            <Link href="/net-worth">Net Worth</Link>
+          </nav>
         </header>
 
         <div className="transactions-grid">

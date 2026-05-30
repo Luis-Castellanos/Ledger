@@ -7,10 +7,10 @@ export default function RulesPage() {
   return (
     <AppShell active="Rules">
       <section className="min-w-0">
-        <header className="flex min-h-20 flex-col justify-center gap-4 border-b border-[var(--line)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
+        <header className="flex min-h-[76px] flex-col justify-center gap-4 border-b border-[var(--line)] bg-[rgba(32,25,19,0.62)] px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-7">
           <div>
             <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Classification controls</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[var(--ink-strong)] md:text-3xl">Rules</h1>
+            <h1 className="mt-1 text-[30px] font-semibold leading-tight tracking-normal text-[var(--ink-strong)]">Rules</h1>
           </div>
           <div className="flex items-center gap-2">
             <button className="icon-button" aria-label="Filter rules">

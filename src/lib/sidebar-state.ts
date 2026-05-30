@@ -4,9 +4,9 @@ export const SIDEBAR_EVENT = "vault:sidebar";
 export const SIDEBAR_OPEN_KEY = "vault:sidebar:open";
 export const SIDEBAR_WIDTH_KEY = "vault:sidebar:width";
 
-export const SIDEBAR_DEFAULT_WIDTH = 280;
+export const SIDEBAR_DEFAULT_WIDTH = 256;
 export const SIDEBAR_MIN_WIDTH = 224;
-export const SIDEBAR_MAX_WIDTH = 360;
+export const SIDEBAR_MAX_WIDTH = 320;
 
 export type SidebarState = {
   open: boolean;

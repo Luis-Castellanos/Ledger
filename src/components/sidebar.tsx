@@ -228,25 +228,28 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
   const sections = resolveSections(profile.navLayout, profile.navHidden);
 
   return (
-    <aside className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-border-subtle bg-surface-1 print:hidden" style={{ width }}>
-      <div className="flex items-center gap-2.5 px-3 pb-2.5 pt-3">
-        <Link className="group flex min-w-0 flex-1 items-center gap-2.5" href="/settings" title="Profile & settings">
+    <aside
+      className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border-subtle bg-[#141816] shadow-[inset_-1px_0_0_rgba(255,255,255,0.03)] print:hidden md:flex"
+      style={{ width }}
+    >
+      <div className="flex items-center gap-2.5 border-b border-border-subtle px-4 pb-4 pt-4">
+        <Link className="group flex min-w-0 flex-1 items-center gap-3" href="/settings" title="Profile & settings">
           <Avatar
             className="ring-1 ring-border-subtle"
             gradient={profile.avatarGradient}
             image={profile.avatarImage}
             kind={profile.avatarKind}
             name={profile.name}
-            size={34}
+            size={36}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[13.5px] font-semibold transition-colors group-hover:text-accent-300">{profile.name || "Personal ledger"}</div>
-            <div className="truncate text-[11px] text-text-muted">{profile.email || "Owner"}</div>
+            <div className="truncate font-mono text-[15px] font-semibold uppercase tracking-[0.08em] transition-colors group-hover:text-accent-300">Vault</div>
+            <div className="truncate text-[11px] uppercase tracking-[0.16em] text-text-muted">{profile.name || "Personal ledger"}</div>
           </div>
         </Link>
         <button
           aria-label="Hide sidebar"
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border-subtle text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
           onClick={collapseSidebar}
           title="Hide sidebar"
           type="button"
@@ -255,7 +258,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-3 overflow-y-auto px-2 pb-3 pt-2">
+      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-0 pb-4 pt-5">
         {sections.map((section) => (
           <div
             className="group/sec flex flex-col gap-0.5"
@@ -268,7 +271,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
             onDrop={() => dropOnSection(section.id)}
           >
             <div
-              className={`flex cursor-grab items-center gap-1.5 px-3 pb-1.5 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-text-tertiary active:cursor-grabbing ${
+              className={`flex cursor-grab items-center gap-1.5 px-5 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-muted active:cursor-grabbing ${
                 dragging === `section:${section.id}` ? "opacity-40" : ""
               }`}
               draggable
@@ -313,19 +316,20 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
                   }}
                 >
                   <Link
-                    className={`relative flex items-center justify-between gap-2 rounded-lg py-2.5 pl-3.5 pr-3 text-[15px] transition-colors ${
-                      active ? "bg-accent-soft font-semibold text-accent-300" : "font-medium text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+                    className={`relative flex items-center justify-between gap-2 border-l-[3px] py-2.5 pl-5 pr-3 text-[14px] transition-colors ${
+                      active
+                        ? "border-accent-500 bg-accent-soft font-semibold text-text-primary"
+                        : "border-transparent font-medium text-text-secondary hover:border-border-strong hover:bg-surface-2 hover:text-text-primary"
                     } ${dragging === item.href ? "opacity-40" : ""}`}
                     href={item.href}
                   >
-                    {active ? <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent-500" /> : null}
                     <span className="flex min-w-0 items-center gap-3">
-                      <Icon className="shrink-0" size={20} strokeWidth={active ? 2 : 1.8} />
+                      <Icon className="shrink-0" size={18} strokeWidth={active ? 2.1 : 1.75} />
                       <span className="truncate">{item.label}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-1.5">
                       {item.showBadge && reviewCount !== undefined && reviewCount > 0 ? (
-                        <span className="rounded-md bg-accent-500 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-white">{reviewCount}</span>
+                        <span className="rounded-sm bg-accent-500 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-white">{reviewCount}</span>
                       ) : null}
                       <DragHandle className="cursor-grab text-text-muted opacity-0 transition-opacity group-hover/row:opacity-60 active:cursor-grabbing" />
                     </span>
@@ -337,7 +341,13 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
         ))}
       </nav>
 
-      <div className="flex items-center justify-around border-t border-border-subtle px-4 py-3.5">
+      <div className="border-t border-border-subtle px-4 py-3">
+        <div className="mb-3 rounded-md border border-border-subtle bg-[#101311] px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-text-muted">Ledger</div>
+          <div className="mt-1 truncate text-[13px] font-semibold text-text-primary">{profile.name || "Personal ledger"}</div>
+          {profile.email ? <div className="mt-1 truncate text-[11px] text-text-muted">{profile.email}</div> : null}
+        </div>
+        <div className="flex items-center justify-around">
         <Link
           aria-label="Settings"
           className="flex size-9 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-2 hover:text-accent-300"
@@ -349,6 +359,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
         <ThemeToggle className="flex size-9 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary" />
         <div className="flex size-9 items-center justify-center">
           {hasClerkClientConfig ? <UserButton /> : <Avatar gradient={profile.avatarGradient} image={profile.avatarImage} kind={profile.avatarKind} name={profile.name} size={28} />}
+        </div>
         </div>
       </div>
 
