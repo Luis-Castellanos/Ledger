@@ -517,16 +517,16 @@ export function ImportsWorkbench() {
   const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-4">
+    <div className="transactions-grid fidelity-register-grid">
+      <section className="transactions-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-four">
           <ImportMetric label="Accepted" value={`${summary.accepted}`} icon={<CheckCircle2 size={17} />} tone="green" />
           <ImportMetric label="Review" value={`${summary.needs_review}`} icon={<ListChecks size={17} />} tone="violet" />
           <ImportMetric label="Duplicates" value={`${summary.duplicate}`} icon={<FileSpreadsheet size={17} />} tone="gold" />
           <ImportMetric label="Rejected" value={`${summary.rejected}`} icon={<ShieldAlert size={17} />} tone="coral" />
         </div>
 
-        <section className="panel transactions-table-panel">
+        <section className="panel transactions-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Staging</p>

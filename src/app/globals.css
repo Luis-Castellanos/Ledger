@@ -1076,6 +1076,135 @@ button {
   overflow: hidden;
 }
 
+.fidelity-register-grid.accounts-grid,
+.fidelity-register-grid.transactions-grid,
+.fidelity-register-grid.imports-grid {
+  min-height: calc(100vh - 92px);
+  gap: 24px;
+  padding: 28px 26px 34px;
+}
+
+.fidelity-register-grid .accounts-main,
+.fidelity-register-grid .transactions-main,
+.fidelity-register-grid .imports-main {
+  border-right: 0;
+}
+
+.fidelity-register-main {
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.fidelity-register-grid > .accounts-side {
+  align-self: start;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.fidelity-summary-strip {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+}
+
+.fidelity-summary-strip-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fidelity-summary-strip-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fidelity-summary-strip .stat-panel {
+  min-height: 158px;
+  background: transparent;
+  padding: 28px 32px;
+}
+
+.fidelity-summary-strip .account-metric {
+  align-content: start;
+  gap: 12px;
+}
+
+.fidelity-register-panel {
+  background: var(--surface-1);
+  padding: 34px 40px;
+}
+
+.fidelity-register-panel + .fidelity-register-panel {
+  border-top: 1px solid var(--line);
+}
+
+.fidelity-register-panel .panel-header {
+  align-items: center;
+  margin-bottom: 26px;
+}
+
+.fidelity-register-panel .panel-title {
+  font-size: 28px;
+  font-weight: 780;
+}
+
+.fidelity-register-panel .search-field {
+  height: 52px;
+  min-width: min(38vw, 430px);
+  border-radius: 12px;
+  background: transparent;
+  padding: 0 20px;
+  font-size: 17px;
+}
+
+.fidelity-register-panel .transactions-table-head,
+.fidelity-register-panel .accounts-table-head {
+  border-bottom-color: var(--line);
+  padding: 18px 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.fidelity-register-panel .transactions-table-row,
+.fidelity-register-panel .accounts-table-row {
+  min-height: 76px;
+  border-bottom-color: var(--line);
+  padding: 18px 10px;
+}
+
+.fidelity-register-panel .transaction-controls select,
+.fidelity-register-panel .review-bulk-bar select {
+  height: 46px;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 16px;
+  color: var(--ink-strong);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.fidelity-register-panel .review-bulk-bar {
+  margin-bottom: 24px;
+  border: 0;
+  padding: 0;
+}
+
+.fidelity-register-panel .review-bulk-bar button {
+  height: 46px;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--ink-strong);
+}
+
 .fidelity-activity-panel {
   border: 1px solid var(--line-strong);
   border-radius: 18px;

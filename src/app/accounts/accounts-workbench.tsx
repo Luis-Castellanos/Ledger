@@ -362,15 +362,15 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
 
 
   return (
-    <div className="accounts-grid">
-      <section className="accounts-main">
-        <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
+    <div className="accounts-grid fidelity-register-grid">
+      <section className="accounts-main fidelity-register-main">
+        <div className="fidelity-summary-strip fidelity-summary-strip-three">
           <AccountMetric label="Assets" value={formatMoney(totals.assets)} icon={<ArrowUpRight size={17} />} tone="green" />
           <AccountMetric label="Liabilities" value={formatMoney(-totals.liabilities)} icon={<ArrowDownLeft size={17} />} tone="coral" />
           <AccountMetric label="Net position" value={formatMoney(totals.assets - totals.liabilities)} icon={<ShieldCheck size={17} />} tone="violet" />
         </div>
 
-        <section className="panel accounts-table-panel">
+        <section className="panel accounts-table-panel fidelity-register-panel">
           <div className="panel-header accounts-toolbar">
             <div>
               <p className="panel-label">Accounts</p>
@@ -427,7 +427,7 @@ export function AccountsWorkbench({ initialAccount = "" }: { initialAccount?: st
         </section>
 
         {selectedAccount && accountDetail ? (
-          <section className="panel account-detail-panel" aria-label="Account detail reporting">
+          <section className="panel account-detail-panel fidelity-register-panel" aria-label="Account detail reporting">
             <div className="panel-header accounts-toolbar">
               <div>
                 <p className="panel-label">Account detail</p>
