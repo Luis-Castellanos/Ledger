@@ -364,16 +364,18 @@ export function SettingsWorkbench() {
   const sectionOptions = normalizedLayout.map((section) => ({ value: section.id, label: section.label || "Untitled" }));
 
   return (
-    <div className="grid min-h-[calc(100vh-81px)] grid-cols-1 border-t border-border-subtle lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="border-b border-border-subtle bg-surface-1/70 p-3 lg:border-b-0 lg:border-r">
-        <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Settings sections">
+    <div className="grid min-h-[calc(100vh-81px)] grid-cols-1 border-t border-border-subtle bg-[rgba(23,26,25,0.42)] lg:grid-cols-[224px_minmax(0,1fr)]">
+      <aside className="border-b border-border-subtle bg-[#171a19] p-0 lg:border-b-0 lg:border-r">
+        <nav className="flex gap-0 overflow-x-auto py-3 lg:flex-col lg:overflow-visible lg:py-5" aria-label="Settings sections">
           {settingTabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
-                className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors ${
-                  active ? "bg-accent-soft text-accent-300" : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+                className={`flex shrink-0 items-center gap-2 border-l-[3px] px-5 py-2.5 text-left text-[13px] font-medium transition-colors lg:w-full ${
+                  active
+                    ? "border-accent-500 bg-accent-soft text-text-primary"
+                    : "border-transparent text-text-secondary hover:border-border-strong hover:bg-surface-2 hover:text-text-primary"
                 }`}
                 key={tab.id}
                 onClick={() => {
@@ -409,11 +411,15 @@ export function SettingsWorkbench() {
         ) : null}
 
         {activeTab === "profile" ? (
-          <section className="max-w-3xl rounded-xl border border-border-subtle bg-surface-1 p-5">
-            <div className="flex flex-col gap-6 sm:flex-row">
-              <div className="flex shrink-0 flex-col items-center gap-2">
+          <section className="max-w-6xl rounded-lg border border-border-subtle bg-surface-1 p-5">
+            <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
+              <div className="flex shrink-0 flex-col items-center gap-3 rounded-lg border border-border-subtle bg-surface-base p-5">
                 <Avatar className="ring-1 ring-border-subtle" gradient={profileDraft.avatarGradient} image={profileDraft.avatarImage} kind={profileDraft.avatarKind} name={profileDraft.name} size={76} />
                 <span className="text-[11px] text-text-muted">Sidebar preview</span>
+                <div className="w-full border-t border-border-subtle pt-3 text-center">
+                  <p className="truncate text-[14px] font-semibold text-text-primary">{profileDraft.name || "Personal ledger"}</p>
+                  <p className="mt-1 truncate text-[11px] text-text-muted">{settings.user.email}</p>
+                </div>
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-5">
                 <label className="flex max-w-md flex-col gap-1.5">
@@ -466,11 +472,28 @@ export function SettingsWorkbench() {
                   </div>
                 </div>
 
-                <button className="inline-flex w-fit items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50" disabled={isSaving} onClick={saveProfile} type="button">
+                <button className="inline-flex w-fit items-center gap-2 rounded-full bg-accent-500 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50" disabled={isSaving} onClick={saveProfile} type="button">
                   <Save size={15} />
                   {isSaving ? "Saving" : "Save profile"}
                 </button>
               </div>
+              <aside className="rounded-lg border border-border-subtle bg-surface-base p-4">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">Ledger context</p>
+                <dl className="mt-4 grid gap-4">
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.1em] text-text-muted">Ledger</dt>
+                    <dd className="mt-1 text-[14px] font-semibold text-text-primary">{settings.ledger.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.1em] text-text-muted">Currency</dt>
+                    <dd className="mt-1 text-[14px] font-semibold text-text-primary">{settings.ledger.defaultCurrency}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] uppercase tracking-[0.1em] text-text-muted">Visible navigation</dt>
+                    <dd className="mt-1 text-[14px] font-semibold text-text-primary">{visibleNavCount} pages</dd>
+                  </div>
+                </dl>
+              </aside>
             </div>
           </section>
         ) : null}
@@ -578,7 +601,7 @@ export function SettingsWorkbench() {
         ) : null}
 
         {activeTab === "ledger" ? (
-          <form className="max-w-xl rounded-xl border border-border-subtle bg-surface-1 p-5" onSubmit={handleLedgerSubmit}>
+          <form className="max-w-2xl rounded-lg border border-border-subtle bg-surface-1 p-5" onSubmit={handleLedgerSubmit}>
             <div className="grid gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-text-muted">Ledger name</span>
@@ -607,7 +630,7 @@ export function SettingsWorkbench() {
                 />
               </label>
             </div>
-            <button className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50" disabled={isSaving} type="submit">
+            <button className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent-500 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50" disabled={isSaving} type="submit">
               <Save size={15} />
               {isSaving ? "Saving" : "Save ledger"}
             </button>
