@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { auditEvents, merchantRules, transactions } from "@/lib/db/schema";
-import { normalizeRuleMatchValue } from "@/lib/finance/rules";
+import { findMatchingMerchantRule } from "@/lib/finance/rules";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
 export async function POST() {
@@ -21,18 +21,21 @@ export async function POST() {
   const db = getDb();
   const [rules, rows] = await Promise.all([
     db
-      .select()
+      .select({
+        accountId: merchantRules.accountId,
+        categoryId: merchantRules.categoryId,
+        matchType: merchantRules.matchType,
+        normalizedMatchValue: merchantRules.normalizedMatchValue,
+      })
       .from(merchantRules)
-      .where(and(eq(merchantRules.ledgerId, current.ledger.id), eq(merchantRules.isActive, true), isNull(merchantRules.deletedAt))),
+      .where(and(eq(merchantRules.ledgerId, current.ledger.id), eq(merchantRules.isActive, true), isNull(merchantRules.deletedAt)))
+      .orderBy(asc(merchantRules.priority), asc(merchantRules.name)),
     db.select().from(transactions).where(and(eq(transactions.ledgerId, current.ledger.id), isNull(transactions.deletedAt))),
   ]);
 
   let updated = 0;
   for (const row of rows) {
-    const normalized = normalizeRuleMatchValue(row.displayName || row.rawDescription);
-    const rule = rules
-      .filter((candidate) => matchesRule(normalized, candidate.matchType, candidate.normalizedMatchValue))
-      .sort((left, right) => left.priority - right.priority)[0];
+    const rule = findMatchingMerchantRule(row.displayName || row.rawDescription, rules, row.accountId);
 
     if (!rule || row.categoryId === rule.categoryId) {
       continue;
@@ -41,7 +44,7 @@ export async function POST() {
     await db
       .update(transactions)
       .set({ categoryId: rule.categoryId, reviewStatus: "reviewed", updatedAt: new Date() })
-      .where(and(eq(transactions.id, row.id), eq(transactions.ledgerId, current.ledger.id)));
+      .where(and(eq(transactions.id, row.id), eq(transactions.ledgerId, current.ledger.id), isNull(transactions.deletedAt)));
     updated += 1;
   }
 
@@ -54,14 +57,4 @@ export async function POST() {
   });
 
   return NextResponse.json({ data: { updated }, updated });
-}
-
-function matchesRule(value: string, matchType: string, matchValue: string) {
-  if (matchType === "exact") {
-    return value === matchValue;
-  }
-  if (matchType === "starts_with") {
-    return value.startsWith(matchValue);
-  }
-  return value.includes(matchValue);
 }

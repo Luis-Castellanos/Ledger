@@ -35,6 +35,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Bulk transaction category updates now verify category ownership before writing foreign keys, preventing cross-ledger category references.
 - Transaction edit routes now recalculate dedupe keys when date, amount, account, or merchant identity fields change, keeping duplicate protection aligned after edits.
 - Import commit now uses deterministic transaction dedupe keys and marks skipped conflicts as duplicate import rows instead of using import-batch row numbers as transaction identity.
+- Transaction reclean now respects account-scoped merchant rules and keeps scoped update predicates on non-deleted rows.
 
 ## Remaining Review Items
 
