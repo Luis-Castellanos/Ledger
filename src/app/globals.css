@@ -24,22 +24,22 @@
 
 :root {
   color-scheme: dark;
-  --surface-base: #201913;
-  --surface-1: #171a19;
-  --surface-2: #1d2220;
-  --surface-3: #2a2118;
-  --border-subtle: rgba(221, 216, 205, 0.15);
-  --border-strong: rgba(221, 216, 205, 0.28);
-  --text-primary: #f1eee8;
-  --text-secondary: #d1ccc3;
-  --text-tertiary: #a9a299;
-  --text-muted: #8b847a;
-  --text-faint: #6f695f;
-  --accent-500: #5ea33d;
-  --accent-300: #8fd77a;
-  --accent-200: #c6efba;
-  --accent-soft: rgba(94, 163, 61, 0.2);
-  --positive: #92df80;
+  --surface-base: #282018;
+  --surface-1: #181818;
+  --surface-2: #202020;
+  --surface-3: #2b221a;
+  --border-subtle: rgba(216, 216, 208, 0.18);
+  --border-strong: rgba(216, 216, 208, 0.38);
+  --text-primary: #e6e2dc;
+  --text-secondary: #d8d8d8;
+  --text-tertiary: #b0b0a8;
+  --text-muted: #888078;
+  --text-faint: #686058;
+  --accent-500: #508838;
+  --accent-300: #98d880;
+  --accent-200: #b7e69d;
+  --accent-soft: rgba(80, 136, 56, 0.24);
+  --positive: #98d880;
   --negative: #e1847d;
   --background: var(--surface-base);
   --foreground: var(--text-primary);
@@ -71,22 +71,22 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --surface-base: #f4f2ec;
+  --surface-base: #f8f8f8;
   --surface-1: #ffffff;
-  --surface-2: #ebe8df;
-  --surface-3: #e0d9cd;
-  --border-subtle: rgba(50, 45, 38, 0.16);
-  --border-strong: rgba(50, 45, 38, 0.28);
-  --text-primary: #1d1b18;
-  --text-secondary: #3f3a33;
-  --text-tertiary: #6c655c;
-  --text-muted: #857d73;
-  --text-faint: #aaa298;
-  --accent-500: #4f8f35;
-  --accent-300: #377221;
-  --accent-200: #234b17;
-  --accent-soft: rgba(79, 143, 53, 0.14);
-  --positive: #40822c;
+  --surface-2: #f0f0f0;
+  --surface-3: #f8f8f0;
+  --border-subtle: rgba(16, 16, 16, 0.12);
+  --border-strong: rgba(16, 16, 16, 0.28);
+  --text-primary: #101010;
+  --text-secondary: #242424;
+  --text-tertiary: #444444;
+  --text-muted: #5f5f5f;
+  --text-faint: #a0a0a0;
+  --accent-500: #508838;
+  --accent-300: #3d742b;
+  --accent-200: #244f18;
+  --accent-soft: rgba(80, 136, 56, 0.14);
+  --positive: #3d742b;
   --negative: #b94c45;
 }
 
@@ -102,10 +102,7 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  background:
-    radial-gradient(circle at 12% -10%, rgba(94, 163, 61, 0.08), transparent 28rem),
-    linear-gradient(90deg, rgba(22, 16, 12, 0.82), transparent 26rem),
-    var(--background);
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -375,6 +372,49 @@ button {
   color: var(--accent-300);
 }
 
+[data-theme="light"] .fidelity-pill {
+  background: #ffffff;
+  color: var(--ink-strong);
+}
+
+[data-theme="light"] .fidelity-sidebar {
+  color: var(--ink-strong);
+}
+
+.fidelity-sidebar .sidebar-brand {
+  color: var(--ink-strong) !important;
+}
+
+.fidelity-sidebar .sidebar-muted {
+  color: var(--muted) !important;
+}
+
+.fidelity-sidebar .sidebar-nav-link {
+  color: var(--ink) !important;
+}
+
+.fidelity-sidebar .sidebar-nav-link.bg-accent-soft {
+  color: var(--ink-strong) !important;
+}
+
+[data-theme="light"] .fidelity-sidebar a,
+[data-theme="light"] .fidelity-sidebar button {
+  color: var(--ink) !important;
+}
+
+[data-theme="light"] .fidelity-sidebar [class*="text-text-"] {
+  color: var(--ink) !important;
+}
+
+[data-theme="light"] .fidelity-sidebar a:hover,
+[data-theme="light"] .fidelity-sidebar button:hover {
+  color: var(--ink-strong) !important;
+}
+
+[data-theme="light"] .fidelity-sidebar [class*="bg-accent-soft"] {
+  color: var(--ink-strong) !important;
+}
+
 .page-tabs {
   display: flex;
   min-height: 48px;
@@ -398,6 +438,256 @@ button {
 .page-tabs a.active {
   border-bottom-color: var(--accent-500);
   color: var(--ink-strong);
+}
+
+.fidelity-dashboard-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-base);
+}
+
+.fidelity-dashboard-shell {
+  display: grid;
+  min-height: calc(100vh - 177px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 22px;
+  padding: 28px 26px 34px;
+}
+
+.fidelity-account-rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px 18px 0 0;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.fidelity-rail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 22px 14px;
+}
+
+.fidelity-rail-header h2,
+.fidelity-card h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 22px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.fidelity-rail-header p {
+  margin: 9px 0 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.fidelity-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px 20px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-3);
+  padding: 16px 18px;
+  color: var(--ink-strong);
+  font-size: 15px;
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.fidelity-total-row strong,
+.fidelity-account-row strong {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.fidelity-account-group {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+  margin: 0 20px;
+  padding: 18px 0;
+}
+
+.fidelity-account-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 8px;
+  padding: 11px 10px;
+  color: var(--ink-strong);
+  text-decoration: none;
+}
+
+.fidelity-account-row:hover {
+  background: var(--surface-2);
+}
+
+.fidelity-account-row span {
+  display: grid;
+  gap: 3px;
+  color: var(--ink-strong);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.fidelity-account-row small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 520;
+}
+
+.fidelity-account-row-muted span,
+.fidelity-account-row-muted strong {
+  color: var(--ink);
+}
+
+.fidelity-rail-actions {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding: 18px 20px 22px;
+}
+
+.fidelity-rail-actions a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 11px 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.fidelity-rail-actions a:hover {
+  background: var(--surface-2);
+  color: var(--ink-strong);
+}
+
+.fidelity-dashboard-content {
+  min-width: 0;
+}
+
+.fidelity-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 1fr);
+  gap: 24px;
+}
+
+.fidelity-card {
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: var(--surface-1);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.fidelity-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.fidelity-balance-card {
+  padding: 34px 34px 28px;
+}
+
+.fidelity-balance-card h2 {
+  margin-top: 24px;
+  font-size: clamp(34px, 4vw, 46px);
+  line-height: 1;
+}
+
+.fidelity-gain-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.fidelity-gain-line span {
+  color: var(--positive);
+  font-size: 18px;
+  font-weight: 760;
+}
+
+.fidelity-range-control {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.fidelity-range-control strong {
+  display: inline-flex;
+  min-width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent-500);
+  color: #fff;
+}
+
+.fidelity-range-control span {
+  display: inline-flex;
+  height: 42px;
+  align-items: center;
+}
+
+.fidelity-underlink {
+  display: inline-flex;
+  margin-top: 22px;
+  color: #9fc8ff;
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fidelity-card-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.fidelity-compact-card {
+  min-height: 180px;
+  padding: 32px 34px;
+}
+
+.fidelity-compact-card p {
+  margin: 12px 0 0;
+  max-width: 40rem;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.fidelity-wide-card {
+  margin-top: 24px;
+  padding: 30px 34px;
 }
 
 .mobile-dock {
@@ -520,6 +810,7 @@ button {
 .category-bar div {
   position: relative;
   border-left: 1px solid var(--line);
+  overflow: hidden;
 }
 
 .category-bar i {
@@ -528,6 +819,7 @@ button {
   left: 0;
   width: 100%;
   min-height: 10px;
+  max-height: 100%;
 }
 
 .area-line {
@@ -2133,7 +2425,9 @@ button {
   .accounts-grid,
   .transactions-grid,
   .imports-grid,
-  .settings-grid {
+  .settings-grid,
+  .fidelity-dashboard-shell,
+  .fidelity-content-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2156,6 +2450,10 @@ button {
   .accounts-side {
     border-top: 1px solid var(--line);
   }
+
+  .fidelity-account-rail {
+    border-radius: 16px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2171,6 +2469,37 @@ button {
 
   .bar-stage {
     gap: 10px;
+  }
+
+  .fidelity-dashboard-shell {
+    gap: 16px;
+    padding: 18px 14px 86px;
+  }
+
+  .fidelity-balance-card,
+  .fidelity-compact-card,
+  .fidelity-wide-card {
+    padding: 22px 18px;
+  }
+
+  .fidelity-card,
+  .fidelity-account-rail {
+    border-radius: 14px;
+  }
+
+  .fidelity-rail-header {
+    padding: 20px 18px 10px;
+  }
+
+  .fidelity-total-row,
+  .fidelity-account-group,
+  .fidelity-rail-actions {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .fidelity-range-control {
+    gap: 14px;
   }
 
   .accounts-toolbar {

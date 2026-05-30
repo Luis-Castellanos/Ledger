@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Layers3, Search, Upload, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Download, Info, Layers3, Link2, Plus, Search, Upload, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export-button";
-import { bars, categoryBars, ledgerStats, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
+import { bars, categoryBars, lineSeries, transactions as sampleDashboardTransactions } from "@/lib/sample-data";
 import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
 import { sampleTransactionRows, type TransactionRow } from "@/lib/finance/transaction-sample-data";
 import { formatMoney } from "@/lib/finance/money";
@@ -101,19 +101,13 @@ export default function Home() {
     const snapshotCoverage = accountRows.length === 0 ? 0 : Math.round((snapshotAccountIds.size / accountRows.length) * 100);
     const netCashflow = cashflow.inflow - cashflow.outflow;
 
-    const stats = [
-      { ...ledgerStats[0], label: "Net worth", value: formatMoney(position.assets - position.liabilities) },
-      { ...ledgerStats[1], label: "Net cashflow", value: formatMoney(netCashflow) },
-      { ...ledgerStats[2], label: "Review exposure", value: `${cashflow.review} rows` },
-    ];
-
     const activity = [
       { label: "Snapshot coverage", value: `${snapshotCoverage}% of accounts`, kind: "cash" },
       { label: "Review queue", value: `${cashflow.review} transactions`, kind: "rule" },
       { label: "Tracked accounts", value: `${accountRows.length} accounts`, kind: "shield" },
     ];
 
-    return { cashflow, netCashflow, position, snapshotCoverage, stats, activity };
+    return { cashflow, netCashflow, position, snapshotCoverage, activity };
   }, [accountRows, snapshotRows, transactionRows]);
 
   const recentTransactions = useMemo(() => {
@@ -151,13 +145,23 @@ export default function Home() {
     return `${formatMoney(-outflow)} spent`;
   }, [transactionRows]);
 
+  const netWorth = dashboardModel.position.assets - dashboardModel.position.liabilities;
+  const visibleAccounts = accountRows.filter((account) => account.status !== "closed").slice(0, 5);
+  const updatedAtLabel = new Date().toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
   return (
     <AppShell active="Dashboard">
       <section className="min-w-0">
-        <header className="border-b border-[var(--line)] bg-[rgba(32,25,19,0.62)] px-5 pb-0 pt-5 lg:px-7">
+        <header className="fidelity-dashboard-header px-5 pb-0 pt-5 lg:px-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Personal ledger</p>
+              <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Personal finance</p>
               <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-normal text-[var(--ink-strong)]">All accounts</h1>
             </div>
             <div className="flex items-center gap-2">
@@ -199,20 +203,99 @@ export default function Home() {
           </nav>
         </header>
 
-        <div className="transactions-grid">
-          <section className="transactions-main">
-            <div className="grid grid-cols-1 border-b border-[var(--line)] md:grid-cols-3">
-              {dashboardModel.stats.map((stat) => (
-                <article className="stat-panel account-metric" key={stat.label}>
-                  <div className={`account-metric-icon account-metric-${stat.tone}`}>{stat.tone === "green" ? <Banknote size={17} /> : stat.tone === "coral" ? <ArrowUpRight size={17} /> : <Layers3 size={17} />}</div>
-                  <p className="panel-label">{stat.label}</p>
-                  <p className="panel-title">{stat.value}</p>
-                  <MiniLine trend={stat.trend} tone={stat.tone} />
-                </article>
-              ))}
+        <div className="fidelity-dashboard-shell">
+          <aside className="fidelity-account-rail" aria-label="Accounts overview">
+            <div className="fidelity-rail-header">
+              <div>
+                <h2>Accounts</h2>
+                <p>As of {updatedAtLabel}</p>
+              </div>
+              <Link className="table-icon-button" href="/accounts" aria-label="Manage accounts">
+                <WalletCards size={17} />
+              </Link>
             </div>
 
-            <section className="panel dashboard-cashflow-panel">
+            <Link className="fidelity-total-row" href="/accounts">
+              <span>All accounts</span>
+              <strong>{formatMoney(netWorth)}</strong>
+            </Link>
+
+            <div className="fidelity-account-group">
+              <div className="fidelity-account-row fidelity-account-row-muted">
+                <span>Assets</span>
+                <strong>{formatMoney(dashboardModel.position.assets)}</strong>
+              </div>
+              {visibleAccounts.map((account) => (
+                <Link className="fidelity-account-row" href="/accounts" key={account.id}>
+                  <span>
+                    {account.name}
+                    <small>{account.institution} {account.mask ? `...${account.mask}` : ""}</small>
+                  </span>
+                  <strong>{formatMoney(account.balanceMinor)}</strong>
+                </Link>
+              ))}
+              {dashboardModel.position.liabilities > 0 ? (
+                <div className="fidelity-account-row">
+                  <span>Liabilities</span>
+                  <strong>{formatMoney(-dashboardModel.position.liabilities)}</strong>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="fidelity-rail-actions">
+              <Link href="/accounts">
+                <Plus size={18} />
+                Add account
+              </Link>
+              <Link href="/imports">
+                <Link2 size={17} />
+                Link or import data
+              </Link>
+            </div>
+          </aside>
+
+          <section className="fidelity-dashboard-content">
+            <div className="fidelity-content-grid">
+              <article className="fidelity-card fidelity-balance-card">
+                <div className="fidelity-card-header">
+                  <div>
+                    <p className="panel-label">Balance</p>
+                    <h2>{formatMoney(netWorth)}</h2>
+                    <p className="fidelity-gain-line">
+                      <span>{formatMoney(dashboardModel.netCashflow)}</span>
+                      Net cashflow
+                    </p>
+                  </div>
+                  <Info size={19} />
+                </div>
+                <AreaLine tone={dashboardModel.netCashflow >= 0 ? "green" : "coral"} />
+                <div className="fidelity-range-control" aria-label="Chart range">
+                  <span>1M</span>
+                  <span>YTD</span>
+                  <strong>1Y</strong>
+                  <span>3Y</span>
+                </div>
+                <Link className="fidelity-underlink" href="/net-worth">
+                  View your performance
+                </Link>
+              </article>
+
+              <div className="fidelity-card-stack">
+                <article className="fidelity-card fidelity-compact-card">
+                  <h2>Review queue</h2>
+                  <p>{dashboardModel.cashflow.review} transactions need categorization or approval.</p>
+                  <Link className="fidelity-underlink" href="/review">
+                    View review workbench
+                  </Link>
+                </article>
+                <article className="fidelity-card fidelity-compact-card">
+                  <h2>Cashflow summary</h2>
+                  <CategoryBars transactions={transactionRows} />
+                </article>
+              </div>
+            </div>
+
+            <section className="fidelity-card fidelity-wide-card">
               <div className="panel-header">
                 <div>
                   <p className="panel-label">Cashflow</p>
@@ -223,7 +306,7 @@ export default function Home() {
               <StackedBarChart transactions={transactionRows} />
             </section>
 
-            <section className="panel border-t border-[var(--line)]">
+            <section className="fidelity-card fidelity-wide-card">
               <div className="panel-header">
                 <div>
                   <p className="panel-label">Transactions</p>
@@ -254,50 +337,6 @@ export default function Home() {
               </div>
             </section>
           </section>
-
-          <aside className="accounts-side">
-            <section className="panel account-form-panel">
-              <div className="panel-header">
-                <div>
-                  <p className="panel-label">Position</p>
-                  <h2 className="panel-title">{formatMoney(dashboardModel.position.assets - dashboardModel.position.liabilities)}</h2>
-                </div>
-              </div>
-              <AreaLine tone="green" />
-              <div className="file-evidence-list">
-                <div className="file-evidence-item">
-                  <span>Assets</span>
-                  <strong>{formatMoney(dashboardModel.position.assets)}</strong>
-                </div>
-                <div className="file-evidence-item">
-                  <span>Liabilities</span>
-                  <strong>{formatMoney(-dashboardModel.position.liabilities)}</strong>
-                </div>
-              </div>
-            </section>
-
-            <section className="panel account-form-panel">
-              <div className="panel-header">
-                <div>
-                  <p className="panel-label">Spending</p>
-                  <h2 className="panel-title">{formatMoney(-dashboardModel.cashflow.outflow)}</h2>
-                </div>
-              </div>
-              <CategoryBars transactions={transactionRows} />
-            </section>
-
-            <section className="panel account-form-panel">
-              <p className="panel-label">Status</p>
-              <div className="file-evidence-list">
-                {dashboardModel.activity.map((item) => (
-                  <div className="file-evidence-item" key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
         </div>
       </section>
     </AppShell>
@@ -347,19 +386,6 @@ function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = 
     lastActivity: latestSnapshot ? `Snapshot ${latestSnapshot.asOfDate}` : account.updatedAt ? "Updated" : "No snapshot",
     status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
   };
-}
-
-function MiniLine({ trend, tone }: { trend: number[]; tone: "green" | "coral" | "violet" }) {
-  const max = Math.max(...trend);
-  const points = trend
-    .map((value, index) => `${(index / (trend.length - 1)) * 100},${100 - (value / max) * 82}`)
-    .join(" ");
-
-  return (
-    <svg className={`mini-line mini-line-${tone}`} viewBox="0 0 100 100" role="img" aria-label="Trend line">
-      <polyline points={points} />
-    </svg>
-  );
 }
 
 const categoryColors = ["#8c50d5", "#57b89d", "#d5b96a", "#3f8cc8", "#d76b64"];

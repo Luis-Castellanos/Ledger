@@ -9,7 +9,7 @@ export function AppShell({ active, children }: { active: string; children: React
     <main className="min-h-screen bg-surface-base text-text-primary">
       <div className="flex min-h-screen w-full overflow-hidden bg-[var(--surface-base)]">
         <Sidebar reviewCount={37} />
-        <div className="min-w-0 flex-1 overflow-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.018),rgba(255,255,255,0)_240px)] pb-20 md:pb-0">
+        <div className="min-w-0 flex-1 overflow-auto bg-[var(--surface-base)] pb-20 md:pb-0">
           {children}
         </div>
         <nav className="mobile-dock" aria-label="Primary mobile navigation">

@@ -215,7 +215,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
     return (
       <button
         aria-label="Show sidebar"
-        className="fixed left-3 top-3 z-50 flex size-9 items-center justify-center rounded-lg border border-border-subtle bg-surface-1 text-text-secondary shadow-sm transition-colors hover:bg-surface-2 hover:text-accent-300 print:hidden"
+        className="fixed left-3 top-3 z-50 flex size-9 items-center justify-center rounded-lg border border-border-subtle bg-surface-1 text-[var(--ink)] shadow-sm transition-colors hover:bg-surface-2 hover:text-[var(--accent-300)] print:hidden"
         onClick={showSidebar}
         title="Show sidebar"
         type="button"
@@ -229,7 +229,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
 
   return (
     <aside
-      className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border-subtle bg-[#141816] shadow-[inset_-1px_0_0_rgba(255,255,255,0.03)] print:hidden md:flex"
+      className="fidelity-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border-subtle bg-[var(--surface-1)] shadow-[inset_-1px_0_0_rgba(255,255,255,0.03)] print:hidden md:flex"
       style={{ width }}
     >
       <div className="flex items-center gap-2.5 border-b border-border-subtle px-4 pb-4 pt-4">
@@ -243,13 +243,17 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
             size={36}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate font-mono text-[15px] font-semibold uppercase tracking-[0.08em] transition-colors group-hover:text-accent-300">Vault</div>
-            <div className="truncate text-[11px] uppercase tracking-[0.16em] text-text-muted">{profile.name || "Personal ledger"}</div>
+            <div className="sidebar-brand truncate font-mono text-[15px] font-semibold uppercase tracking-[0.08em] transition-colors">
+              Vault
+            </div>
+            <div className="sidebar-muted truncate text-[11px] uppercase tracking-[0.16em]">
+              {profile.name || "Personal ledger"}
+            </div>
           </div>
         </Link>
         <button
           aria-label="Hide sidebar"
-          className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border-subtle text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border-subtle text-[var(--muted)] transition-colors hover:bg-surface-2 hover:text-[var(--ink-strong)]"
           onClick={collapseSidebar}
           title="Hide sidebar"
           type="button"
@@ -271,7 +275,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
             onDrop={() => dropOnSection(section.id)}
           >
             <div
-              className={`flex cursor-grab items-center gap-1.5 px-5 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-text-muted active:cursor-grabbing ${
+              className={`flex cursor-grab items-center gap-1.5 px-5 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)] active:cursor-grabbing ${
                 dragging === `section:${section.id}` ? "opacity-40" : ""
               }`}
               draggable
@@ -316,12 +320,13 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
                   }}
                 >
                   <Link
-                    className={`relative flex items-center justify-between gap-2 border-l-[3px] py-2.5 pl-5 pr-3 text-[14px] transition-colors ${
+                    className={`sidebar-nav-link relative flex items-center justify-between gap-2 border-l-[3px] py-2.5 pl-5 pr-3 text-[14px] transition-colors ${
                       active
-                        ? "border-accent-500 bg-accent-soft font-semibold text-text-primary"
-                        : "border-transparent font-medium text-text-secondary hover:border-border-strong hover:bg-surface-2 hover:text-text-primary"
+                        ? "border-accent-500 bg-accent-soft font-semibold text-[var(--ink-strong)]"
+                        : "border-transparent font-medium text-[var(--ink)] hover:border-border-strong hover:bg-surface-2 hover:text-[var(--ink-strong)]"
                     } ${dragging === item.href ? "opacity-40" : ""}`}
                     href={item.href}
+                    style={{ color: active ? "var(--ink-strong)" : "var(--ink)" }}
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       <Icon className="shrink-0" size={18} strokeWidth={active ? 2.1 : 1.75} />
@@ -331,7 +336,7 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
                       {item.showBadge && reviewCount !== undefined && reviewCount > 0 ? (
                         <span className="rounded-sm bg-accent-500 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-white">{reviewCount}</span>
                       ) : null}
-                      <DragHandle className="cursor-grab text-text-muted opacity-0 transition-opacity group-hover/row:opacity-60 active:cursor-grabbing" />
+                      <DragHandle className="cursor-grab text-[var(--muted)] opacity-0 transition-opacity group-hover/row:opacity-60 active:cursor-grabbing" />
                     </span>
                   </Link>
                 </div>
@@ -342,21 +347,21 @@ export function Sidebar({ reviewCount }: { reviewCount?: number }) {
       </nav>
 
       <div className="border-t border-border-subtle px-4 py-3">
-        <div className="mb-3 rounded-md border border-border-subtle bg-[#101311] px-3 py-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-text-muted">Ledger</div>
-          <div className="mt-1 truncate text-[13px] font-semibold text-text-primary">{profile.name || "Personal ledger"}</div>
-          {profile.email ? <div className="mt-1 truncate text-[11px] text-text-muted">{profile.email}</div> : null}
+        <div className="mb-3 rounded-md border border-border-subtle bg-[var(--surface-2)] px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">Ledger</div>
+          <div className="mt-1 truncate text-[13px] font-semibold text-[var(--ink-strong)]">{profile.name || "Personal ledger"}</div>
+          {profile.email ? <div className="mt-1 truncate text-[11px] text-[var(--muted)]">{profile.email}</div> : null}
         </div>
         <div className="flex items-center justify-around">
         <Link
           aria-label="Settings"
-          className="flex size-9 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-2 hover:text-accent-300"
+          className="flex size-9 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-surface-2 hover:text-[var(--accent-300)]"
           href="/settings"
           title="Settings"
         >
           <IconSettings size={18} />
         </Link>
-        <ThemeToggle className="flex size-9 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary" />
+        <ThemeToggle className="flex size-9 items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:bg-surface-2 hover:text-[var(--ink-strong)]" />
         <div className="flex size-9 items-center justify-center">
           {hasClerkClientConfig ? <UserButton /> : <Avatar gradient={profile.avatarGradient} image={profile.avatarImage} kind={profile.avatarKind} name={profile.name} size={28} />}
         </div>
