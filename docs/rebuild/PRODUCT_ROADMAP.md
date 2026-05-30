@@ -64,6 +64,7 @@ Needs:
 - Backup and restore.
 - Minimal vendor lock-in.
 - Strong secrets and key management.
+- A credible path toward operator-blind or operator-minimized data access so the service owner cannot casually inspect personal financial data.
 
 ## Product Scope Model
 
@@ -121,6 +122,7 @@ Vault should be planned as a layered product, not a giant feature list.
 - AI-assisted classification
 - Bank sync
 - Mobile app
+- Privacy hardening: field-level encryption, envelope encryption, user-held or split-held keys, and recovery-safe key rotation.
 
 ## MVP Definition
 
@@ -153,10 +155,32 @@ The MVP is not "Monarch, but smaller." It is the smallest production-grade finan
 - Payroll parser.
 - Investment lots/performance.
 - AI auto-actions.
+- Operator-blind encryption.
 - Native mobile app.
 - Payments/subscriptions.
 
 Those are valuable, but they belong after the core ledger is durable.
+
+### Post-V1 Privacy Track: Operator-Minimized Data
+
+The hosted product should eventually make normal operator access to user financial data impossible or highly constrained. V1 protects users from each other through authentication, authorization, ledger scoping, and production access controls; it does not yet make data unreadable to the service operator with database access.
+
+Roadmap goals:
+
+- Classify fields by encryption need: transactions, balances, notes, uploaded document metadata, import raw rows, account identifiers, and exports.
+- Evaluate field-level encryption for the most sensitive financial fields before bank sync, AI auto-classification, or public beta expansion.
+- Use envelope encryption with per-user or per-ledger data keys, with wrapping keys held outside the database.
+- Decide whether keys are service-held, user-held, or split-held. User-held keys improve privacy but complicate search, reporting, rules, recovery, mobile access, and background jobs.
+- Define recovery behavior before shipping operator-blind encryption. A design that prevents the operator from reading data may also prevent the operator from recovering lost keys.
+- Keep exports compatible with encrypted data, including encrypted backup packages or explicit local decryption before export.
+- Add an admin-access policy: production support should not require raw database inspection of user financial records.
+
+Exit criteria:
+
+- A written key-management ADR exists.
+- Sensitive-field encryption is covered by tests.
+- Operational runbooks describe what support can and cannot see.
+- Backups, restore, import, export, reporting, and rules still work within the selected privacy model.
 
 ## Release Phases
 

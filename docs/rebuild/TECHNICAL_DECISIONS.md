@@ -31,6 +31,7 @@ This document records decisions that should guide the production scaffold and pr
 | Audit events in backup | Included by default |
 | Demo data | Synthetic internal/dev/QA data; no public demo |
 | Double-entry accounting | Explicit non-goal |
+| Operator-blind encryption | Post-V1 privacy track; requires ADR before implementation |
 
 ## ADR 001: Treat Prototype as Reference, Not Production Base
 
@@ -349,6 +350,25 @@ Consequences:
 - Safer V1 scope.
 - UI can still be tested with realistic data.
 - Public demo can be added after private beta hardening.
+
+## ADR 018: Operator-Blind Encryption Is a Post-V1 Privacy Track
+
+Status: Accepted.
+
+Context:
+
+V1 currently protects users from each other through Clerk authentication, server-side authorization, and personal ledger scoping. It does not make hosted production data unreadable to the service operator with database or infrastructure access.
+
+Decision:
+
+Operator-blind or operator-minimized data access is a post-V1 privacy track. Before implementation, write a dedicated key-management ADR that chooses between service-held, user-held, and split-held keys.
+
+Consequences:
+
+- V1 private beta must be honest about the current operator visibility model.
+- Sensitive-field encryption should be designed before public beta, bank sync, AI automation, document parsing, or support tooling that increases exposure.
+- User-held or split-held keys may limit server-side reporting, search, rules, background jobs, exports, recovery, and mobile sessions.
+- The roadmap should prioritize encryption architecture deliberately instead of adding superficial at-rest encryption that still leaves operators able to read data.
 
 ## Open Decisions
 

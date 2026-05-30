@@ -224,6 +224,43 @@ If using Supabase:
 - Include `WITH CHECK` on inserts/updates.
 - Keep privileged functions in private schemas.
 
+## Operator Visibility and Encryption Roadmap
+
+Current V1 privacy model:
+
+- Users are isolated from each other by Clerk authentication, server-side authorization, and ledger-scoped queries.
+- The hosted service operator can still read plaintext financial data through production database access.
+- This is acceptable for a private beta only if access is tightly limited, logged where practical, and disclosed honestly.
+
+Long-term target:
+
+- Reduce or eliminate routine operator visibility into user financial data.
+- Prefer designs where production support and debugging do not require raw transaction, balance, note, import, document, or export contents.
+
+Candidate architecture:
+
+- Field-level encryption for highly sensitive fields.
+- Envelope encryption with a per-user or per-ledger data encryption key.
+- Wrapping keys stored outside Postgres, such as a managed KMS, hardware-backed key store, or user-held secret.
+- Separate migration/admin credentials from runtime app credentials.
+- Explicit key rotation, revocation, backup, and disaster-recovery procedures.
+
+Design choices to decide before implementation:
+
+- **Service-held keys:** simpler reporting, search, rules, and recovery, but the operator can still decrypt with sufficient infrastructure access.
+- **User-held keys:** strongest operator-blind posture, but breaks or complicates server-side search, background jobs, automatic rules, imports, exports, mobile sessions, and account recovery.
+- **Split-held keys:** balances privacy and product function, but adds implementation and recovery complexity.
+
+Implementation rules:
+
+- Do not partially encrypt fields without documenting what remains visible through indexes, metadata, logs, audit events, backups, and exports.
+- Do not log decrypted values.
+- Do not send decrypted financial data to analytics, AI providers, or support tooling without explicit user action and policy.
+- Treat backup exports as sensitive encrypted artifacts once encryption ships.
+- Add tests proving encrypted fields are not stored as plaintext.
+
+This is a post-V1 privacy track unless the release target changes. It should be designed before public beta or any feature that increases operator exposure, such as bank sync, AI automation, document parsing, or support impersonation.
+
 ## Deployment Security
 
 Requirements:
