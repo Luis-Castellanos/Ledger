@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { parseDollarAmount } from "./money";
+import { buildTransactionDedupeKey } from "./transaction";
 
 export const importRowStatusSchema = z.enum(["accepted", "needs_review", "duplicate", "rejected"]);
 
@@ -70,6 +71,40 @@ export type StageImportRow = z.infer<typeof stageImportRowSchema>;
 export type SavedImportMappingInput = z.infer<typeof savedImportMappingSchema>;
 export type UpdateImportRowInput = z.infer<typeof updateImportRowSchema>;
 export type ImportActionParams = z.infer<typeof importActionParamsSchema>;
+
+export type ImportCommitCandidate = {
+  ledgerId: string;
+  accountId: string;
+  currency: string;
+  rowId: string;
+  parsedDate: string;
+  parsedAmountMinor: number;
+  parsedDescription: string;
+  proposedCategoryId: string | null;
+  validationStatus: "accepted" | "needs_review";
+};
+
+export function buildImportTransactionInsert(row: ImportCommitCandidate) {
+  return {
+    ledgerId: row.ledgerId,
+    accountId: row.accountId,
+    categoryId: row.proposedCategoryId,
+    date: row.parsedDate,
+    amountMinor: row.parsedAmountMinor,
+    currency: row.currency,
+    rawDescription: row.parsedDescription,
+    displayName: row.parsedDescription,
+    reviewStatus: row.validationStatus === "accepted" ? ("reviewed" as const) : ("needs_review" as const),
+    source: "import" as const,
+    dedupeKey: buildTransactionDedupeKey({
+      ledgerId: row.ledgerId,
+      accountId: row.accountId,
+      date: row.parsedDate,
+      amountMinor: row.parsedAmountMinor,
+      rawDescription: row.parsedDescription,
+    }),
+  };
+}
 
 export function buildImportFingerprint(input: { accountId: string; filename: string; rows: StageImportRow[] }) {
   const hash = createHash("sha256");

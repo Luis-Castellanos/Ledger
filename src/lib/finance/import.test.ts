@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildImportFingerprint,
+  buildImportTransactionInsert,
   importActionParamsSchema,
   savedImportMappingApiSchema,
   stageImportApiSchema,
@@ -124,5 +125,36 @@ describe("buildImportFingerprint", () => {
     };
 
     expect(buildImportFingerprint(input)).toBe(buildImportFingerprint(input));
+  });
+});
+
+describe("buildImportTransactionInsert", () => {
+  it("uses transaction identity rather than import batch identity for dedupe", () => {
+    const first = buildImportTransactionInsert({
+      ledgerId: "550e8400-e29b-41d4-a716-446655440010",
+      accountId,
+      currency: "USD",
+      rowId: "550e8400-e29b-41d4-a716-446655440020",
+      parsedDate: "2026-05-27",
+      parsedAmountMinor: -425,
+      parsedDescription: "Coffee",
+      proposedCategoryId: null,
+      validationStatus: "accepted",
+    });
+    const second = buildImportTransactionInsert({
+      ledgerId: "550e8400-e29b-41d4-a716-446655440010",
+      accountId,
+      currency: "USD",
+      rowId: "550e8400-e29b-41d4-a716-446655440021",
+      parsedDate: "2026-05-27",
+      parsedAmountMinor: -425,
+      parsedDescription: "  COFFEE  ",
+      proposedCategoryId: null,
+      validationStatus: "needs_review",
+    });
+
+    expect(first.dedupeKey).toBe(second.dedupeKey);
+    expect(first.reviewStatus).toBe("reviewed");
+    expect(second.reviewStatus).toBe("needs_review");
   });
 });

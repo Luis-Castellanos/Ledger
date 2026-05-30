@@ -34,6 +34,7 @@ This project is now past the first V1 feature migration pass. New work should fa
 - Manual transaction dedupe keys are now deterministic hashes of ledger, account, date, amount, and normalized description instead of timestamp-based unique strings.
 - Bulk transaction category updates now verify category ownership before writing foreign keys, preventing cross-ledger category references.
 - Transaction edit routes now recalculate dedupe keys when date, amount, account, or merchant identity fields change, keeping duplicate protection aligned after edits.
+- Import commit now uses deterministic transaction dedupe keys and marks skipped conflicts as duplicate import rows instead of using import-batch row numbers as transaction identity.
 
 ## Remaining Review Items
 

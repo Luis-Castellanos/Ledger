@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
-import { accounts, imports } from "@/lib/db/schema";
-import { importActionParamsSchema } from "@/lib/finance/import";
+import { accounts, auditEvents, importRows, imports, transactions } from "@/lib/db/schema";
+import { buildImportTransactionInsert, importActionParamsSchema, type ImportCommitCandidate } from "@/lib/finance/import";
 import { checkRateLimit, rateLimitExceededResponse, rateLimitPolicies } from "@/lib/security/rate-limit";
 
 type RouteContext = {
@@ -58,97 +58,94 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Rolled back imports must be restaged before commit" }, { status: 409 });
   }
 
-  const dedupePrefix = `import:${batch.id}:`;
   const auditAfter = {
     filename: batch.filename,
     status: "committed",
   };
 
-  const result = await db.execute<{ committed_count: number }>(sql`
-    WITH eligible_rows AS (
-      SELECT
-        id,
-        row_number,
-        parsed_date,
-        parsed_amount_minor,
-        parsed_description,
-        proposed_category_id,
-        validation_status
-      FROM import_rows
-      WHERE import_id = ${batch.id}
-        AND committed_transaction_id IS NULL
-        AND validation_status IN ('accepted', 'needs_review')
-        AND parsed_date IS NOT NULL
-        AND parsed_amount_minor IS NOT NULL
-        AND parsed_description IS NOT NULL
-    ),
-    inserted_transactions AS (
-      INSERT INTO transactions (
-        ledger_id,
-        account_id,
-        category_id,
-        date,
-        amount_minor,
-        currency,
-        raw_description,
-        display_name,
-        review_status,
-        source,
-        dedupe_key
-      )
-      SELECT
-        ${context.ledger.id},
-        ${batch.accountId},
-        proposed_category_id,
-        parsed_date,
-        parsed_amount_minor,
-        ${batch.currency},
-        parsed_description,
-        parsed_description,
-        CASE WHEN validation_status = 'accepted' THEN 'reviewed' ELSE 'needs_review' END,
-        'import',
-        ${dedupePrefix} || row_number::text
-      FROM eligible_rows
-      ON CONFLICT DO NOTHING
-      RETURNING id, dedupe_key
-    ),
-    updated_rows AS (
-      UPDATE import_rows
-      SET committed_transaction_id = inserted_transactions.id
-      FROM inserted_transactions
-      WHERE import_rows.import_id = ${batch.id}
-        AND inserted_transactions.dedupe_key = ${dedupePrefix} || import_rows.row_number::text
-      RETURNING import_rows.id
-    ),
-    updated_import AS (
-      UPDATE imports
-      SET status = 'committed', committed_at = now(), updated_at = now()
-      WHERE id = ${batch.id}
-      RETURNING id
-    ),
-    audit AS (
-      INSERT INTO audit_events (
-        ledger_id,
-        actor_user_id,
-        action,
-        entity_type,
-        entity_id,
-        after
-      )
-      SELECT
-        ${context.ledger.id},
-        ${context.user.id},
-        'import.committed',
-        'import',
-        ${batch.id},
-        ${JSON.stringify(auditAfter)}::jsonb
-      FROM updated_import
-    )
-    SELECT count(*)::int AS committed_count FROM updated_rows;
-  `);
+  const rows = await db
+    .select({
+      rowId: importRows.id,
+      parsedDate: importRows.parsedDate,
+      parsedAmountMinor: importRows.parsedAmountMinor,
+      parsedDescription: importRows.parsedDescription,
+      proposedCategoryId: importRows.proposedCategoryId,
+      validationStatus: importRows.validationStatus,
+    })
+    .from(importRows)
+    .where(
+      and(
+        eq(importRows.importId, batch.id),
+        isNull(importRows.committedTransactionId),
+        inArray(importRows.validationStatus, ["accepted", "needs_review"]),
+        isNotNull(importRows.parsedDate),
+        isNotNull(importRows.parsedAmountMinor),
+        isNotNull(importRows.parsedDescription),
+      ),
+    );
+
+  const candidates = rows.map((row) => ({
+    ledgerId: context.ledger.id,
+    accountId: batch.accountId,
+    currency: batch.currency,
+    rowId: row.rowId,
+    parsedDate: row.parsedDate,
+    parsedAmountMinor: row.parsedAmountMinor,
+    parsedDescription: row.parsedDescription,
+    proposedCategoryId: row.proposedCategoryId,
+    validationStatus: row.validationStatus,
+  })) as ImportCommitCandidate[];
+  const insertValues = candidates.map(buildImportTransactionInsert);
+  const insertedTransactions =
+    insertValues.length > 0
+      ? await db
+          .insert(transactions)
+          .values(insertValues)
+          .onConflictDoNothing()
+          .returning({ id: transactions.id, dedupeKey: transactions.dedupeKey })
+      : [];
+  const insertedIdByDedupeKey = new Map(insertedTransactions.map((transaction) => [transaction.dedupeKey, transaction.id]));
+  const committedRows = candidates
+    .map((row) => ({
+      rowId: row.rowId,
+      transactionId: insertedIdByDedupeKey.get(buildImportTransactionInsert(row).dedupeKey),
+    }))
+    .filter((row): row is { rowId: string; transactionId: string } => Boolean(row.transactionId));
+  const duplicateRowIds = candidates
+    .filter((row) => !insertedIdByDedupeKey.has(buildImportTransactionInsert(row).dedupeKey))
+    .map((row) => row.rowId);
+
+  for (const row of committedRows) {
+    await db
+      .update(importRows)
+      .set({ committedTransactionId: row.transactionId })
+      .where(and(eq(importRows.id, row.rowId), eq(importRows.importId, batch.id)));
+  }
+
+  if (duplicateRowIds.length > 0) {
+    await db
+      .update(importRows)
+      .set({
+        validationStatus: "duplicate",
+        validationMessage: "Duplicate transaction already exists for this ledger/account/date/amount/description.",
+      })
+      .where(and(eq(importRows.importId, batch.id), inArray(importRows.id, duplicateRowIds)));
+  }
+
+  await db.update(imports).set({ status: "committed", committedAt: new Date(), updatedAt: new Date() }).where(eq(imports.id, batch.id));
+  await db.insert(auditEvents).values({
+    ledgerId: context.ledger.id,
+    actorUserId: context.user.id,
+    action: "import.committed",
+    entityType: "import",
+    entityId: batch.id,
+    after: auditAfter,
+    metadata: { committed: committedRows.length, duplicates: duplicateRowIds.length },
+  });
 
   return NextResponse.json({
     import: { id: batch.id, status: "committed" },
-    committedCount: result.rows[0]?.committed_count ?? 0,
+    committedCount: committedRows.length,
+    duplicateCount: duplicateRowIds.length,
   });
 }
