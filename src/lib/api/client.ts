@@ -38,6 +38,12 @@ async function request<T>(path: string, init?: RequestInit & { json?: JsonBody }
     throw new ApiError(response.status, body.error || `Request failed (${response.status})`, body.issues);
   }
 
+  // an expired session makes Clerk redirect API calls to the sign-in page;
+  // a 200 HTML response is therefore "signed out", not data
+  if (payload === null && (response.headers.get("content-type") ?? "").includes("text/html")) {
+    throw new ApiError(401, "Your session has ended — sign in again.");
+  }
+
   return payload as T;
 }
 

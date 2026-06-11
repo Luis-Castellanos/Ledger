@@ -15,6 +15,8 @@ loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 const result = spawnSync("npx", ["drizzle-kit", command], {
   env: process.env,
   stdio: "inherit",
+  // npx resolves to npx.cmd on Windows, which needs a shell to spawn
+  shell: process.platform === "win32",
 });
 
 process.exit(result.status ?? 1);
