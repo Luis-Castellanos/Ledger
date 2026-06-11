@@ -24,18 +24,18 @@ test("dashboard responds with security headers and renders the shell", async ({ 
   }
 });
 
-test("defaults to the dark theme", async ({ page }) => {
+test("defaults to the light theme", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
-test("theme toggle switches to light and persists", async ({ page, isMobile }) => {
+test("theme toggle switches to dark and persists", async ({ page, isMobile }) => {
   test.skip(isMobile, "toggle lives in the sidebar drawer on mobile");
   await page.goto("/");
-  await page.getByRole("button", { name: /Switch to light mode/ }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("button", { name: /Switch to dark mode/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("APIs reject unauthenticated access", async ({ request }) => {

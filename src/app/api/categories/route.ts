@@ -22,6 +22,7 @@ export async function GET() {
       slug: categories.slug,
       flowType: categories.flowType,
       color: categories.color,
+      icon: categories.icon,
       isSystem: categories.isSystem,
       isArchived: categories.isArchived,
     })

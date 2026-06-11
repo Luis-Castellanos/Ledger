@@ -23,6 +23,7 @@ export type ApiCategory = {
   slug: string;
   flowType: "income" | "expense" | "transfer";
   color: string | null;
+  icon: string | null;
   isSystem: boolean;
   isArchived: boolean;
 };

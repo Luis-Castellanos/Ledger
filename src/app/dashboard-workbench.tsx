@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { format, startOfMonth, subMonths, startOfYear } from "date-fns";
 import { ArrowRight, ClipboardCheck, FileInput, Landmark, PiggyBank, ReceiptText, Target } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { CategoryIcon } from "@/components/category-icon";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { AnimatedMoney, Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
@@ -145,6 +147,7 @@ export function DashboardWorkbench() {
 
   return (
     <DashboardFrame>
+      <OnboardingTour />
       <NetWorthHero
         netWorthMinor={netWorthMinor}
         windowDeltaMinor={windowDeltaMinor}
@@ -154,7 +157,7 @@ export function DashboardWorkbench() {
         hasSnapshots={fullSeries.length > 0}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3" data-tour="kpis">
         <KpiCard label={`${format(today, "MMMM")} income`} amountMinor={incomeMinor} tone="positive" />
         <KpiCard label={`${format(today, "MMMM")} spending`} amountMinor={spendMinor} tone="negative" />
         <KpiCard label={`${format(today, "MMMM")} net`} amountMinor={incomeMinor + spendMinor} tone="auto" />
@@ -208,7 +211,7 @@ function NetWorthHero({
   }));
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden" data-tour="net-worth">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(120%_80%_at_15%_0%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_60%)]"
@@ -356,8 +359,11 @@ function CategorySpendCard({ categories, className }: { categories: { name: stri
           <ul className="space-y-3">
             {categories.map((category, index) => (
               <li key={category.name}>
-                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                  <span className="truncate">{category.name}</span>
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <CategoryIcon size="sm" name={category.name} color={`var(--chart-${(index % 8) + 1})`} />
+                    <span className="truncate">{category.name}</span>
+                  </span>
                   <Money amountMinor={-category.totalMinor} className="text-muted-foreground" />
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -421,7 +427,7 @@ function RecentActivityCard({ rows, isPending, className }: { rows: ApiTransacti
 
 function ReviewCard({ count }: { count: number }) {
   return (
-    <Card>
+    <Card data-tour="review-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Review queue</CardTitle>
         <ClipboardCheck className="size-4 text-muted-foreground" />
@@ -455,7 +461,7 @@ function BudgetsCard({ month }: { month: string }) {
   const top = [...rows].sort((left, right) => right.spentMinor - left.spentMinor).slice(0, 4);
 
   return (
-    <Card>
+    <Card data-tour="budgets-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Budgets</CardTitle>
         <PiggyBank className="size-4 text-muted-foreground" />
@@ -507,7 +513,7 @@ function GoalsCard() {
   const active = (goals.data ?? []).filter((goal) => goal.status === "active").slice(0, 3);
 
   return (
-    <Card>
+    <Card data-tour="goals-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Goals</CardTitle>
         <Target className="size-4 text-muted-foreground" />

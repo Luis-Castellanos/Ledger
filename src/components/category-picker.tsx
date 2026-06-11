@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CategoryIcon } from "@/components/category-icon";
 import {
   Command,
   CommandEmpty,
@@ -83,9 +84,7 @@ export function CategoryPicker({
                 >
                   <Check className={cn(value === category.id ? "opacity-100" : "opacity-0")} />
                   <span className="flex items-center gap-2">
-                    {category.color ? (
-                      <span aria-hidden className="size-2 rounded-full" style={{ background: category.color }} />
-                    ) : null}
+                    <CategoryIcon size="sm" icon={category.icon} name={category.name} color={category.color} />
                     {category.name}
                   </span>
                 </CommandItem>

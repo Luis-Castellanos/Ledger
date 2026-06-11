@@ -111,7 +111,11 @@ export function AppSidebar() {
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
-                        <Link href={item.href} onClick={() => setOpenMobile(false)}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpenMobile(false)}
+                          data-tour={`nav-${item.href === "/" ? "dashboard" : item.href.slice(1)}`}
+                        >
                           <item.icon />
                           <span>{item.label}</span>
                         </Link>

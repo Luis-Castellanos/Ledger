@@ -5,6 +5,7 @@ import { addMonths, format, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Copy, PiggyBank, Plus, Trash2 } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
+import { CategoryIcon } from "@/components/category-icon";
 import { CategoryPicker } from "@/components/category-picker";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
@@ -181,7 +182,7 @@ function BudgetRowItem({ row, onSave, onDelete }: { row: BudgetRow; onSave: (amo
     <li className="border-b border-border/60 px-4 py-3 last:border-b-0">
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          {row.color ? <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: row.color }} /> : null}
+          <CategoryIcon size="sm" icon={row.icon} name={row.category} color={row.color} />
           <span className="truncate">{row.category}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2 text-sm">

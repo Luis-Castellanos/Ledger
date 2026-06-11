@@ -8,6 +8,7 @@ export type BudgetRow = {
   categoryId: string;
   category: string;
   color: string | null;
+  icon: string | null;
   amountMinor: number;
   spentMinor: number;
   remainingMinor: number;

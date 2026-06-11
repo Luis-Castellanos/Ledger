@@ -7,6 +7,7 @@ import { ArrowLeftRight } from "lucide-react";
 import { Bar, ComposedChart, CartesianGrid, Line, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { AuthControls } from "@/components/auth-controls";
+import { CategoryIcon } from "@/components/category-icon";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
@@ -250,10 +251,17 @@ function CategoryList({
                   className="group block"
                   aria-label={`View ${category.category} transactions`}
                 >
-                  <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                    <span className="truncate group-hover:underline">
-                      {category.category}
-                      <span className="ml-1.5 font-money text-[10px] text-muted-foreground">{category.count}</span>
+                  <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CategoryIcon
+                        size="sm"
+                        name={category.category}
+                        color={negative ? `var(--chart-${(index % 4) + 4})` : "var(--chart-2)"}
+                      />
+                      <span className="truncate group-hover:underline">
+                        {category.category}
+                        <span className="ml-1.5 font-money text-[10px] text-muted-foreground">{category.count}</span>
+                      </span>
                     </span>
                     <Money amountMinor={category.totalMinor} className="text-muted-foreground" />
                   </div>

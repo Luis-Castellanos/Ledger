@@ -17,7 +17,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     () => false,
   );
 
-  const isDark = resolvedTheme !== "light";
+  const isDark = resolvedTheme === "dark";
 
   return (
     <button
@@ -27,7 +27,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       title="Theme"
       type="button"
     >
-      {mounted ? isDark ? <Sun size={16} /> : <Moon size={16} /> : <Sun size={16} className="opacity-0" />}
+      {mounted ? isDark ? <Sun size={16} /> : <Moon size={16} /> : <Moon size={16} className="opacity-0" />}
     </button>
   );
 }

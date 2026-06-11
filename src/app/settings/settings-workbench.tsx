@@ -116,8 +116,8 @@ function AppearanceTab() {
         <div className="flex gap-3">
           {(
             [
-              { key: "dark", label: "Green ink", icon: Moon, description: "Dark, the house default" },
-              { key: "light", label: "Paper", icon: Sun, description: "Warm light" },
+              { key: "light", label: "Daylight", icon: Sun, description: "Bright and warm, the default" },
+              { key: "dark", label: "Evening", icon: Moon, description: "Green-ink dark mode" },
             ] as const
           ).map((option) => (
             <button
