@@ -1,17 +1,24 @@
 export type DataSourceState = "database" | "demo" | "unavailable";
 
-export const allowDemoFallback = process.env.NODE_ENV !== "production";
+/*
+ * Demo fallback is permanently disabled: pages must fail loudly instead of
+ * silently substituting sample data. This module survives only so unmigrated
+ * legacy workbenches keep compiling; each page rebuild removes its call
+ * sites, and the module is deleted with the last legacy page.
+ */
+export const allowDemoFallback = false;
 
 export function demoFallback<T>(demoValue: T, productionValue: T): T {
-  return allowDemoFallback ? demoValue : productionValue;
+  void demoValue;
+  return productionValue;
 }
 
 export function fallbackDataSource(): DataSourceState {
-  return allowDemoFallback ? "demo" : "unavailable";
+  return "unavailable";
 }
 
 export function canUseLocalFallback(source: DataSourceState): boolean {
-  return allowDemoFallback || source === "demo";
+  return source === "demo";
 }
 
 export function productionFallbackMessage(action: string): string {
