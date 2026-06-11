@@ -6,14 +6,12 @@ import {
   ArrowLeftRight,
   ClipboardCheck,
   FileInput,
-  FolderOpen,
   LayoutDashboard,
   Landmark,
   ReceiptText,
   Settings,
   SlidersHorizontal,
   TrendingUp,
-  UploadCloud,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -66,8 +64,6 @@ const SIDEBAR_GROUPS: SidebarNavGroup[] = [
     label: "Data",
     items: [
       { href: "/imports", label: "Imports", icon: FileInput },
-      { href: "/upload", label: "Upload", icon: UploadCloud },
-      { href: "/files", label: "Files", icon: FolderOpen },
       { href: "/rules", label: "Rules", icon: SlidersHorizontal },
     ],
   },
