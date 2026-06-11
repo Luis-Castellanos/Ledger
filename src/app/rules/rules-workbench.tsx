@@ -1,594 +1,377 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, BadgeCheck, GitBranch, Play, Plus, Save, Search, Tags } from "lucide-react";
-import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { createCategorySchema, createMerchantRuleSchema, updateCategorySchema, type CreateCategoryInput } from "@/lib/finance/rules";
-import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Archive, ArchiveRestore, Play, Plus, SlidersHorizontal, Trash2, Wand2 } from "lucide-react";
+import { AuthControls } from "@/components/auth-controls";
+import { CategoryPicker } from "@/components/category-picker";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { ApiError } from "@/lib/api/client";
+import { useCategories } from "@/lib/api/queries/categories";
+import { useCreateMerchantRule } from "@/lib/api/queries/review";
+import {
+  useApplyMerchantRules,
+  useCreateCategory,
+  useMerchantRules,
+  useUpdateCategory,
+  useUpdateMerchantRule,
+} from "@/lib/api/queries/rules";
+import { cn } from "@/lib/utils";
 
-const fallbackCategories = defaultCategoryTree.flatMap((parent) => [
-  {
-    id: parent.slug,
-    name: parent.name,
-    slug: parent.slug,
-    flowType: parent.flowType,
-    color: parent.color,
-    isSystem: true,
-    isArchived: false,
-  },
-  ...(parent.children ?? []).map((child) => ({
-    id: child.slug,
-    name: child.name,
-    slug: child.slug,
-    flowType: child.flowType,
-    color: child.color,
-    isSystem: true,
-    isArchived: false,
-  })),
-]);
-
-const fallbackRules: MerchantRuleRow[] = [
-  {
-    id: "rule_apple",
-    name: "Apple subscriptions",
-    matchType: "contains",
-    matchValue: "APPLE.COM/BILL",
-    priority: 40,
-    isActive: true,
-    categoryId: "lifestyle-subscriptions",
-    categoryName: "Subscriptions",
-    accountId: null,
-    accountName: null,
-  },
-  {
-    id: "rule_costco",
-    name: "Costco shopping",
-    matchType: "contains",
-    matchValue: "COSTCO",
-    priority: 70,
-    isActive: true,
-    categoryId: "lifestyle-shopping",
-    categoryName: "Shopping",
-    accountId: null,
-    accountName: null,
-  },
-];
-
-const matchTypes = [
-  { label: "Contains", value: "contains" },
-  { label: "Exact", value: "exact" },
-  { label: "Starts with", value: "starts_with" },
-] as const;
-
-const flowTypes = [
-  { label: "Expense", value: "expense" },
-  { label: "Income", value: "income" },
-  { label: "Transfer", value: "transfer" },
-] satisfies { label: string; value: CreateCategoryInput["flowType"] }[];
+const MATCH_LABEL: Record<string, string> = {
+  contains: "contains",
+  exact: "is exactly",
+  starts_with: "starts with",
+};
 
 export function RulesWorkbench() {
-  const [categories, setCategories] = useState<CategoryRow[]>(() => demoFallback(fallbackCategories, []));
-  const [rules, setRules] = useState<MerchantRuleRow[]>(() => demoFallback(fallbackRules, []));
-  const hasLocalEdits = useRef(false);
-  const [query, setQuery] = useState("");
-  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
-  const [error, setError] = useState<string | null>(null);
-  const [applyMessage, setApplyMessage] = useState<string | null>(null);
-  const [isApplyingRules, setIsApplyingRules] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({ name: "", flowType: "expense" as CreateCategoryInput["flowType"], color: "#57b89d" });
-  const [categoryEdits, setCategoryEdits] = useState<Record<string, CategoryEditState>>({});
-  const [ruleForm, setRuleForm] = useState({
-    name: "",
-    matchType: "contains",
-    matchValue: "",
-    categoryId: demoFallback(fallbackCategories[0]?.id ?? "", ""),
-    priority: 100,
-  });
+  const rules = useMerchantRules();
+  const categories = useCategories();
+  const apply = useApplyMerchantRules();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadRules() {
-      try {
-        const [categoriesResponse, rulesResponse] = await Promise.all([
-          fetch("/api/categories", { headers: { Accept: "application/json" } }),
-          fetch("/api/merchant-rules", { headers: { Accept: "application/json" } }),
-        ]);
-
-        if (!categoriesResponse.ok || !rulesResponse.ok) {
-          throw new Error("Rules APIs unavailable");
-        }
-
-        const categoriesPayload = (await categoriesResponse.json()) as { categories: CategoryRow[] };
-        const rulesPayload = (await rulesResponse.json()) as { rules: MerchantRuleRow[] };
-
-        if (isMounted && !hasLocalEdits.current) {
-          setCategories(categoriesPayload.categories);
-          setRules(rulesPayload.rules);
-          setRuleForm((current) => ({ ...current, categoryId: categoriesPayload.categories[0]?.id ?? current.categoryId }));
-          setDataSource("database");
-        }
-      } catch {
-        if (isMounted) {
-          setCategories(demoFallback(fallbackCategories, []));
-          setRules(demoFallback(fallbackRules, []));
-          setDataSource(fallbackDataSource());
-        }
-      }
-    }
-
-    void loadRules();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const filteredRules = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return rules;
-    }
-
-    return rules.filter((rule) =>
-      [rule.name, rule.matchValue, rule.categoryName, rule.accountName ?? ""].some((value) => value.toLowerCase().includes(normalizedQuery)),
-    );
-  }, [query, rules]);
-
-  const customCategories = useMemo(() => categories.filter((category) => !category.isSystem), [categories]);
-
-  async function handleCategorySubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsed = createCategorySchema.safeParse(categoryForm);
-
-    if (!parsed.success) {
-      setError("Category needs a name and valid hex color.");
-      return;
-    }
-
-    hasLocalEdits.current = true;
-
-    try {
-      const response = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Category API unavailable");
-      }
-
-      const payload = (await response.json()) as { category: CategoryRow };
-      setCategories((current) => [payload.category, ...current]);
-      setRuleForm((current) => ({ ...current, categoryId: payload.category.id }));
-      setDataSource("database");
-      setError(null);
-    } catch {
-      if (!canUseLocalFallback(dataSource)) {
-        setError(productionFallbackMessage("Category save"));
-        return;
-      }
-
-      const localCategory = {
-        id: `local_category_${Date.now()}`,
-        name: parsed.data.name,
-        slug: parsed.data.name.toLowerCase().replace(/\s+/g, "-"),
-        flowType: parsed.data.flowType,
-        color: parsed.data.color,
-        isSystem: false,
-        isArchived: false,
-      };
-
-      setCategories((current) => [localCategory, ...current]);
-      setRuleForm((current) => ({ ...current, categoryId: localCategory.id }));
-      setDataSource(fallbackDataSource());
-      setError(demoFallback("Saved locally. Configure Clerk and DATABASE_URL to persist categories.", productionFallbackMessage("Category save")));
-    }
-
-    setCategoryForm({ name: "", flowType: "expense", color: "#57b89d" });
-  }
-
-  async function updateCategory(id: string, patch: Partial<CategoryEditState> & { isArchived?: boolean }) {
-    const currentCategory = categories.find((category) => category.id === id);
-    const currentEdit = categoryEdits[id];
-
-    if (!currentCategory) {
-      return;
-    }
-
-    const payload = {
-      id,
-      name: patch.name ?? currentEdit?.name ?? currentCategory.name,
-      flowType: patch.flowType ?? currentEdit?.flowType ?? currentCategory.flowType,
-      color: patch.color ?? currentEdit?.color ?? currentCategory.color ?? "#57b89d",
-      isArchived: patch.isArchived ?? currentCategory.isArchived,
-    };
-    const parsed = updateCategorySchema.safeParse(payload);
-
-    if (!parsed.success) {
-      setError("Category update needs a name, flow type, and valid hex color.");
-      return;
-    }
-
-    hasLocalEdits.current = true;
-
-    try {
-      const response = await fetch("/api/categories", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Category update API unavailable");
-      }
-
-      const result = (await response.json()) as { category: CategoryRow };
-      setCategories((current) => current.map((category) => (category.id === result.category.id ? result.category : category)));
-      setCategoryEdits((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
-      setDataSource("database");
-      setError(null);
-    } catch {
-      if (!canUseLocalFallback(dataSource)) {
-        setError(productionFallbackMessage("Category update"));
-        return;
-      }
-
-      setCategories((current) => current.map((category) => (category.id === id ? { ...category, ...parsed.data } : category)));
-      setCategoryEdits((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
-      setDataSource(fallbackDataSource());
-      setError(demoFallback("Category update stayed local. Configure Clerk and DATABASE_URL to persist category edits.", productionFallbackMessage("Category update")));
-    }
-  }
-
-  async function handleRuleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsed = createMerchantRuleSchema.safeParse(ruleForm);
-
-    if (!parsed.success) {
-      setError("Rule needs a name, category, match text, and numeric priority.");
-      return;
-    }
-
-    hasLocalEdits.current = true;
-    const selectedCategory = categories.find((category) => category.id === parsed.data.categoryId);
-
-    try {
-      const response = await fetch("/api/merchant-rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Rule API unavailable");
-      }
-
-      const payload = (await response.json()) as { rule: MerchantRuleRow };
-      setRules((current) => [payload.rule, ...current]);
-      setDataSource("database");
-      setError(null);
-    } catch {
-      if (!canUseLocalFallback(dataSource)) {
-        setError(productionFallbackMessage("Merchant rule save"));
-        return;
-      }
-
-      setRules((current) => [
-        {
-          id: `local_rule_${Date.now()}`,
-          name: parsed.data.name,
-          matchType: parsed.data.matchType,
-          matchValue: parsed.data.matchValue,
-          priority: parsed.data.priority,
-          isActive: true,
-          categoryId: parsed.data.categoryId,
-          categoryName: selectedCategory?.name ?? "Uncategorized",
-          accountId: null,
-          accountName: null,
-        },
-        ...current,
-      ]);
-      setDataSource(fallbackDataSource());
-      setError(demoFallback("Saved locally. Configure Clerk and DATABASE_URL to persist merchant rules.", productionFallbackMessage("Merchant rule save")));
-    }
-
-    setRuleForm((current) => ({ ...current, name: "", matchValue: "", priority: 100 }));
-  }
-
-  async function applyRulesToTransactions() {
-    hasLocalEdits.current = true;
-    setIsApplyingRules(true);
-
-    try {
-      const response = await fetch("/api/merchant-rules/apply", {
-        method: "POST",
-        headers: { Accept: "application/json" },
-      });
-
-      if (!response.ok) {
-        throw new Error("Rule application API unavailable");
-      }
-
-      const payload = (await response.json()) as { appliedCount: number };
-      setApplyMessage(`${payload.appliedCount} unreviewed transactions updated.`);
-      setError(null);
-      setDataSource("database");
-    } catch {
-      if (!canUseLocalFallback(dataSource)) {
-        setApplyMessage(productionFallbackMessage("Rule application"));
-        return;
-      }
-
-      setApplyMessage(demoFallback("Demo preview only. Configure Clerk and DATABASE_URL to apply rules to transactions.", productionFallbackMessage("Rule application")));
-      setDataSource(fallbackDataSource());
-    } finally {
-      setIsApplyingRules(false);
-    }
-  }
+  const unauthorized = [rules.error, categories.error].some(
+    (error) => error instanceof ApiError && error.status === 401,
+  );
 
   return (
-    <div className="accounts-grid fidelity-register-grid">
-      <section className="accounts-main fidelity-register-main">
-        <div className="fidelity-summary-strip fidelity-summary-strip-three">
-          <RuleMetric label="Categories" value={`${categories.length}`} icon={<Tags size={17} />} tone="green" />
-          <RuleMetric label="Active rules" value={`${rules.filter((rule) => rule.isActive).length}`} icon={<GitBranch size={17} />} tone="violet" />
-          <RuleMetric label="System categories" value={`${categories.filter((category) => category.isSystem).length}`} icon={<BadgeCheck size={17} />} tone="gold" />
+    <div className="mx-auto w-full max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-8">
+      <PageHeader
+        eyebrow="Classification"
+        title="Rules"
+        description="Merchant rules categorize incoming transactions automatically; categories define the taxonomy."
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={apply.isPending || (rules.data ?? []).every((rule) => !rule.isActive)}
+              onClick={() =>
+                apply.mutate(undefined, {
+                  onSuccess: (result) =>
+                    result.appliedCount > 0
+                      ? toast.success(`${result.appliedCount} pending transaction${result.appliedCount === 1 ? "" : "s"} categorized`)
+                      : toast("No pending transactions matched the active rules"),
+                  onError: (error) => toast.error(error.message || "Apply failed"),
+                })
+              }
+            >
+              <Play /> {apply.isPending ? "Applying…" : "Apply to pending"}
+            </Button>
+            <AddRuleDialog />
+          </>
+        }
+      />
+
+      {unauthorized ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-6 py-16 text-center">
+          <p className="font-display text-2xl font-semibold">Sign in to manage rules</p>
+          <AuthControls />
         </div>
-
-        <section className="panel accounts-table-panel fidelity-register-panel">
-          <div className="panel-header accounts-toolbar">
-            <div>
-              <p className="panel-label">Merchant rules</p>
-              <h2 className="panel-title">Classification control file</h2>
-            </div>
-            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
-            <label className="search-field">
-              <Search size={16} />
-              <input aria-label="Search rules" placeholder="Search rules" value={query} onChange={(event) => setQuery(event.target.value)} />
-            </label>
-            <button className="secondary-action" type="button" onClick={applyRulesToTransactions} disabled={isApplyingRules}>
-              <Play size={16} />
-              {isApplyingRules ? "Applying" : "Apply rules"}
-            </button>
-          </div>
-          {applyMessage ? <p className="form-success">{applyMessage}</p> : null}
-
-          <div className="accounts-table" role="table" aria-label="Merchant rules">
-            <div className="accounts-table-head" role="row">
-              <span>Rule</span>
-              <span>Match</span>
-              <span>Category</span>
-              <span>Priority</span>
-            </div>
-            {filteredRules.map((rule) => (
-              <div className="accounts-table-row" role="row" key={rule.id}>
-                <div className="account-name-cell">
-                  <div className="account-icon">
-                    <GitBranch size={17} />
-                  </div>
-                  <div className="min-w-0">
-                    <p>{rule.name}</p>
-                    <span>{rule.isActive ? "Active" : "Inactive"}</span>
-                  </div>
-                </div>
-                <span className="account-pill">
-                  {rule.matchType.replace("_", " ")}: {rule.matchValue}
-                </span>
-                <span>{rule.categoryName}</span>
-                <strong className="font-mono">{rule.priority}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-      </section>
-
-      <aside className="accounts-side">
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">New rule</p>
-              <h2 className="panel-title">Merchant matcher</h2>
-            </div>
-            <div className="summary-icon">
-              <Plus size={17} />
-            </div>
-          </div>
-
-          <form className="account-form" onSubmit={handleRuleSubmit}>
-            <label>
-              <span>Name</span>
-              <input required value={ruleForm.name} onChange={(event) => setRuleForm((current) => ({ ...current, name: event.target.value }))} placeholder="Apple subscriptions" />
-            </label>
-            <label>
-              <span>Match text</span>
-              <input required value={ruleForm.matchValue} onChange={(event) => setRuleForm((current) => ({ ...current, matchValue: event.target.value }))} placeholder="APPLE.COM/BILL" />
-            </label>
-            <div className="account-form-grid">
-              <label>
-                <span>Type</span>
-                <select value={ruleForm.matchType} onChange={(event) => setRuleForm((current) => ({ ...current, matchType: event.target.value }))}>
-                  {matchTypes.map((type) => (
-                    <option value={type.value} key={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Priority</span>
-                <input
-                  inputMode="numeric"
-                  value={ruleForm.priority}
-                  onChange={(event) => setRuleForm((current) => ({ ...current, priority: Number(event.target.value) }))}
-                />
-              </label>
-            </div>
-            <label>
-              <span>Category</span>
-              <select value={ruleForm.categoryId} onChange={(event) => setRuleForm((current) => ({ ...current, categoryId: event.target.value }))}>
-                {categories.map((category) => (
-                  <option value={category.id} key={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {error ? <p className="form-error">{error}</p> : null}
-            <button className="primary-action" type="submit">
-              <Save size={16} />
-              Save rule
-            </button>
-          </form>
-        </section>
-
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">New category</p>
-              <h2 className="panel-title">Classification bucket</h2>
-            </div>
-          </div>
-          <form className="account-form" onSubmit={handleCategorySubmit}>
-            <label>
-              <span>Name</span>
-              <input required value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))} placeholder="Professional Dues" />
-            </label>
-            <div className="account-form-grid">
-              <label>
-                <span>Flow</span>
-                <select value={categoryForm.flowType} onChange={(event) => setCategoryForm((current) => ({ ...current, flowType: event.target.value as CreateCategoryInput["flowType"] }))}>
-                  {flowTypes.map((flowType) => (
-                    <option value={flowType.value} key={flowType.value}>
-                      {flowType.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Color</span>
-                <input value={categoryForm.color} onChange={(event) => setCategoryForm((current) => ({ ...current, color: event.target.value }))} />
-              </label>
-            </div>
-            <button className="secondary-action" type="submit">
-              <Plus size={16} />
-              Add category
-            </button>
-          </form>
-        </section>
-
-        <section className="panel account-form-panel" aria-label="Custom categories">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Categories</p>
-              <h2 className="panel-title">Custom buckets</h2>
-            </div>
-            <div className="summary-icon">
-              <Tags size={17} />
-            </div>
-          </div>
-          <div className="mt-5 grid gap-3">
-            {customCategories.length > 0 ? (
-              customCategories.map((category) => {
-                const edit = categoryEdits[category.id] ?? {
-                  color: category.color ?? "#57b89d",
-                  flowType: category.flowType,
-                  name: category.name,
-                };
-
-                return (
-                  <div className="category-edit-row" key={category.id}>
-                    <input
-                      aria-label={`Name for ${category.name}`}
-                      value={edit.name}
-                      onChange={(event) => setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, name: event.target.value } }))}
-                    />
-                    <select
-                      aria-label={`Flow for ${category.name}`}
-                      value={edit.flowType}
-                      onChange={(event) =>
-                        setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, flowType: event.target.value as CategoryEditState["flowType"] } }))
-                      }
-                    >
-                      {flowTypes.map((flowType) => (
-                        <option value={flowType.value} key={flowType.value}>
-                          {flowType.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      aria-label={`Color for ${category.name}`}
-                      value={edit.color}
-                      onChange={(event) => setCategoryEdits((current) => ({ ...current, [category.id]: { ...edit, color: event.target.value } }))}
-                    />
-                    <div className="flex gap-2">
-                      <button className="secondary-action" type="button" onClick={() => updateCategory(category.id, edit)}>
-                        <Save size={16} />
-                        Save
-                      </button>
-                      <button className="secondary-action" type="button" onClick={() => updateCategory(category.id, { ...edit, isArchived: !category.isArchived })}>
-                        <Archive size={16} />
-                        {category.isArchived ? "Restore" : "Archive"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="empty-copy">Custom categories you create will appear here for edit and archive controls.</p>
-            )}
-          </div>
-        </section>
-      </aside>
+      ) : rules.isPending || categories.isPending ? (
+        <PageSkeleton rows={6} />
+      ) : rules.isError ? (
+        <ErrorState message={rules.error.message} onRetry={() => void rules.refetch()} />
+      ) : (
+        <>
+          <RulesList />
+          <CategoriesPanel />
+        </>
+      )}
     </div>
   );
 }
 
-type CategoryRow = {
-  color: string | null;
-  flowType: "expense" | "income" | "transfer";
-  id: string;
-  isArchived: boolean;
-  isSystem: boolean;
-  name: string;
-  slug: string;
-};
+function RulesList() {
+  const rules = useMerchantRules();
+  const update = useUpdateMerchantRule();
+  const rows = rules.data ?? [];
 
-type CategoryEditState = {
-  color: string;
-  flowType: CreateCategoryInput["flowType"];
-  name: string;
-};
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        icon={Wand2}
+        title="No rules yet"
+        description="Create one here, or from any transaction in the review queue — future imports then categorize themselves."
+      />
+    );
+  }
 
-type MerchantRuleRow = {
-  accountId: string | null;
-  accountName: string | null;
-  categoryId: string;
-  categoryName: string;
-  id: string;
-  isActive: boolean;
-  matchType: string;
-  matchValue: string;
-  name: string;
-  priority: number;
-};
-
-function RuleMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "violet" | "gold" }) {
   return (
-    <article className="stat-panel account-metric">
-      <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <p className="label-caps border-b border-border px-4 py-2">Merchant rules</p>
+      <ul>
+        {rows.map((rule) => (
+          <li
+            key={rule.id}
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 last:border-b-0",
+              !rule.isActive && "opacity-55",
+            )}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{rule.name}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                description {MATCH_LABEL[rule.matchType] ?? rule.matchType}{" "}
+                <span className="font-money">“{rule.matchValue}”</span> → {rule.categoryName}
+                {rule.accountName ? ` · only ${rule.accountName}` : ""}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <Badge variant="outline" className="font-money text-[10px]" title="Priority">
+                p{rule.priority}
+              </Badge>
+              <Switch
+                checked={rule.isActive}
+                aria-label={`${rule.name} active`}
+                onCheckedChange={(checked) =>
+                  update.mutate(
+                    { id: rule.id, isActive: checked },
+                    { onError: (error) => toast.error(error.message || "Could not update the rule") },
+                  )
+                }
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-destructive"
+                aria-label={`Delete ${rule.name}`}
+                onClick={() =>
+                  update.mutate(
+                    { id: rule.id, action: "delete" },
+                    {
+                      onSuccess: () => toast.success(`${rule.name} deleted`),
+                      onError: (error) => toast.error(error.message || "Could not delete the rule"),
+                    },
+                  )
+                }
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AddRuleDialog() {
+  const categories = useCategories();
+  const createRule = useCreateMerchantRule();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [matchType, setMatchType] = useState("contains");
+  const [matchValue, setMatchValue] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+
+  const save = () => {
+    if (!categoryId) {
+      return;
+    }
+    createRule.mutate(
+      { name: name.trim(), matchType, matchValue: matchValue.trim(), categoryId },
+      {
+        onSuccess: () => {
+          toast.success("Rule saved");
+          setName("");
+          setMatchValue("");
+          setCategoryId(null);
+          setOpen(false);
+        },
+        onError: (error) => toast.error(error.message || "Could not save the rule"),
+      },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus /> New rule
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display">Create a rule</DialogTitle>
+          <DialogDescription>When an imported description matches, the category applies automatically.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="new-rule-name" className="label-caps">
+              Name
+            </Label>
+            <Input id="new-rule-name" placeholder="Apple subscriptions" value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-2">
+            <div className="grid gap-1.5">
+              <Label className="label-caps">Match</Label>
+              <Select value={matchType} onValueChange={setMatchType}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="starts_with">Starts with</SelectItem>
+                  <SelectItem value="exact">Exactly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="new-rule-value" className="label-caps">
+                Description text
+              </Label>
+              <Input
+                id="new-rule-value"
+                placeholder="APPLE.COM/BILL"
+                value={matchValue}
+                onChange={(event) => setMatchValue(event.target.value)}
+                className="font-money"
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="label-caps">Category</Label>
+            <CategoryPicker categories={categories.data ?? []} value={categoryId} onSelect={setCategoryId} className="w-full" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={!name.trim() || matchValue.trim().length < 2 || !categoryId || createRule.isPending}>
+            {createRule.isPending ? "Saving…" : "Save rule"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CategoriesPanel() {
+  const categories = useCategories();
+  const update = useUpdateCategory();
+  const rows = categories.data ?? [];
+  const active = rows.filter((category) => !category.isArchived);
+  const archived = rows.filter((category) => category.isArchived);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <p className="label-caps">Categories</p>
+        <AddCategoryControl />
+      </div>
+      <ul className="grid sm:grid-cols-2">
+        {[...active, ...archived].map((category) => (
+          <li
+            key={category.id}
+            className={cn(
+              "flex items-center justify-between gap-2 border-b border-border/40 px-4 py-2 sm:odd:border-r",
+              category.isArchived && "opacity-50",
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-2 text-sm">
+              <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: category.color ?? "var(--muted-foreground)" }} />
+              <span className="truncate">{category.name}</span>
+              {category.isSystem ? (
+                <Badge variant="outline" className="h-4 shrink-0 px-1 text-[10px] text-muted-foreground">
+                  system
+                </Badge>
+              ) : null}
+            </span>
+            {!category.isSystem ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 shrink-0 text-muted-foreground"
+                aria-label={category.isArchived ? `Restore ${category.name}` : `Archive ${category.name}`}
+                onClick={() =>
+                  update.mutate(
+                    { id: category.id, isArchived: !category.isArchived },
+                    { onError: (error) => toast.error(error.message || "Could not update the category") },
+                  )
+                }
+              >
+                {category.isArchived ? <ArchiveRestore className="size-3" /> : <Archive className="size-3" />}
+              </Button>
+            ) : (
+              <SlidersHorizontal className="size-3 shrink-0 text-muted-foreground/30" aria-hidden />
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AddCategoryControl() {
+  const create = useCreateCategory();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [flowType, setFlowType] = useState("expense");
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 text-xs">
+          <Plus /> Add
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 space-y-2" align="end">
+        <p className="label-caps">New category</p>
+        <Input
+          placeholder="Professional Dues"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          aria-label="Category name"
+        />
+        <Select value={flowType} onValueChange={setFlowType}>
+          <SelectTrigger className="w-full" aria-label="Flow type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="expense">Expense</SelectItem>
+            <SelectItem value="income">Income</SelectItem>
+            <SelectItem value="transfer">Transfer</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          className="w-full"
+          disabled={!name.trim() || create.isPending}
+          onClick={() =>
+            create.mutate(
+              { name: name.trim(), flowType },
+              {
+                onSuccess: () => {
+                  toast.success(`${name.trim()} added`);
+                  setName("");
+                  setOpen(false);
+                },
+                onError: (error) => toast.error(error.message || "Could not add the category"),
+              },
+            )
+          }
+        >
+          Add category
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -4,7 +4,10 @@ import {
   buildUpdatedTransactionDedupeKey,
   createManualTransactionApiSchema,
   createManualTransactionSchema,
+  decodeTransactionCursor,
+  encodeTransactionCursor,
   parseTagList,
+  transactionListQuerySchema,
   updateTransactionReviewSchema,
 } from "./transaction";
 
@@ -156,5 +159,35 @@ describe("updateTransactionReviewSchema", () => {
     });
 
     expect(parsed.amount).toBe(-1234);
+  });
+});
+
+describe("transaction list query", () => {
+  it("parses defaults", () => {
+    const parsed = transactionListQuerySchema.parse({});
+    expect(parsed.sort).toBe("date_desc");
+    expect(parsed.limit).toBe(100);
+  });
+
+  it("rejects malformed filters", () => {
+    expect(transactionListQuerySchema.safeParse({ accountId: "not-a-uuid" }).success).toBe(false);
+    expect(transactionListQuerySchema.safeParse({ limit: "9999" }).success).toBe(false);
+    expect(transactionListQuerySchema.safeParse({ sort: "chaos" }).success).toBe(false);
+    expect(transactionListQuerySchema.safeParse({ direction: "sideways" }).success).toBe(false);
+  });
+
+  it("round-trips cursors", () => {
+    const dateCursor = { v: "2026-05-01", c: "2026-05-01T10:00:00.000Z", id: "550e8400-e29b-41d4-a716-446655440000" };
+    expect(decodeTransactionCursor(encodeTransactionCursor(dateCursor))).toEqual(dateCursor);
+
+    const amountCursor = { v: -1234, id: "550e8400-e29b-41d4-a716-446655440000" };
+    expect(decodeTransactionCursor(encodeTransactionCursor(amountCursor))).toEqual({ ...amountCursor, c: undefined });
+  });
+
+  it("rejects malformed cursors", () => {
+    expect(decodeTransactionCursor("not-base64-json")).toBeNull();
+    expect(decodeTransactionCursor(Buffer.from("[1,2]").toString("base64url"))).toBeNull();
+    expect(decodeTransactionCursor(Buffer.from(JSON.stringify({ v: true, id: "x" })).toString("base64url"))).toBeNull();
+    expect(decodeTransactionCursor(Buffer.from(JSON.stringify({ v: "2026-05-01" })).toString("base64url"))).toBeNull();
   });
 });

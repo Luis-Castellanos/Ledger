@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Counting House rebuild (2026-06)
+
+Full frontend rebuild plus budgets & goals. Highlights:
+
+- New "Counting House" design language: green-ink dark theme (paper-white light theme), brass accent, Fraunces display type, Instrument Sans UI, tabular mono money figures; built on shadcn/ui + Tailwind v4 tokens with Recharts interactive charts and animated figures.
+- New app shell: grouped sidebar (mobile sheet + bottom dock), Cmd+K command palette, live review-count badge.
+- Budgets (per-category monthly, child-spend roll-up, copy-month-forward, over-budget states) and Goals (targets, progress rings, account-linked or manual contributions) — new tables, APIs, pages, and dashboard widgets.
+- Transactions API hardened: Zod-validated server-side filtering, six sort orders, cursor pagination, totals; categories addressable by id; cashflow now aggregates in SQL via /api/reports/cashflow.
+- Demo-data fallback removed everywhere: every page now has honest loading/empty/error/signed-out states; e2e suite rebuilt as an auth-independent shell smoke suite (desktop + mobile projects).
+- Information architecture consolidated: /credit-cards → accounts type filter, /payroll → cashflow, /upload + /files → imports Documents tab; CSV import is now a single stepper (account → file → mapping → staged review → commit) with history rollback.
+- Data layer rebuilt on TanStack Query with a typed API client; merchant rules gained enable/disable + delete (PATCH); settings rebuilt (profile, appearance, ledger, exports + audit trail).
+- Legacy fidelity CSS (~2,800 lines), sample-data modules, and the hand-rolled sidebar deleted.
+
 ### Added
 
 - Selectable CSV import history with per-batch preview, commit, and rollback actions.

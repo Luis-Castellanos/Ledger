@@ -1,1002 +1,543 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, ReceiptText, RotateCcw, Save, Search, Trash2 } from "lucide-react";
-import { sampleAccounts } from "@/lib/finance/account-sample-data";
-import { defaultCategoryTree } from "@/lib/finance/default-categories";
-import { defaultTransactionFilters, type DirectionFilter, type TransactionFilterState, type TransactionSortMode } from "@/lib/finance/transaction-filters";
-import { sampleTransactionRows, type TransactionRow, type TransactionStatus } from "@/lib/finance/transaction-sample-data";
-import { createManualTransactionSchema, parseTagList } from "@/lib/finance/transaction";
-import { formatMoney, parseDollarAmount } from "@/lib/finance/money";
-import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { CheckCheck, Download, ReceiptText, Search, Undo2, X } from "lucide-react";
+import { CategoryPicker } from "@/components/category-picker";
+import { ExportButton } from "@/components/export-button";
+import { Money } from "@/components/money";
+import { PageHeader } from "@/components/page-header";
+import { AuthControls } from "@/components/auth-controls";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ApiError } from "@/lib/api/client";
+import { useAccounts } from "@/lib/api/queries/accounts";
+import { useCategories } from "@/lib/api/queries/categories";
+import { useBulkUpdateTransactions, useTransactionsInfinite, useUpdateTransaction } from "@/lib/api/queries/transactions";
+import type { ApiCategory, ApiTransaction, TransactionFilters } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+import { AddTransactionDialog } from "./add-transaction-dialog";
+import { defaultRegisterFilters, registerFiltersToSearch, type RegisterFilters } from "./filters";
+import { TransactionSheet } from "./transaction-sheet";
 
-const categories = defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)]);
-const fallbackCategoryOptions = categories.map((name) => ({ id: name, name }));
-const statuses = [
-  { label: "Needs review", value: "needs_review" },
-  { label: "Reviewed", value: "reviewed" },
-  { label: "Excluded", value: "excluded" },
-] satisfies { label: string; value: TransactionStatus }[];
-const transferStatuses = [
-  { label: "Operating", value: "none" },
-  { label: "Transfer", value: "transfer" },
-] satisfies { label: string; value: NonNullable<TransactionRow["transferStatus"]> }[];
-const directionFilters = [
-  { label: "All directions", value: "all" },
-  { label: "Inflows", value: "inflow" },
-  { label: "Outflows", value: "outflow" },
-] satisfies { label: string; value: DirectionFilter }[];
-const sortOptions = [
-  { label: "Newest first", value: "date_desc" },
-  { label: "Oldest first", value: "date_asc" },
-  { label: "Largest amount", value: "amount_desc" },
-  { label: "Smallest amount", value: "amount_asc" },
-  { label: "Merchant A-Z", value: "merchant_asc" },
-  { label: "Category A-Z", value: "category_asc" },
-] satisfies { label: string; value: TransactionSortMode }[];
+const PAGE_SIZE = 50;
 
-export function TransactionsWorkbench({ initialFilters = defaultTransactionFilters }: { initialFilters?: TransactionFilterState }) {
-  const [transactions, setTransactions] = useState<TransactionRow[]>(() => demoFallback(sampleTransactionRows, []));
-  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(() => demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(() => demoFallback(fallbackCategoryOptions, []));
-  const hasLocalEdits = useRef(false);
-  const [query, setQuery] = useState(initialFilters.query);
-  const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>(initialFilters.status);
-  const [accountFilter, setAccountFilter] = useState(initialFilters.account);
-  const [categoryFilter, setCategoryFilter] = useState(initialFilters.category);
-  const [tagFilter, setTagFilter] = useState(initialFilters.tag);
-  const [transferFilter, setTransferFilter] = useState<"all" | NonNullable<TransactionRow["transferStatus"]>>(initialFilters.transfer);
-  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(initialFilters.direction);
-  const [sortMode, setSortMode] = useState<TransactionSortMode>(initialFilters.sort);
-  const [error, setError] = useState<string | null>(null);
-  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
-  const [lastDeletedTransaction, setLastDeletedTransaction] = useState<TransactionRow | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(() => demoFallback(sampleTransactionRows[0]?.id ?? null, null));
-  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
-  const [bulkCategory, setBulkCategory] = useState("Groceries");
-  const [bulkStatus, setBulkStatus] = useState<TransactionStatus>("reviewed");
-  const [bulkTransferStatus, setBulkTransferStatus] = useState<NonNullable<TransactionRow["transferStatus"]>>("none");
-  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
-  const [isSaving, setIsSaving] = useState(false);
-  const [formState, setFormState] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    merchant: "",
-    accountId: demoFallback(sampleAccounts[0]?.name ?? "", ""),
-    category: "Groceries",
-    amount: "",
-    tags: "",
-  });
-  const [editFormState, setEditFormState] = useState({
-    amount: "",
-    date: "",
-    merchant: "",
-    notes: "",
-  });
-
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    let isMounted = true;
+    const handle = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(handle);
+  }, [value, delayMs]);
+  return debounced;
+}
 
-    async function loadDatabaseData() {
-      try {
-        const [accountsResponse, transactionsResponse, categoriesResponse] = await Promise.all([
-          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
-          fetch("/api/transactions", { headers: { Accept: "application/json" } }),
-          fetch("/api/categories", { headers: { Accept: "application/json" } }),
-        ]);
+export function TransactionsWorkbench({ initialFilters }: { initialFilters: RegisterFilters }) {
+  const router = useRouter();
+  const pathname = usePathname();
 
-        if (!accountsResponse.ok || !transactionsResponse.ok || !categoriesResponse.ok) {
-          throw new Error("Transaction API unavailable");
-        }
+  const [filters, setFilters] = useState<RegisterFilters>(initialFilters);
+  const debouncedQ = useDebouncedValue(filters.q, 300);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [focusIndex, setFocusIndex] = useState(-1);
+  const [activeTransaction, setActiveTransaction] = useState<ApiTransaction | null>(null);
 
-        const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
-        const transactionsPayload = (await transactionsResponse.json()) as { transactions: TransactionRow[] };
-        const categoriesPayload = (await categoriesResponse.json()) as { categories: DatabaseCategory[] };
-        const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
-        const nextCategories = categoriesPayload.categories.map((category) => ({ id: category.id, name: category.name }));
+  const accounts = useAccounts();
+  const categories = useCategories();
+  const update = useUpdateTransaction();
+  const bulk = useBulkUpdateTransactions();
 
-        if (isMounted && !hasLocalEdits.current) {
-          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-          setCategoryOptions(nextCategories.length > 0 ? nextCategories : demoFallback(fallbackCategoryOptions, []));
-          setTransactions(transactionsPayload.transactions);
-          setSelectedTransactionId(transactionsPayload.transactions[0]?.id ?? null);
-          setBulkCategory(getDefaultCategoryName(nextCategories));
-          setFormState((current) => ({
-            ...current,
-            accountId: nextAccounts[0]?.id ?? current.accountId,
-            category: getDefaultCategoryName(nextCategories, current.category),
-          }));
-          setDataSource("database");
-        }
-      } catch {
-        if (isMounted) {
-          setTransactions(demoFallback(sampleTransactionRows, []));
-          setAccountOptions(demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-          setCategoryOptions(demoFallback(fallbackCategoryOptions, []));
-          setDataSource(fallbackDataSource());
-        }
-      }
-    }
+  // keep the URL shareable; replace (not push) so filter tweaks don't spam history
+  useEffect(() => {
+    router.replace(`${pathname}${registerFiltersToSearch(filters)}`, { scroll: false });
+  }, [filters, pathname, router]);
 
-    void loadDatabaseData();
+  const accountId = filters.account ? accounts.data?.find((account) => account.name === filters.account)?.id : undefined;
+  const wantsUncategorized = filters.category === "Uncategorized";
+  const categoryId =
+    filters.category && !wantsUncategorized
+      ? categories.data?.find((category) => category.name === filters.category)?.id
+      : undefined;
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const resolutionPending =
+    (Boolean(filters.account) && accounts.isPending) || (Boolean(filters.category) && categories.isPending);
+  const unknownAccount = Boolean(filters.account) && !accounts.isPending && !accountId;
+  const unknownCategory = Boolean(filters.category) && !wantsUncategorized && !categories.isPending && !categoryId;
 
-  const filteredTransactions = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  const serverFilters = useMemo<TransactionFilters>(
+    () => ({
+      ...(debouncedQ ? { q: debouncedQ } : {}),
+      ...(accountId ? { accountId } : {}),
+      ...(categoryId ? { categoryId } : {}),
+      ...(wantsUncategorized ? { uncategorized: true } : {}),
+      ...(filters.status !== "all" ? { status: filters.status } : {}),
+      ...(filters.transfer !== "all" ? { transfer: filters.transfer } : {}),
+      ...(filters.direction !== "all" ? { direction: filters.direction } : {}),
+      ...(filters.tag ? { tag: filters.tag } : {}),
+      sort: filters.sort,
+      limit: PAGE_SIZE,
+    }),
+    [debouncedQ, accountId, categoryId, wantsUncategorized, filters.status, filters.transfer, filters.direction, filters.tag, filters.sort],
+  );
 
-    return transactions.filter((transaction) => {
-      const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
-      const matchesAccount = accountFilter === "all" || transaction.account === accountFilter;
-      const matchesCategory = categoryFilter === "all" || transaction.category === categoryFilter;
-      const matchesTransfer = transferFilter === "all" || (transaction.transferStatus ?? "none") === transferFilter;
-      const matchesDirection =
-        directionFilter === "all" ||
-        (directionFilter === "inflow" && transaction.amountMinor > 0) ||
-        (directionFilter === "outflow" && transaction.amountMinor < 0);
-      const matchesTag = tagFilter === "all" || (transaction.tags ?? []).includes(tagFilter);
-      const matchesQuery =
-        !normalizedQuery ||
-        [transaction.merchant, transaction.account, transaction.category, transaction.date, ...(transaction.tags ?? [])].some((value) =>
-          value.toLowerCase().includes(normalizedQuery),
-        );
+  const query = useTransactionsInfinite(serverFilters);
+  const rows = useMemo(() => query.data?.pages.flatMap((page) => page.transactions) ?? [], [query.data]);
+  const totalCount = query.data?.pages[0]?.totalCount ?? 0;
 
-      return matchesStatus && matchesAccount && matchesCategory && matchesTransfer && matchesDirection && matchesTag && matchesQuery;
-    });
-  }, [accountFilter, categoryFilter, directionFilter, query, statusFilter, tagFilter, transactions, transferFilter]);
-
-  const sortedTransactions = useMemo(() => {
-    return [...filteredTransactions].sort((left, right) => compareTransactions(left, right, sortMode));
-  }, [filteredTransactions, sortMode]);
-  const groupedTransactions = useMemo(() => groupTransactionsByDate(sortedTransactions), [sortedTransactions]);
-
-  const selectedVisibleTransactions = sortedTransactions.filter((transaction) => selectedTransactionIds.includes(transaction.id));
-  const selectedVisibleCount = selectedVisibleTransactions.length;
-  const allVisibleTransactionsSelected = sortedTransactions.length > 0 && selectedVisibleCount === sortedTransactions.length;
-
-  const tagOptions = useMemo(() => {
-    return Array.from(new Set(transactions.flatMap((transaction) => transaction.tags ?? []))).sort((left, right) => left.localeCompare(right));
-  }, [transactions]);
-
-  const selectedTransaction = useMemo(() => {
-    return transactions.find((transaction) => transaction.id === selectedTransactionId) ?? transactions[0] ?? null;
-  }, [selectedTransactionId, transactions]);
-
-  async function updateStatus(id: string, status: TransactionStatus) {
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, status } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id, reviewStatus: status },
-        onFailure: () => setMutationMessage("Transaction status stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setMutationMessage(productionFallbackMessage("Transaction status update"));
-      }
-    }
-  }
-
-  async function updateCategory(id: string, category: string) {
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, category } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id, categoryName: category },
-        onFailure: () => setMutationMessage("Category change stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setMutationMessage(productionFallbackMessage("Category change"));
-      }
-    }
-  }
-
-  async function updateTransferStatus(id: string, transferStatus: NonNullable<TransactionRow["transferStatus"]>) {
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, transferStatus } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id, transferStatus },
-        onFailure: () => setMutationMessage("Transfer classification stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setMutationMessage(productionFallbackMessage("Transfer classification"));
-      }
-    }
-  }
-
-  function toggleTransactionSelection(id: string) {
-    setSelectedTransactionIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
-  }
-
-  function toggleAllVisibleTransactions() {
-    setSelectedTransactionIds(allVisibleTransactionsSelected ? [] : sortedTransactions.map((transaction) => transaction.id));
-  }
-
-  async function updateSelectedTransactions(patch: Partial<Pick<TransactionRow, "category" | "status" | "transferStatus">>, successMessage: string) {
-    if (selectedVisibleTransactions.length === 0) {
-      return;
-    }
-
-    const selectedIds = selectedVisibleTransactions.map((transaction) => transaction.id);
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (selectedIds.includes(transaction.id) ? { ...transaction, ...patch } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await Promise.all(
-        selectedIds.map((id) =>
-          persistTransactionPatch({
-            body: {
-              id,
-              ...(patch.category ? { categoryName: patch.category } : {}),
-              ...(patch.status ? { reviewStatus: patch.status } : {}),
-              ...(patch.transferStatus ? { transferStatus: patch.transferStatus } : {}),
-            },
-            onFailure: () => setMutationMessage("Bulk transaction update stayed local because the API was unavailable."),
-            onSuccess: () => setMutationMessage(null),
-          }),
-        ),
-      );
-
-      if (persisted.some((result) => !result)) {
-        if (!canUseLocalFallback(dataSource)) {
-          setTransactions(previousTransactions);
-          setMutationMessage(productionFallbackMessage("Bulk transaction update"));
-          return;
-        }
-
-        setSelectedTransactionIds([]);
+  // keyboard: j/k move, x select, e edit, escape clears
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement;
+      if (
+        activeTransaction ||
+        target.closest("input, textarea, select, [contenteditable], [role=dialog], [role=combobox]")
+      ) {
         return;
       }
-    }
-
-    setSelectedTransactionIds([]);
-    setMutationMessage(successMessage);
-  }
-
-  async function updateTags(id: string, tagText: string) {
-    const tags = parseTagList(tagText);
-
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (transaction.id === id ? { ...transaction, tags } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id, tags },
-        onFailure: () => setMutationMessage("Tag change stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setMutationMessage(productionFallbackMessage("Tag change"));
-      }
-    }
-  }
-
-  async function deleteTransaction(id: string) {
-    const transaction = transactions.find((row) => row.id === id);
-
-    if (!transaction) {
-      return;
-    }
-
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    const previousSelectedTransactionId = selectedTransactionId;
-    const previousSelectedTransactionIds = selectedTransactionIds;
-    const previousLastDeletedTransaction = lastDeletedTransaction;
-    setLastDeletedTransaction(transaction);
-    setSelectedTransactionId((current) => (current === id ? null : current));
-    setSelectedTransactionIds((current) => current.filter((selectedId) => selectedId !== id));
-    setTransactions((current) => current.filter((row) => row.id !== id));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id, action: "delete" },
-        onFailure: () => setMutationMessage("Delete stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setSelectedTransactionId(previousSelectedTransactionId);
-        setSelectedTransactionIds(previousSelectedTransactionIds);
-        setLastDeletedTransaction(previousLastDeletedTransaction);
-        setMutationMessage(productionFallbackMessage("Delete"));
-      }
-    }
-  }
-
-  async function restoreLastDeletedTransaction() {
-    if (!lastDeletedTransaction) {
-      return;
-    }
-
-    hasLocalEdits.current = true;
-    const previousTransactions = transactions;
-    const previousSelectedTransactionId = selectedTransactionId;
-    const previousLastDeletedTransaction = lastDeletedTransaction;
-    setTransactions((current) => [lastDeletedTransaction, ...current]);
-    setSelectedTransactionId(lastDeletedTransaction.id);
-    setLastDeletedTransaction(null);
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: { id: lastDeletedTransaction.id, action: "restore" },
-        onFailure: () => setMutationMessage("Restore stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setSelectedTransactionId(previousSelectedTransactionId);
-        setLastDeletedTransaction(previousLastDeletedTransaction);
-        setMutationMessage(productionFallbackMessage("Restore"));
-      }
-    }
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    try {
-      const parsed = createManualTransactionSchema.parse({
-        date: formState.date,
-        accountId: formState.accountId,
-        merchant: formState.merchant,
-        categoryName: formState.category,
-        amount: formState.amount,
-        tags: parseTagList(formState.tags),
-      });
-      const accountName = accountOptions.find((account) => account.id === formState.accountId)?.name ?? formState.accountId;
-
-      if (!formState.merchant.trim() || !formState.accountId || !formState.category) {
-        setError("Merchant, account, category, and amount are required.");
-        return;
-      }
-
-      setIsSaving(true);
-      hasLocalEdits.current = true;
-
-      if (dataSource === "database") {
-        const response = await fetch("/api/transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ ...parsed, amount: formState.amount }),
+      if (event.key === "j" || event.key === "k") {
+        event.preventDefault();
+        setFocusIndex((current) => {
+          const next = event.key === "j" ? Math.min(current + 1, rows.length - 1) : Math.max(current - 1, 0);
+          document.querySelector<HTMLElement>(`[data-register-row="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          return next;
         });
-
-        if (response.ok) {
-          const payload = (await response.json()) as { transaction: TransactionRow };
-          setTransactions((current) => [payload.transaction, ...current]);
-          setFormState({
-            date: new Date().toISOString().slice(0, 10),
-            merchant: "",
-            accountId: formState.accountId,
-            category: getDefaultCategoryName(categoryOptions, formState.category),
-            amount: "",
-            tags: "",
-          });
-          setError(null);
-          return;
-        }
+      } else if (event.key === "x" && focusIndex >= 0 && rows[focusIndex]) {
+        event.preventDefault();
+        toggleSelected(rows[focusIndex].id);
+      } else if (event.key === "e" && focusIndex >= 0 && rows[focusIndex]) {
+        event.preventDefault();
+        setActiveTransaction(rows[focusIndex]);
+      } else if (event.key === "Escape") {
+        setSelected(new Set());
+        setFocusIndex(-1);
       }
-
-      if (!canUseLocalFallback(dataSource)) {
-        setError(productionFallbackMessage("Transaction save"));
-        return;
-      }
-
-      const amountMinor = parseDollarAmount(formState.amount);
-      setTransactions((current) => [
-        {
-          id: `local_${Date.now()}`,
-          date: formState.date,
-          merchant: formState.merchant.trim(),
-          account: accountName,
-          category: formState.category,
-          amountMinor,
-          status: "needs_review",
-          tags: parsed.tags ?? [],
-          transferStatus: "none",
-        },
-        ...current,
-      ]);
-      setDataSource(fallbackDataSource());
-      setFormState({
-        date: new Date().toISOString().slice(0, 10),
-        merchant: "",
-        accountId: accountOptions[0]?.id ?? "",
-        category: getDefaultCategoryName(categoryOptions, formState.category),
-        amount: "",
-        tags: "",
-      });
-      setError(dataSource === "database" ? demoFallback("Saved in local demo mode because the transaction API rejected the write.", productionFallbackMessage("Transaction save")) : null);
-    } catch {
-      setError("Enter a valid signed dollar amount.");
-    } finally {
-      setIsSaving(false);
     }
-  }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [rows, focusIndex, activeTransaction]);
 
-  function startEditingTransaction(transaction: TransactionRow) {
-    setSelectedTransactionId(transaction.id);
-    setEditFormState({
-      amount: formatSignedAmount(transaction.amountMinor),
-      date: transaction.date,
-      merchant: transaction.merchant,
-      notes: transaction.notes ?? "",
+  function toggleSelected(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
     });
   }
 
-  async function saveSelectedTransaction() {
-    const selected = selectedTransaction;
-
-    if (!selected) {
-      return;
-    }
-
-    const amountInput = editFormState.amount || formatSignedAmount(selected.amountMinor);
-    const dateInput = editFormState.date || selected.date;
-    const merchantInput = editFormState.merchant.trim() || selected.merchant;
-    const notesInput = editFormState.notes.trim() || (selected.notes ?? "");
-    let amountMinor: number;
-
-    try {
-      amountMinor = parseDollarAmount(amountInput);
-    } catch {
-      setError("Enter a valid signed dollar amount for the selected transaction.");
-      return;
-    }
-
-    hasLocalEdits.current = true;
-    const patch = {
-      amountMinor,
-      date: dateInput,
-      merchant: merchantInput,
-      notes: notesInput || undefined,
-    };
-    const previousTransactions = transactions;
-    setTransactions((current) => current.map((transaction) => (transaction.id === selected.id ? { ...transaction, ...patch } : transaction)));
-
-    if (dataSource === "database") {
-      const persisted = await persistTransactionPatch({
-        body: {
-          id: selected.id,
-          amount: amountInput,
-          date: dateInput,
-          merchant: merchantInput,
-          notes: notesInput,
+  function runBulk(input: Record<string, unknown>, label: string) {
+    bulk.mutate(
+      { ids: [...selected], ...input },
+      {
+        onSuccess: (result) => {
+          toast.success(`${result.updated} transaction${result.updated === 1 ? "" : "s"} ${label}`);
+          setSelected(new Set());
         },
-        onFailure: () => setMutationMessage("Transaction edit stayed local because the API was unavailable."),
-        onSuccess: () => setMutationMessage(null),
-      });
-
-      if (!persisted && !canUseLocalFallback(dataSource)) {
-        setTransactions(previousTransactions);
-        setMutationMessage(productionFallbackMessage("Transaction edit"));
-      }
-    }
+        onError: (error) => toast.error(error.message || "Bulk update failed"),
+      },
+    );
   }
+
+  function setCategoryInline(transaction: ApiTransaction, nextCategoryId: string | null) {
+    update.mutate(
+      { id: transaction.id, categoryId: nextCategoryId },
+      { onError: (error) => toast.error(error.message || "Could not recategorize") },
+    );
+  }
+
+  const unauthorized = [accounts.error, categories.error, query.error].some(
+    (error) => error instanceof ApiError && error.status === 401,
+  );
 
   return (
-    <div className="transactions-grid">
-      <section className="transactions-main">
-        <section className="panel transactions-table-panel fidelity-activity-panel">
-          <div className="panel-header accounts-toolbar">
-            <div>
-              <p className="panel-label">Transactions</p>
-              <h2 className="panel-title">Register</h2>
-            </div>
-            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
-            <div className="transaction-controls">
-              <label className="search-field">
-                <Search size={16} />
-                <input
-                  aria-label="Search transactions"
-                  placeholder="Search transactions"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-              <select aria-label="Status filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
-                <option value="all">All statuses</option>
-                {statuses.map((status) => (
-                  <option value={status.value} key={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-              <select aria-label="Account filter" value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}>
-                <option value="all">All accounts</option>
-                {accountOptions.map((account) => (
-                  <option value={account.name} key={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-              <select aria-label="Category filter" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                <option value="all">All categories</option>
-                {categoryOptions.map((category) => (
-                  <option value={category.name} key={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <select aria-label="Tag filter" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
-                <option value="all">All tags</option>
-                {tagOptions.map((tag) => (
-                  <option value={tag} key={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Transfer filter"
-                value={transferFilter}
-                onChange={(event) => setTransferFilter(event.target.value as typeof transferFilter)}
-              >
-                <option value="all">All movement</option>
-                {transferStatuses.map((status) => (
-                  <option value={status.value} key={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Direction filter"
-                value={directionFilter}
-                onChange={(event) => setDirectionFilter(event.target.value as DirectionFilter)}
-              >
-                {directionFilters.map((direction) => (
-                  <option value={direction.value} key={direction.value}>
-                    {direction.label}
-                  </option>
-                ))}
-              </select>
-              <select aria-label="Sort transactions" value={sortMode} onChange={(event) => setSortMode(event.target.value as TransactionSortMode)}>
-                {sortOptions.map((option) => (
-                  <option value={option.value} key={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {mutationMessage ? <p className="form-error">{mutationMessage}</p> : null}
-          <div className="transaction-undo-banner review-bulk-bar">
-            <span>{selectedVisibleCount} selected</span>
-            <select aria-label="Bulk transaction category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
-              {categoryOptions.map((category) => (
-                <option value={category.name} key={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => updateSelectedTransactions({ category: bulkCategory }, `${selectedVisibleCount} selected transactions recategorized.`)}
-              disabled={selectedVisibleCount === 0}
+    <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+      <PageHeader
+        eyebrow="Ledger activity"
+        title="Transactions"
+        description={totalCount ? `${totalCount.toLocaleString()} entries on file` : undefined}
+        actions={
+          <>
+            <ExportButton
+              aria-label="Export transactions"
+              format="transactions_csv"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-transparent px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
             >
-              Set category
-            </button>
-            <select aria-label="Bulk transaction status" value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as TransactionStatus)}>
-              {statuses.map((status) => (
-                <option value={status.value} key={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => updateSelectedTransactions({ status: bulkStatus }, `${selectedVisibleCount} selected transactions marked ${bulkStatus.replace("_", " ")}.`)}
-              disabled={selectedVisibleCount === 0}
-            >
-              Set status
-            </button>
-            <select
-              aria-label="Bulk transaction transfer status"
-              value={bulkTransferStatus}
-              onChange={(event) => setBulkTransferStatus(event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
-            >
-              {transferStatuses.map((status) => (
-                <option value={status.value} key={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() =>
-                updateSelectedTransactions({ transferStatus: bulkTransferStatus }, `${selectedVisibleCount} selected transactions updated for movement type.`)
+              <Download size={14} /> Export
+            </ExportButton>
+            <AddTransactionDialog accounts={accounts.data ?? []} categories={categories.data ?? []} />
+          </>
+        }
+      />
+
+      {unauthorized ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-6 py-16 text-center">
+          <p className="font-display text-2xl font-semibold">Sign in to see the register</p>
+          <AuthControls />
+        </div>
+      ) : (
+        <>
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            accountNames={(accounts.data ?? []).map((account) => account.name)}
+            categoryNames={["Uncategorized", ...(categories.data ?? []).filter((c) => !c.isArchived).map((category) => category.name)]}
+          />
+
+          {resolutionPending || query.isPending ? (
+            <PageSkeleton rows={10} />
+          ) : unknownAccount || unknownCategory ? (
+            <EmptyState
+              title={`No ${unknownAccount ? "account" : "category"} named “${unknownAccount ? filters.account : filters.category}”`}
+              description="The link that brought you here references something that no longer exists."
+              action={
+                <Button variant="outline" size="sm" onClick={() => setFilters(defaultRegisterFilters)}>
+                  Clear filters
+                </Button>
               }
-              disabled={selectedVisibleCount === 0}
-            >
-              Set movement
-            </button>
-          </div>
-
-          <div className="transactions-table transaction-register-table" role="table" aria-label="Transactions">
-            <div className="transactions-table-head" role="row">
-              <span>
-                <input
-                  aria-label="Select all visible transactions"
-                  checked={allVisibleTransactionsSelected}
-                  onChange={toggleAllVisibleTransactions}
-                  type="checkbox"
-                />
-              </span>
-              <span>Merchant</span>
-              <span>Category</span>
-              <span>Status / movement</span>
-              <span>Account</span>
-              <span>Amount</span>
-            </div>
-            {lastDeletedTransaction ? (
-              <div className="transaction-undo-banner">
-                <span>{lastDeletedTransaction.merchant} deleted.</span>
-                <button type="button" onClick={restoreLastDeletedTransaction}>
-                  <RotateCcw size={14} />
-                  Restore
-                </button>
-              </div>
-            ) : null}
-            {groupedTransactions.length ? (
-              groupedTransactions.map((group) => (
-                <div className="transaction-day-group" key={group.date}>
-                  <div className="transaction-date-header">
-                    <span>{formatLongDate(group.date)}</span>
-                    <strong className={group.totalMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(group.totalMinor)}</strong>
-                  </div>
-                  {group.transactions.map((transaction) => {
-                    const isSelected = selectedTransaction?.id === transaction.id;
-                    return (
-                      <div
-                        className={`transactions-table-row transaction-register-row ${isSelected ? "transaction-register-row-active" : ""} ${transaction.status === "needs_review" ? "transaction-register-row-review" : ""}`}
-                        key={transaction.id}
-                        onClick={() => startEditingTransaction(transaction)}
-                        role="row"
-                      >
-                        <input
-                          aria-label={`Select ${transaction.merchant}`}
-                          checked={selectedTransactionIds.includes(transaction.id)}
-                          onChange={() => toggleTransactionSelection(transaction.id)}
-                          onClick={(event) => event.stopPropagation()}
-                          type="checkbox"
-                        />
-                        <div className="transaction-register-name">
-                          <p>{transaction.merchant}</p>
-                          <span>{transaction.date} / {(transaction.tags ?? []).join(", ") || "No tags"}</span>
-                        </div>
-                        <select
-                          aria-label={`Category for ${transaction.merchant}`}
-                          onClick={(event) => event.stopPropagation()}
-                          value={transaction.category}
-                          onChange={(event) => updateCategory(transaction.id, event.target.value)}
-                        >
-                          {categoryOptions.map((category) => (
-                            <option value={category.name} key={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="transaction-status-stack">
-                          <select
-                            aria-label={`Status for ${transaction.merchant}`}
-                            onClick={(event) => event.stopPropagation()}
-                            value={transaction.status}
-                            onChange={(event) => updateStatus(transaction.id, event.target.value as TransactionStatus)}
-                          >
-                            {statuses.map((status) => (
-                              <option value={status.value} key={status.value}>
-                                {status.label}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            aria-label={`Transfer status for ${transaction.merchant}`}
-                            onClick={(event) => event.stopPropagation()}
-                            value={transaction.transferStatus ?? "none"}
-                            onChange={(event) => updateTransferStatus(transaction.id, event.target.value as NonNullable<TransactionRow["transferStatus"]>)}
-                          >
-                            {transferStatuses.map((status) => (
-                              <option value={status.value} key={status.value}>
-                                {status.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="transaction-register-account">
-                          <span>{transaction.account}</span>
-                          <input
-                            aria-label={`Tags for ${transaction.merchant}`}
-                            defaultValue={(transaction.tags ?? []).join(", ")}
-                            onBlur={(event) => void updateTags(transaction.id, event.target.value)}
-                            onClick={(event) => event.stopPropagation()}
-                            placeholder="tags"
-                          />
-                        </div>
-                        <div className="transaction-amount-actions">
-                          <strong className={transaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(transaction.amountMinor)}</strong>
-                          <button type="button" aria-label={`Delete ${transaction.merchant}`} onClick={(event) => {
-                            event.stopPropagation();
-                            void deleteTransaction(transaction.id);
-                          }}>
-                            <Trash2 size={15} />
-                          </button>
-                          <button type="button" aria-label={`Edit ${transaction.merchant}`} onClick={(event) => {
-                            event.stopPropagation();
-                            startEditingTransaction(transaction);
-                          }}>
-                            <ReceiptText size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            ) : (
-              <div className="transaction-empty-state">No transactions match the current filters.</div>
-            )}
-          </div>
-        </section>
-      </section>
-
-      <aside className="accounts-side">
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Selected row</p>
-              <h2 className="panel-title">Edit transaction</h2>
-            </div>
-          </div>
-          {selectedTransaction ? (
-            <div className="account-form">
-              <div className="transaction-selected-summary">
-                <span>{selectedTransaction.account}</span>
-                <strong className={selectedTransaction.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(selectedTransaction.amountMinor)}</strong>
-                <p>{selectedTransaction.category}</p>
-              </div>
-              <label>
-                <span>Date</span>
-                <input
-                  aria-label="Edit transaction date"
-                  type="date"
-                  value={editFormState.date || selectedTransaction.date}
-                  onChange={(event) => setEditFormState((current) => ({ ...current, date: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Merchant</span>
-                <input
-                  aria-label="Edit transaction merchant"
-                  value={editFormState.merchant || selectedTransaction.merchant}
-                  onChange={(event) => setEditFormState((current) => ({ ...current, merchant: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Amount</span>
-                <input
-                  aria-label="Edit transaction amount"
-                  value={editFormState.amount || formatSignedAmount(selectedTransaction.amountMinor)}
-                  onChange={(event) => setEditFormState((current) => ({ ...current, amount: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Notes</span>
-                <input
-                  aria-label="Edit transaction notes"
-                  value={editFormState.notes}
-                  onChange={(event) => setEditFormState((current) => ({ ...current, notes: event.target.value }))}
-                  placeholder="Optional note"
-                />
-              </label>
-              <button className="secondary-action" type="button" onClick={saveSelectedTransaction}>
-                <Save size={16} />
-                Save edit
-              </button>
-            </div>
+            />
+          ) : query.isError ? (
+            <ErrorState message={query.error.message} onRetry={() => void query.refetch()} />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={ReceiptText}
+              title="Nothing matches"
+              description={
+                totalCount === 0 && !hasActiveFilters(filters)
+                  ? "The register is empty. Record a transaction or import a statement to begin."
+                  : "Loosen the filters to see more of the register."
+              }
+              action={
+                hasActiveFilters(filters) ? (
+                  <Button variant="outline" size="sm" onClick={() => setFilters(defaultRegisterFilters)}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <p className="empty-copy">Select a transaction row to edit its core fields.</p>
+            <Register
+              rows={rows}
+              sort={filters.sort}
+              categories={categories.data ?? []}
+              selected={selected}
+              focusIndex={focusIndex}
+              onToggle={toggleSelected}
+              onToggleAll={(checked) => setSelected(checked ? new Set(rows.map((row) => row.id)) : new Set())}
+              onOpen={setActiveTransaction}
+              onCategorize={setCategoryInline}
+            />
           )}
-        </section>
 
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Manual entry</p>
-              <h2 className="panel-title">Add transaction</h2>
+          {query.hasNextPage ? (
+            <div className="flex justify-center pt-1">
+              <Button variant="outline" size="sm" onClick={() => void query.fetchNextPage()} disabled={query.isFetchingNextPage}>
+                {query.isFetchingNextPage ? "Loading…" : `Load more (${rows.length.toLocaleString()} of ${totalCount.toLocaleString()})`}
+              </Button>
             </div>
-            <div className="summary-icon">
-              <Plus size={17} />
-            </div>
-          </div>
+          ) : null}
+        </>
+      )}
 
-          <form className="account-form" onSubmit={handleSubmit}>
-            <label>
-              <span>Date</span>
-              <input type="date" required value={formState.date} onChange={(event) => setFormState((current) => ({ ...current, date: event.target.value }))} />
-            </label>
-            <label>
-              <span>Merchant</span>
-              <input
-                required
-                value={formState.merchant}
-                onChange={(event) => setFormState((current) => ({ ...current, merchant: event.target.value }))}
-                placeholder="Trader Joe's"
-              />
-            </label>
-            <label>
-              <span>Account</span>
-              <select value={formState.accountId} onChange={(event) => setFormState((current) => ({ ...current, accountId: event.target.value }))}>
-                {accountOptions.map((account) => (
-                  <option value={account.id} key={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Category</span>
-              <select value={formState.category} onChange={(event) => setFormState((current) => ({ ...current, category: event.target.value }))}>
-                {categoryOptions.map((category) => (
-                  <option value={category.name} key={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Amount</span>
-              <input
-                required
-                value={formState.amount}
-                onChange={(event) => setFormState((current) => ({ ...current, amount: event.target.value }))}
-                placeholder="-42.18"
-              />
-            </label>
-            <label>
-              <span>Tags</span>
-              <input
-                value={formState.tags}
-                onChange={(event) => setFormState((current) => ({ ...current, tags: event.target.value }))}
-                placeholder="tax, reimbursable"
-              />
-            </label>
-            {error ? <p className="form-error">{error}</p> : null}
-            <button className="primary-action" type="submit">
-              <Save size={16} />
-              {isSaving ? "Saving" : "Save transaction"}
-            </button>
-          </form>
-        </section>
-      </aside>
+      {selected.size > 0 ? (
+        <div className="fixed inset-x-0 bottom-16 z-40 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-2 rounded-full border border-border bg-popover px-4 py-2 shadow-lg md:bottom-6">
+          <span className="font-money text-xs text-muted-foreground">{selected.size} selected</span>
+          <CategoryPicker
+            categories={categories.data ?? []}
+            value={null}
+            onSelect={(nextCategoryId) => runBulk({ categoryId: nextCategoryId }, "recategorized")}
+            allowClear
+            trigger={
+              <Button size="sm" variant="outline" className="rounded-full">
+                Set category
+              </Button>
+            }
+          />
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => runBulk({ reviewStatus: "reviewed" }, "marked reviewed")}>
+            <CheckCheck /> Reviewed
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => runBulk({ transferStatus: "transfer" }, "marked as transfers")}>
+            <Undo2 /> Transfer
+          </Button>
+          <Button size="sm" variant="ghost" className="rounded-full" aria-label="Clear selection" onClick={() => setSelected(new Set())}>
+            <X />
+          </Button>
+        </div>
+      ) : null}
+
+      <TransactionSheet transaction={activeTransaction} categories={categories.data ?? []} onClose={() => setActiveTransaction(null)} />
     </div>
   );
 }
 
-type DatabaseAccount = {
-  id: string;
-  name: string;
-};
-
-type DatabaseCategory = {
-  id: string;
-  name: string;
-};
-
-type AccountOption = {
-  id: string;
-  name: string;
-};
-
-type CategoryOption = {
-  id: string;
-  name: string;
-};
-
-function getDefaultCategoryName(options: CategoryOption[], currentCategory = "Groceries") {
-  return options.find((category) => category.name === currentCategory)?.name ?? options.find((category) => category.name === "Groceries")?.name ?? options[0]?.name ?? "Groceries";
+function hasActiveFilters(filters: RegisterFilters) {
+  return registerFiltersToSearch(filters) !== "";
 }
 
-function formatSignedAmount(amountMinor: number) {
-  return `${amountMinor < 0 ? "-" : ""}${(Math.abs(amountMinor) / 100).toFixed(2)}`;
-}
-
-function compareTransactions(left: TransactionRow, right: TransactionRow, sortMode: TransactionSortMode) {
-  if (sortMode === "date_asc") {
-    return left.date.localeCompare(right.date) || left.merchant.localeCompare(right.merchant);
-  }
-
-  if (sortMode === "amount_desc") {
-    return right.amountMinor - left.amountMinor || right.date.localeCompare(left.date);
-  }
-
-  if (sortMode === "amount_asc") {
-    return left.amountMinor - right.amountMinor || right.date.localeCompare(left.date);
-  }
-
-  if (sortMode === "merchant_asc") {
-    return left.merchant.localeCompare(right.merchant) || right.date.localeCompare(left.date);
-  }
-
-  if (sortMode === "category_asc") {
-    return left.category.localeCompare(right.category) || right.date.localeCompare(left.date);
-  }
-
-  return right.date.localeCompare(left.date) || left.merchant.localeCompare(right.merchant);
-}
-
-function groupTransactionsByDate(transactions: TransactionRow[]) {
-  const groups = new Map<string, { date: string; totalMinor: number; transactions: TransactionRow[] }>();
-  for (const transaction of transactions) {
-    const group = groups.get(transaction.date) ?? { date: transaction.date, totalMinor: 0, transactions: [] };
-    group.totalMinor += transaction.amountMinor;
-    group.transactions.push(transaction);
-    groups.set(transaction.date, group);
-  }
-  return Array.from(groups.values());
-}
-
-function formatLongDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
-}
-
-async function persistTransactionPatch({
-  body,
-  onFailure,
-  onSuccess,
+function FilterBar({
+  filters,
+  onChange,
+  accountNames,
+  categoryNames,
 }: {
-  body: {
-    id: string;
-    amount?: string;
-    date?: string;
-    merchant?: string;
-    notes?: string;
-    reviewStatus?: TransactionStatus;
-    transferStatus?: NonNullable<TransactionRow["transferStatus"]>;
-    categoryName?: string;
-    tags?: string[];
-    action?: "delete" | "restore";
-  };
-  onFailure: () => void;
-  onSuccess: () => void;
-}): Promise<boolean> {
-  try {
-    const response = await fetch("/api/transactions", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
-    });
+  filters: RegisterFilters;
+  onChange: React.Dispatch<React.SetStateAction<RegisterFilters>>;
+  accountNames: string[];
+  categoryNames: string[];
+}) {
+  const set = <K extends keyof RegisterFilters>(key: K, value: RegisterFilters[K]) =>
+    onChange((current) => ({ ...current, [key]: value }));
 
-    if (!response.ok) {
-      throw new Error("Transaction update failed");
-    }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="relative min-w-44 flex-1 sm:max-w-xs">
+        <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          aria-label="Search transactions"
+          placeholder="Search the register…"
+          value={filters.q}
+          onChange={(event) => set("q", event.target.value)}
+          className="h-8 pl-8 text-sm"
+        />
+      </div>
+      <NamedSelect ariaLabel="Account filter" placeholder="Account" value={filters.account} onValueChange={(value) => set("account", value)} options={accountNames} />
+      <NamedSelect ariaLabel="Category filter" placeholder="Category" value={filters.category} onValueChange={(value) => set("category", value)} options={categoryNames} />
+      <EnumSelect
+        ariaLabel="Status filter"
+        value={filters.status}
+        onValueChange={(value) => set("status", value as RegisterFilters["status"])}
+        options={[
+          ["all", "Any status"],
+          ["needs_review", "Needs review"],
+          ["reviewed", "Reviewed"],
+          ["excluded", "Excluded"],
+        ]}
+      />
+      <EnumSelect
+        ariaLabel="Direction filter"
+        value={filters.direction}
+        onValueChange={(value) => set("direction", value as RegisterFilters["direction"])}
+        options={[
+          ["all", "In & out"],
+          ["inflow", "Inflows"],
+          ["outflow", "Outflows"],
+        ]}
+      />
+      <EnumSelect
+        ariaLabel="Transfer filter"
+        value={filters.transfer}
+        onValueChange={(value) => set("transfer", value as RegisterFilters["transfer"])}
+        options={[
+          ["all", "Transfers & spend"],
+          ["transfer", "Transfers only"],
+          ["none", "No transfers"],
+        ]}
+      />
+      <EnumSelect
+        ariaLabel="Sort transactions"
+        value={filters.sort}
+        onValueChange={(value) => set("sort", value as RegisterFilters["sort"])}
+        options={[
+          ["date_desc", "Newest first"],
+          ["date_asc", "Oldest first"],
+          ["amount_desc", "Largest in"],
+          ["amount_asc", "Largest out"],
+          ["merchant_asc", "Merchant A–Z"],
+          ["merchant_desc", "Merchant Z–A"],
+        ]}
+      />
+      {hasActiveFilters(filters) ? (
+        <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={() => onChange(defaultRegisterFilters)}>
+          <X /> Clear
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
-    onSuccess();
-    return true;
-  } catch {
-    onFailure();
-    // The optimistic UI remains usable in demo or temporarily offline states.
-    return false;
-  }
+function NamedSelect({
+  ariaLabel,
+  placeholder,
+  value,
+  onValueChange,
+  options,
+}: {
+  ariaLabel: string;
+  placeholder: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <Select value={value || "__all"} onValueChange={(next) => onValueChange(next === "__all" ? "" : next)}>
+      <SelectTrigger size="sm" aria-label={ariaLabel} className="w-fit min-w-28 text-sm">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__all">{placeholder}: all</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function EnumSelect({
+  ariaLabel,
+  value,
+  onValueChange,
+  options,
+}: {
+  ariaLabel: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger size="sm" aria-label={ariaLabel} className="w-fit min-w-28 text-sm">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map(([optionValue, label]) => (
+          <SelectItem key={optionValue} value={optionValue}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function Register({
+  rows,
+  sort,
+  categories,
+  selected,
+  focusIndex,
+  onToggle,
+  onToggleAll,
+  onOpen,
+  onCategorize,
+}: {
+  rows: ApiTransaction[];
+  sort: RegisterFilters["sort"];
+  categories: ApiCategory[];
+  selected: ReadonlySet<string>;
+  focusIndex: number;
+  onToggle: (id: string) => void;
+  onToggleAll: (checked: boolean) => void;
+  onOpen: (transaction: ApiTransaction) => void;
+  onCategorize: (transaction: ApiTransaction, categoryId: string | null) => void;
+}) {
+  const groupByDate = sort === "date_desc" || sort === "date_asc";
+  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      {/* desktop header */}
+      <div className="hidden items-center gap-3 border-b border-border px-4 py-2 md:flex">
+        <Checkbox
+          checked={allSelected ? true : selected.size > 0 ? "indeterminate" : false}
+          onCheckedChange={(checked) => onToggleAll(checked === true)}
+          aria-label="Select all"
+        />
+        <span className="label-caps w-20">Date</span>
+        <span className="label-caps flex-1">Merchant</span>
+        <span className="label-caps w-40">Category</span>
+        <span className="label-caps w-36">Account</span>
+        <span className="label-caps w-28 text-right">Amount</span>
+      </div>
+
+      <ul>
+        {rows.map((row, index) => {
+          const previous = rows[index - 1];
+          const showDateHeader = groupByDate && (!previous || previous.date !== row.date);
+          return (
+            <li key={row.id}>
+              {showDateHeader ? (
+                <p className="label-caps border-b border-border/60 bg-muted/40 px-4 py-1.5 md:hidden">
+                  {format(new Date(`${row.date}T00:00:00`), "EEEE, MMM d")}
+                </p>
+              ) : null}
+              <div
+                data-register-row={index}
+                className={cn(
+                  "group flex cursor-pointer items-center gap-3 border-b border-border/60 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-accent/50",
+                  focusIndex === index && "bg-accent/60",
+                  selected.has(row.id) && "bg-primary/5",
+                )}
+                onClick={() => onOpen(row)}
+              >
+                <span onClick={(event) => event.stopPropagation()} className="flex items-center">
+                  <Checkbox
+                    checked={selected.has(row.id)}
+                    onCheckedChange={() => onToggle(row.id)}
+                    aria-label={`Select ${row.merchant}`}
+                  />
+                </span>
+                <span className="hidden w-20 shrink-0 font-money text-xs text-muted-foreground md:block">
+                  {format(new Date(`${row.date}T00:00:00`), "MMM d")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium">{row.merchant}</span>
+                    {row.status === "needs_review" ? (
+                      <span aria-label="Needs review" title="Needs review" className="size-1.5 shrink-0 rounded-full bg-warning" />
+                    ) : null}
+                    {row.transferStatus === "transfer" ? (
+                      <Badge variant="outline" className="h-4 border-transfer/40 px-1 text-[10px] text-transfer">
+                        transfer
+                      </Badge>
+                    ) : null}
+                    {row.status === "excluded" ? (
+                      <Badge variant="outline" className="h-4 px-1 text-[10px] text-muted-foreground">
+                        excluded
+                      </Badge>
+                    ) : null}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground md:hidden">
+                    {format(new Date(`${row.date}T00:00:00`), "MMM d")} · {row.category} · {row.account}
+                  </span>
+                </span>
+                <span className="hidden w-40 shrink-0 md:block" onClick={(event) => event.stopPropagation()}>
+                  <CategoryPicker
+                    categories={categories}
+                    value={row.categoryId}
+                    onSelect={(categoryId) => onCategorize(row, categoryId)}
+                    allowClear
+                    trigger={
+                      <button
+                        type="button"
+                        className={cn(
+                          "max-w-full truncate rounded-md px-1.5 py-0.5 text-left text-xs transition-colors hover:bg-accent",
+                          row.categoryId ? "text-foreground" : "italic text-muted-foreground",
+                        )}
+                      >
+                        {row.category}
+                      </button>
+                    }
+                  />
+                </span>
+                <span className="hidden w-36 shrink-0 truncate text-xs text-muted-foreground md:block">{row.account}</span>
+                <span className="w-28 shrink-0 text-right">
+                  <Money amountMinor={row.amountMinor} colorBySign={row.amountMinor > 0} className="text-sm" />
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }

@@ -1,271 +1,263 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CalendarDays, Landmark, ShieldCheck, WalletCards } from "lucide-react";
-import { sampleAccounts, type AccountRow } from "@/lib/finance/account-sample-data";
-import { formatMoney } from "@/lib/finance/money";
-import { buildNetWorthSummary, getBalanceEvidenceSource, type BalanceEvidenceSource } from "@/lib/finance/reports";
-import { dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, type DataSourceState } from "@/lib/demo-fallback";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { format, startOfYear, subMonths } from "date-fns";
+import { TrendingUp } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { AuthControls } from "@/components/auth-controls";
+import { AnimatedMoney, Money } from "@/components/money";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ApiError } from "@/lib/api/client";
+import { useAccounts, useBalanceSnapshots } from "@/lib/api/queries/accounts";
+import { buildNetWorthSeries, filterSeriesByRange } from "@/lib/finance/net-worth";
+import type { ApiBalanceSnapshot } from "@/lib/api/types";
+
+const RANGES = [
+  { key: "6m", label: "6M" },
+  { key: "ytd", label: "YTD" },
+  { key: "1y", label: "1Y" },
+  { key: "3y", label: "3Y" },
+  { key: "all", label: "All" },
+] as const;
+
+type RangeKey = (typeof RANGES)[number]["key"];
+
+function rangeStart(range: RangeKey, today: Date): string | null {
+  switch (range) {
+    case "6m":
+      return format(subMonths(today, 6), "yyyy-MM-dd");
+    case "ytd":
+      return format(startOfYear(today), "yyyy-MM-dd");
+    case "1y":
+      return format(subMonths(today, 12), "yyyy-MM-dd");
+    case "3y":
+      return format(subMonths(today, 36), "yyyy-MM-dd");
+    case "all":
+      return null;
+  }
+}
+
+const chartConfig = {
+  assets: { label: "Assets", color: "var(--chart-2)" },
+  liabilities: { label: "Liabilities", color: "var(--chart-4)" },
+  netWorth: { label: "Net worth", color: "var(--chart-1)" },
+} satisfies ChartConfig;
 
 export function NetWorthWorkbench() {
-  const [accounts, setAccounts] = useState<AccountRow[]>(() => demoFallback(sampleAccounts, []));
-  const [snapshots, setSnapshots] = useState<DatabaseSnapshot[]>([]);
-  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
+  const today = useMemo(() => new Date(), []);
+  const accounts = useAccounts();
+  const snapshots = useBalanceSnapshots();
+  const [range, setRange] = useState<RangeKey>("1y");
 
-  useEffect(() => {
-    let isMounted = true;
+  const unauthorized = [accounts.error, snapshots.error].some(
+    (error) => error instanceof ApiError && error.status === 401,
+  );
 
-    async function loadAccounts() {
-      try {
-        const [accountsResponse, snapshotsResponse] = await Promise.all([
-          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
-          fetch("/api/balance-snapshots", { headers: { Accept: "application/json" } }),
-        ]);
+  if (unauthorized) {
+    return (
+      <Frame>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-6 py-16 text-center">
+          <p className="font-display text-2xl font-semibold">Sign in to see your position</p>
+          <AuthControls />
+        </div>
+      </Frame>
+    );
+  }
 
-        if (!accountsResponse.ok || !snapshotsResponse.ok) {
-          throw new Error("Account API unavailable");
-        }
+  if (accounts.isPending || snapshots.isPending) {
+    return (
+      <Frame>
+        <PageSkeleton rows={7} />
+      </Frame>
+    );
+  }
 
-        const [accountPayload, snapshotPayload] = (await Promise.all([accountsResponse.json(), snapshotsResponse.json()])) as [
-          { accounts: DatabaseAccount[] },
-          { snapshots: DatabaseSnapshot[] },
-        ];
+  if (accounts.isError || snapshots.isError) {
+    return (
+      <Frame>
+        <ErrorState
+          onRetry={() => {
+            void accounts.refetch();
+            void snapshots.refetch();
+          }}
+        />
+      </Frame>
+    );
+  }
 
-        if (isMounted) {
-          setAccounts(accountPayload.accounts.map((account) => toAccountRow(account, snapshotPayload.snapshots)));
-          setSnapshots(snapshotPayload.snapshots);
-          setDataSource("database");
-        }
-      } catch {
-        if (isMounted) {
-          setAccounts(demoFallback(sampleAccounts, []));
-          setDataSource(fallbackDataSource());
-        }
-      }
+  const fullSeries = buildNetWorthSeries(snapshots.data);
+  const series = filterSeriesByRange(fullSeries, rangeStart(range, today));
+  const latest = fullSeries[fullSeries.length - 1];
+  const windowDelta = series.length >= 2 ? series[series.length - 1].netWorthMinor - series[0].netWorthMinor : 0;
+
+  const latestByAccount = new Map<string, ApiBalanceSnapshot>();
+  for (const snapshot of snapshots.data) {
+    if (!latestByAccount.has(snapshot.accountId)) {
+      latestByAccount.set(snapshot.accountId, snapshot);
     }
+  }
 
-    void loadAccounts();
+  const positions = (accounts.data ?? [])
+    .filter((account) => account.isActive)
+    .map((account) => ({ account, latest: latestByAccount.get(account.id) }))
+    .sort((left, right) => (right.latest?.balanceMinor ?? 0) - (left.latest?.balanceMinor ?? 0));
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  if (fullSeries.length === 0) {
+    return (
+      <Frame>
+        <EmptyState
+          icon={TrendingUp}
+          title="No position history yet"
+          description="Record balance snapshots on your accounts and the net worth picture assembles itself here."
+          action={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/accounts">Go to accounts</Link>
+            </Button>
+          }
+        />
+      </Frame>
+    );
+  }
 
-  const latestSnapshotByAccount = useMemo(() => {
-    const latest = new Map<string, DatabaseSnapshot>();
-
-    for (const snapshot of snapshots) {
-      const existing = latest.get(snapshot.accountId);
-
-      if (!existing || snapshot.asOfDate > existing.asOfDate) {
-        latest.set(snapshot.accountId, snapshot);
-      }
-    }
-
-    return latest;
-  }, [snapshots]);
-
-  const summary = useMemo(() => buildNetWorthSummary(accounts), [accounts]);
-
-  const recentSnapshots = useMemo(() => {
-    return [...snapshots]
-      .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate) || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-      .slice(0, 6);
-  }, [snapshots]);
-
-  const snapshotCoverage = accounts.length === 0 ? 0 : Math.round((latestSnapshotByAccount.size / accounts.length) * 100);
-  const latestSnapshotDate = recentSnapshots[0]?.asOfDate ?? "No snapshots";
-  const accountsWithoutSnapshots = Math.max(accounts.length - latestSnapshotByAccount.size, 0);
+  const chartData = series.map((point) => ({
+    date: point.date,
+    assets: point.assetsMinor / 100,
+    liabilities: Math.abs(point.liabilitiesMinor) / 100,
+    netWorth: point.netWorthMinor / 100,
+  }));
 
   return (
-    <div className="accounts-grid fidelity-register-grid">
-      <section className="accounts-main fidelity-register-main">
-        <div className="fidelity-summary-strip fidelity-summary-strip-three">
-          <NetWorthMetric label="Assets" value={formatMoney(summary.assets)} icon={<ArrowUpRight size={17} />} tone="green" />
-          <NetWorthMetric label="Liabilities" value={formatMoney(-summary.liabilities)} icon={<ArrowDownLeft size={17} />} tone="coral" />
-          <NetWorthMetric label="Net worth" value={formatMoney(summary.netWorth)} icon={<ShieldCheck size={17} />} tone="violet" />
-        </div>
-
-        <section className="panel accounts-table-panel fidelity-register-panel">
-          <div className="panel-header accounts-toolbar">
-            <div>
-              <p className="panel-label">Net worth</p>
-              <h2 className="panel-title">Account position</h2>
+    <Frame>
+      <Card className="relative overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(120%_80%_at_15%_0%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_60%)]"
+        />
+        <CardHeader className="relative flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="label-caps">Current net worth</p>
+            <div className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
+              <AnimatedMoney amountMinor={latest?.netWorthMinor ?? 0} className="font-display tracking-tight" />
             </div>
-            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              <Money amountMinor={windowDelta} colorBySign showPlus className="font-medium" /> over this window ·{" "}
+              <span className="text-positive">
+                <Money amountMinor={latest?.assetsMinor ?? 0} />
+              </span>{" "}
+              assets ·{" "}
+              <span className="text-negative">
+                <Money amountMinor={latest?.liabilitiesMinor ?? 0} />
+              </span>{" "}
+              owed
+            </p>
           </div>
-          <div className="accounts-table net-worth-table" role="table" aria-label="Net worth accounts">
-            <div className="accounts-table-head" role="row">
-              <span>Account</span>
-              <span>Type</span>
-              <span>Class</span>
-              <span>Evidence</span>
-              <span>Balance</span>
-            </div>
-            {accounts.map((account) => {
-              const evidenceSource = getBalanceEvidenceSource(account, latestSnapshotByAccount.get(account.id));
+          <ToggleGroup
+            type="single"
+            size="sm"
+            variant="outline"
+            value={range}
+            onValueChange={(value) => value && setRange(value as RangeKey)}
+            aria-label="Range"
+          >
+            {RANGES.map((option) => (
+              <ToggleGroupItem key={option.key} value={option.key} className="px-3 font-money text-xs">
+                {option.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </CardHeader>
+        <CardContent className="relative">
+          {chartData.length >= 2 ? (
+            <ChartContainer config={chartConfig} className="h-64 w-full">
+              <AreaChart data={chartData} margin={{ left: 4, right: 4, top: 4 }}>
+                <defs>
+                  <linearGradient id="nwAssets" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeOpacity={0.25} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  minTickGap={48}
+                  tickFormatter={(value: string) => format(new Date(`${value}T00:00:00`), "MMM yy").toUpperCase()}
+                  className="font-money text-[10px]"
+                />
+                <YAxis
+                  width={64}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) => `$${Intl.NumberFormat("en-US", { notation: "compact" }).format(value)}`}
+                  className="font-money text-[10px]"
+                />
+                <ChartTooltip
+                  cursor={{ strokeOpacity: 0.3 }}
+                  content={<ChartTooltipContent labelFormatter={(value) => format(new Date(`${value}T00:00:00`), "MMMM d, yyyy")} />}
+                />
+                <Area dataKey="assets" type="stepAfter" stroke="var(--chart-2)" strokeWidth={1.5} fill="url(#nwAssets)" isAnimationActive={false} />
+                <Area dataKey="liabilities" type="stepAfter" stroke="var(--chart-4)" strokeWidth={1.5} fill="transparent" isAnimationActive={false} />
+                <Area dataKey="netWorth" type="stepAfter" stroke="var(--chart-1)" strokeWidth={2} fill="transparent" isAnimationActive={false} />
+                <ChartLegend content={<ChartLegendContent />} />
+              </AreaChart>
+            </ChartContainer>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Only one snapshot in this window — record more balances to draw the trend.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-              return (
-              <div className="accounts-table-row" role="row" key={account.id}>
-                <a className="account-name-cell report-drilldown" href={`/accounts?account=${encodeURIComponent(account.name)}`}>
-                  <div className="account-icon">
-                    <Landmark size={17} />
-                  </div>
-                  <div className="min-w-0">
-                    <p>{account.name}</p>
-                    <span>
-                      {account.institution} • {account.mask} • {account.lastActivity}
-                    </span>
-                  </div>
-                </a>
-                <span className="account-pill">{account.type.replace("_", " ")}</span>
-                <span className={account.assetClass === "asset" ? "amount-positive" : "amount-negative"}>
-                  {account.assetClass}
-                  {account.status === "closed" ? " / closed" : ""}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <p className="label-caps border-b border-border px-4 py-2">Account positions</p>
+        <ul>
+          {positions.map(({ account, latest: position }) => (
+            <li key={account.id}>
+              <Link
+                href={`/accounts?account=${encodeURIComponent(account.name)}`}
+                className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/50"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{account.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {[account.institution, account.type.replace("_", " ")].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
-                <span className="account-pill">{getBalanceEvidenceLabel(evidenceSource)}</span>
-                <strong className={account.balanceMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(account.balanceMinor)}</strong>
-              </div>
-              );
-            })}
-          </div>
-        </section>
-      </section>
-
-      <aside className="accounts-side">
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Snapshot coverage</p>
-              <h2 className="panel-title">Position evidence</h2>
-            </div>
-          </div>
-          <div className="settings-facts">
-            <div>
-              <span>Coverage</span>
-              <strong>{snapshotCoverage}% of accounts</strong>
-            </div>
-            <div>
-              <span>Latest snapshot</span>
-              <strong>{latestSnapshotDate}</strong>
-            </div>
-            <div>
-              <span>Missing evidence</span>
-              <strong>{accountsWithoutSnapshots} accounts</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">Recent snapshots</p>
-              <h2 className="panel-title">Balance evidence</h2>
-            </div>
-          </div>
-          <div className="snapshot-list">
-            {recentSnapshots.length > 0 ? (
-              recentSnapshots.map((snapshot) => (
-                <div className="snapshot-item" key={`${snapshot.accountId}-${snapshot.asOfDate}`}>
-                  <div className="snapshot-copy">
-                    <span>{snapshot.accountName}</span>
-                    <small>{snapshot.asOfDate}</small>
-                  </div>
-                  <strong>{formatMoney(snapshot.balanceMinor, snapshot.currency)}</strong>
-                </div>
-              ))
-            ) : (
-              <p className="empty-copy">No manual balance snapshots yet.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="panel account-form-panel">
-          <div className="account-checklist-item">
-            <WalletCards size={17} />
-            <span>Net worth uses the latest balance snapshot per account.</span>
-          </div>
-          <div className="account-checklist-item">
-            <ShieldCheck size={17} />
-            <span>Reports use ledger-scoped API data when credentials are configured.</span>
-          </div>
-          <div className="account-checklist-item">
-            <CalendarDays size={17} />
-            <span>Accounts without snapshots stay visible with a zero balance until evidence is entered.</span>
-          </div>
-        </section>
-      </aside>
-    </div>
+                <span className="shrink-0 text-right">
+                  {position ? (
+                    <>
+                      <Money amountMinor={position.balanceMinor} colorBySign={position.balanceMinor < 0} className="block text-sm" />
+                      <span className="font-money text-[10px] text-muted-foreground">
+                        as of {format(new Date(`${position.asOfDate}T00:00:00`), "MMM d, yyyy")}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs italic text-muted-foreground">no balance recorded</span>
+                  )}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Frame>
   );
 }
 
-type DatabaseAccount = {
-  id: string;
-  name: string;
-  institution: string | null;
-  mask: string | null;
-  type: string;
-  assetClass: "asset" | "liability";
-  currency: string;
-  isHidden: boolean;
-  closedOn: string | null;
-  isActive: boolean;
-  updatedAt?: string | Date;
-};
-
-type DatabaseSnapshot = {
-  id: string;
-  ledgerId: string;
-  accountId: string;
-  accountName: string;
-  asOfDate: string;
-  balanceMinor: number;
-  currency: string;
-  source: string;
-  createdAt: string;
-};
-
-function toAccountRow(account: DatabaseAccount, snapshots: DatabaseSnapshot[] = []): AccountRow {
-  const latestSnapshot = snapshots
-    .filter((snapshot) => snapshot.accountId === account.id)
-    .sort((left, right) => right.asOfDate.localeCompare(left.asOfDate))[0];
-
-  return {
-    id: account.id,
-    name: account.name,
-    institution: account.institution ?? "Manual",
-    mask: account.mask ?? "0000",
-    type: account.type,
-    assetClass: account.assetClass,
-    currency: account.currency,
-    balanceMinor: latestSnapshot?.balanceMinor ?? 0,
-    lastActivity: latestSnapshot ? `Snapshot ${latestSnapshot.asOfDate}` : account.updatedAt ? "Updated" : "No snapshot",
-    status: account.closedOn || !account.isActive ? "closed" : account.isHidden ? "hidden" : "active",
-  };
-}
-
-function getBalanceEvidenceLabel(source: BalanceEvidenceSource) {
-  if (source === "manual_snapshot") {
-    return "Manual snapshot";
-  }
-
-  if (source === "imported_snapshot") {
-    return "Imported snapshot";
-  }
-
-  if (source === "missing_snapshot") {
-    return "Missing evidence";
-  }
-
-  return "Transaction-derived";
-}
-
-function NetWorthMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" }) {
+function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <article className="stat-panel account-metric">
-      <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
+    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+      <PageHeader eyebrow="Position" title="Net Worth" />
+      {children}
+    </div>
   );
 }

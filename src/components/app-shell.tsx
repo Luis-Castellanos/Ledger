@@ -1,36 +1,25 @@
-import { Sidebar } from "@/components/sidebar";
-import Link from "next/link";
-import { IconAccounts, IconDashboard, IconReview, IconTransactions } from "@/components/nav-icons";
+"use client";
+
+import { AppSidebar } from "@/components/app-sidebar";
+import { CommandMenu } from "@/components/command-menu";
+import { MobileDock } from "@/components/mobile-dock";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   void active;
 
   return (
-    <main className="min-h-screen bg-surface-base text-text-primary">
-      <div className="flex min-h-screen w-full overflow-hidden bg-[var(--surface-base)]">
-        <Sidebar reviewCount={37} />
-        <div className="min-w-0 flex-1 overflow-auto bg-[var(--surface-base)] pb-20 md:pb-0">
-          {children}
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="pb-20 md:pb-0">
+        <div className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur-md md:hidden">
+          <SidebarTrigger />
+          <span className="font-display text-base font-semibold tracking-tight">Ledger</span>
         </div>
-        <nav className="mobile-dock" aria-label="Primary mobile navigation">
-          <Link href="/">
-            <IconDashboard size={18} />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/transactions">
-            <IconTransactions size={18} />
-            <span>Activity</span>
-          </Link>
-          <Link href="/review">
-            <IconReview size={18} />
-            <span>Review</span>
-          </Link>
-          <Link href="/accounts">
-            <IconAccounts size={18} />
-            <span>Accounts</span>
-          </Link>
-        </nav>
-      </div>
-    </main>
+        {children}
+      </SidebarInset>
+      <MobileDock />
+      <CommandMenu />
+    </SidebarProvider>
   );
 }

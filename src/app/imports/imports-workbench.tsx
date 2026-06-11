@@ -1,812 +1,560 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, FileSpreadsheet, ListChecks, RotateCcw, Search, ShieldAlert, Upload } from "lucide-react";
-import { sampleAccounts } from "@/lib/finance/account-sample-data";
-import { defaultCategoryTree } from "@/lib/finance/default-categories";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ArrowRight, CheckCircle2, FileInput, History, RotateCcw, Upload } from "lucide-react";
+import Link from "next/link";
+import { AuthControls } from "@/components/auth-controls";
+import { Money } from "@/components/money";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ApiError } from "@/lib/api/client";
+import { useAccounts } from "@/lib/api/queries/accounts";
+import {
+  useCommitImport,
+  useCreateImportMapping,
+  useImportMappings,
+  useImports,
+  useRollbackImport,
+  useStageImport,
+  useUpdateImportRow,
+  type ImportRow,
+} from "@/lib/api/queries/imports";
 import { parseCsvImportRows, type CsvImportColumnMapping, type ParsedCsvImportRow } from "@/lib/finance/import-csv";
-import { sampleImportBatches, sampleImportRows, type ImportBatch, type ImportPreviewRow, type ImportRowStatus } from "@/lib/finance/import-sample-data";
-import { formatMoney } from "@/lib/finance/money";
-import { canUseLocalFallback, dataSourceLabel, dataSourceStatusClass, demoFallback, fallbackDataSource, productionFallbackMessage, type DataSourceState } from "@/lib/demo-fallback";
+import { cn } from "@/lib/utils";
+import { DocumentsTab } from "./documents-tab";
 
-const categories = ["Uncategorized", ...defaultCategoryTree.flatMap((parent) => [parent.name, ...(parent.children ?? []).map((child) => child.name)])];
-const statuses = [
-  { label: "Accepted", value: "accepted" },
-  { label: "Needs review", value: "needs_review" },
-  { label: "Duplicate", value: "duplicate" },
-  { label: "Rejected", value: "rejected" },
-] satisfies { label: string; value: ImportRowStatus }[];
-const fallbackImportMappings: ImportMappingSummary[] = [
-  {
-    id: "default-csv",
-    accountId: null,
-    name: "Standard CSV",
-    mapping: {
-      date: "Date",
-      description: "Description",
-      amount: "Amount",
-      category: "Category",
-    },
-    updatedAt: "local",
-  },
-];
+type TabKey = "import" | "history" | "documents";
 
-export function ImportsWorkbench() {
-  const [rows, setRows] = useState<ImportPreviewRow[]>(() => demoFallback(sampleImportRows, []));
-  const [batches, setBatches] = useState<ImportBatch[]>(() => demoFallback(sampleImportBatches, []));
-  const [selectedBatchId, setSelectedBatchId] = useState(() => demoFallback(sampleImportBatches[0]?.id ?? "", ""));
-  const [accountOptions, setAccountOptions] = useState<AccountOption[]>(() => demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-  const [importMappings, setImportMappings] = useState<ImportMappingSummary[]>(() => demoFallback(fallbackImportMappings, []));
-  const [selectedMappingId, setSelectedMappingId] = useState(() => demoFallback(fallbackImportMappings[0]?.id ?? "none", "none"));
-  const [mappingForm, setMappingForm] = useState({
-    name: "Standard CSV",
-    date: "Date",
-    description: "Description",
-    amount: "Amount",
-    debit: "",
-    credit: "",
-    category: "Category",
-  });
-  const hasLocalEdits = useRef(false);
-  const [query, setQuery] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState(() => demoFallback(sampleAccounts[0]?.name ?? "", ""));
-  const [dataSource, setDataSource] = useState<DataSourceState>(() => fallbackDataSource());
-  const [error, setError] = useState<string | null>(null);
-  const [mutationMessage, setMutationMessage] = useState<string | null>(null);
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [isImportActionPending, setIsImportActionPending] = useState(false);
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [bulkCategory, setBulkCategory] = useState("Uncategorized");
-  const [bulkStatus, setBulkStatus] = useState<ImportRowStatus>("accepted");
+export function ImportsWorkbench({ initialTab }: { initialTab: TabKey }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [tab, setTab] = useState<TabKey>(initialTab);
+  const accounts = useAccounts();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadImports() {
-      try {
-        const importUrl = selectedBatchId ? `/api/imports?importId=${encodeURIComponent(selectedBatchId)}` : "/api/imports";
-        const [accountsResponse, importsResponse] = await Promise.all([
-          fetch("/api/accounts", { headers: { Accept: "application/json" } }),
-          fetch(importUrl, { headers: { Accept: "application/json" } }),
-        ]);
-        const mappingsResponse = await fetch("/api/import-mappings", { headers: { Accept: "application/json" } });
-
-        if (!accountsResponse.ok || !importsResponse.ok) {
-          throw new Error("Import APIs unavailable");
-        }
-
-        const accountsPayload = (await accountsResponse.json()) as { accounts: DatabaseAccount[] };
-        const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
-        const mappingsPayload = mappingsResponse.ok ? ((await mappingsResponse.json()) as { mappings: ImportMappingSummary[] }) : { mappings: [] };
-        const nextAccounts = accountsPayload.accounts.map((account) => ({ id: account.id, name: account.name }));
-
-        if (isMounted && !hasLocalEdits.current) {
-          setAccountOptions(nextAccounts.length > 0 ? nextAccounts : demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-          setSelectedAccountId(nextAccounts[0]?.id ?? selectedAccountId);
-          setImportMappings(mappingsPayload.mappings.length > 0 ? mappingsPayload.mappings : demoFallback(fallbackImportMappings, []));
-          setSelectedMappingId(mappingsPayload.mappings[0]?.id ?? demoFallback(fallbackImportMappings[0]?.id ?? "none", "none"));
-          setBatches(importsPayload.batches);
-          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
-          setRows(importsPayload.rows);
-          setDataSource("database");
-        }
-      } catch {
-        if (isMounted && !hasLocalEdits.current) {
-          setRows(demoFallback(sampleImportRows, []));
-          setBatches(demoFallback(sampleImportBatches, []));
-          setAccountOptions(demoFallback(sampleAccounts.map((account) => ({ id: account.name, name: account.name })), []));
-          setImportMappings(demoFallback(fallbackImportMappings, []));
-          setDataSource(fallbackDataSource());
-        }
-      }
-    }
-
-    void loadImports();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedAccountId, selectedBatchId]);
-
-  const summary = useMemo(() => {
-    return rows.reduce(
-      (acc, row) => {
-        acc[row.status] += 1;
-        return acc;
-      },
-      { accepted: 0, duplicate: 0, needs_review: 0, rejected: 0 } satisfies Record<ImportRowStatus, number>,
-    );
-  }, [rows]);
-
-  const filteredRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return rows;
-    }
-
-    return rows.filter((row) => [row.description, row.category, row.date, String(row.rowNumber)].some((value) => value.toLowerCase().includes(normalizedQuery)));
-  }, [query, rows]);
-
-  const activeBatch = batches.find((batch) => batch.id === selectedBatchId) ?? batches[0];
-  const selectedVisibleRows = filteredRows.filter((row) => selectedRowIds.includes(row.id));
-  const selectedVisibleCount = selectedVisibleRows.length;
-  const allVisibleRowsSelected = filteredRows.length > 0 && selectedVisibleCount === filteredRows.length;
-
-  async function updateRow(id: string, patch: Partial<ImportPreviewRow>) {
-    hasLocalEdits.current = true;
-    const previousRows = rows;
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
-    setMutationMessage(null);
-
-    if (dataSource === "database") {
-      try {
-        await fetch("/api/imports", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ id, category: patch.category, status: patch.status }),
-        });
-      } catch {
-        if (!canUseLocalFallback(dataSource)) {
-          setRows(previousRows);
-          setError(productionFallbackMessage("Import row update"));
-          return;
-        }
-
-        setError("Import row update stayed local because the API was unavailable.");
-      }
-    }
-  }
-
-  function toggleRowSelection(id: string) {
-    setSelectedRowIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
-  }
-
-  function toggleAllVisibleRows() {
-    setSelectedRowIds(allVisibleRowsSelected ? [] : filteredRows.map((row) => row.id));
-  }
-
-  async function updateSelectedRows(patch: Partial<Pick<ImportPreviewRow, "category" | "status">>, successMessage: string) {
-    if (selectedVisibleRows.length === 0) {
-      return;
-    }
-
-    const selectedIds = selectedVisibleRows.map((row) => row.id);
-    hasLocalEdits.current = true;
-    const previousRows = rows;
-    setRows((current) => current.map((row) => (selectedIds.includes(row.id) ? { ...row, ...patch } : row)));
-    setMutationMessage(null);
-
-    if (dataSource === "database") {
-      try {
-        await Promise.all(
-          selectedIds.map((id) =>
-            fetch("/api/imports", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ id, category: patch.category, status: patch.status }),
-            }).then((response) => {
-              if (!response.ok) {
-                throw new Error("Import row update failed");
-              }
-            }),
-          ),
-        );
-      } catch {
-        if (!canUseLocalFallback(dataSource)) {
-          setRows(previousRows);
-          setError(productionFallbackMessage("Bulk import row update"));
-          return;
-        }
-
-        setDataSource(fallbackDataSource());
-        setError(demoFallback("Bulk import row update stayed local because the API was unavailable.", productionFallbackMessage("Bulk import row update")));
-        return;
-      }
-    }
-
-    setSelectedRowIds([]);
-    setError(null);
-    setMutationMessage(successMessage);
-  }
-
-  async function stageMockFile() {
-    const nextNumber = Math.max(...rows.map((row) => row.rowNumber)) + 1;
-    const nextRow = {
-      id: `local_${Date.now()}`,
-      rowNumber: nextNumber,
-      date: new Date().toISOString().slice(0, 10),
-      description: "NEW CSV ROW",
-      category: "Uncategorized",
-      amountMinor: -4218,
-      status: "needs_review" as ImportRowStatus,
-    };
-    hasLocalEdits.current = true;
-
-    if (dataSource === "database") {
-      const response = await fetch("/api/imports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          accountId: selectedAccountId,
-          filename: `manual-stage-${Date.now()}.csv`,
-          savedMappingId: isUuid(selectedMappingId) ? selectedMappingId : undefined,
-          rows: [
-            {
-              rowNumber: nextRow.rowNumber,
-              date: nextRow.date,
-              description: nextRow.description,
-              amount: "-42.18",
-              category: nextRow.category,
-              status: nextRow.status,
-            },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const payload = (await response.json()) as { import: DatabaseImport };
-        const stagedBatch = payload.import;
-        const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
-
-        if (importsResponse.ok) {
-          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
-          setBatches(importsPayload.batches);
-          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
-          setRows(importsPayload.rows);
-          setError(null);
-          return;
-        }
-
-        setRows([{ ...nextRow, id: `row_${stagedBatch.id}_${nextRow.rowNumber}` }]);
-        setBatches((current) => [
-          {
-            id: stagedBatch.id,
-            filename: stagedBatch.originalFilename,
-            account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-            status: stagedBatch.status,
-            uploadedAt: new Date(stagedBatch.createdAt).toISOString().slice(0, 16).replace("T", " "),
-            acceptedRows: stagedBatch.acceptedRowCount,
-            rejectedRows: stagedBatch.rejectedRowCount,
-          },
-          ...current,
-        ]);
-        setSelectedBatchId(stagedBatch.id);
-        setError(null);
-        return;
-      }
-    }
-
-    if (!canUseLocalFallback(dataSource)) {
-      setError(productionFallbackMessage("Import staging"));
-      return;
-    }
-
-    const batch = {
-      id: `local_batch_${Date.now()}`,
-      filename: "manual-stage.csv",
-      account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-      status: "staged" as const,
-      uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-      acceptedRows: 0,
-      rejectedRows: 0,
-    };
-    setRows((current) => [nextRow, ...current]);
-    setBatches((current) => [batch, ...current]);
-    setSelectedBatchId(batch.id);
-    setDataSource(fallbackDataSource());
-    setError(dataSource === "database" ? demoFallback("Import stayed local because the API rejected the staged rows.", productionFallbackMessage("Import staging")) : null);
-  }
-
-  async function stageCsvFile(file: File | null) {
-    if (!file) {
-      return;
-    }
-
-    setSelectedFileName(file.name);
-
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setError("Choose a .csv file.");
-      return;
-    }
-
-    if (file.size > 1_000_000) {
-      setError("CSV file must be 1 MB or smaller for this intake path.");
-      return;
-    }
-
-    const parsedRows = parseCsvImportRows(await file.text(), getSelectedMapping(importMappings, selectedMappingId)?.mapping);
-
-    if (parsedRows.length === 0) {
-      setError("CSV must include a header row and at least one transaction row.");
-      return;
-    }
-
-    await stageParsedRows(file.name, parsedRows);
-  }
-
-  async function stageParsedRows(filename: string, parsedRows: ParsedCsvImportRow[]) {
-    hasLocalEdits.current = true;
-    const stageableRows = parsedRows.filter((row) => row.status !== "rejected");
-    const rejectedRows = parsedRows.filter((row) => row.status === "rejected");
-    const nextRows = parsedRows.map(toPreviewRow);
-
-    if (dataSource === "database" && stageableRows.length > 0) {
-      const response = await fetch("/api/imports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          accountId: selectedAccountId,
-          filename,
-          savedMappingId: isUuid(selectedMappingId) ? selectedMappingId : undefined,
-          rows: stageableRows.map((row) => ({
-            rowNumber: row.rowNumber,
-            date: row.date,
-            description: row.description,
-            amount: row.amount,
-            category: row.category,
-            status: row.status,
-          })),
-        }),
-      });
-
-      if (response.ok) {
-        const importsResponse = await fetch("/api/imports", { headers: { Accept: "application/json" } });
-
-        if (importsResponse.ok) {
-          const importsPayload = (await importsResponse.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
-          setBatches(importsPayload.batches);
-          setSelectedBatchId(importsPayload.selectedImportId ?? importsPayload.batches[0]?.id ?? "");
-          setRows(rejectedRows.length > 0 ? [...rejectedRows.map(toPreviewRow), ...importsPayload.rows] : importsPayload.rows);
-          setError(rejectedRows.length > 0 ? `${rejectedRows.length} rejected row${rejectedRows.length === 1 ? "" : "s"} stayed local for correction.` : null);
-          return;
-        }
-      }
-    }
-
-    if (!canUseLocalFallback(dataSource)) {
-      setError(productionFallbackMessage("CSV staging"));
-      return;
-    }
-
-    const batch = {
-      id: `local_batch_${Date.now()}`,
-      filename,
-      account: accountOptions.find((account) => account.id === selectedAccountId)?.name ?? "Selected account",
-      status: "staged" as const,
-      uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-      acceptedRows: parsedRows.filter((row) => row.status === "accepted").length,
-      rejectedRows: rejectedRows.length,
-    };
-    setRows(nextRows);
-    setBatches((current) => [batch, ...current]);
-    setSelectedBatchId(batch.id);
-    setDataSource(fallbackDataSource());
-    setError(
-      dataSource === "database"
-        ? demoFallback("CSV stayed local because the import API rejected the staged rows.", productionFallbackMessage("CSV staging"))
-        : rejectedRows.length > 0
-          ? `${rejectedRows.length} row${rejectedRows.length === 1 ? "" : "s"} need correction before commit.`
-          : null,
-    );
-  }
-
-  async function runImportAction(action: "commit" | "rollback") {
-    if (!activeBatch) {
-      return;
-    }
-
-    hasLocalEdits.current = true;
-    setIsImportActionPending(true);
-
-    if (dataSource === "database") {
-      try {
-        const response = await fetch(`/api/imports/${activeBatch.id}/${action}`, {
-          method: "POST",
-          headers: { Accept: "application/json" },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Import ${action} failed`);
-        }
-
-        setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
-        setError(null);
-        setIsImportActionPending(false);
-        return;
-      } catch {
-        if (!canUseLocalFallback(dataSource)) {
-          setError(productionFallbackMessage(`Import ${action}`));
-          setIsImportActionPending(false);
-          return;
-        }
-        setDataSource(fallbackDataSource());
-        setError(`Import ${action} stayed local because the API was unavailable.`);
-        setIsImportActionPending(false);
-        return;
-      }
-    }
-
-    setBatches((current) => current.map((batch) => (batch.id === activeBatch.id ? { ...batch, status: action === "commit" ? "committed" : "rolled_back" } : batch)));
-    setDataSource(fallbackDataSource());
-    setIsImportActionPending(false);
-  }
-
-  async function selectBatch(batchId: string) {
-    setSelectedBatchId(batchId);
-
-    if (dataSource !== "database" || !isUuid(batchId)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/imports?importId=${encodeURIComponent(batchId)}`, { headers: { Accept: "application/json" } });
-
-      if (!response.ok) {
-        throw new Error("Import detail API unavailable");
-      }
-
-      const payload = (await response.json()) as { batches: ImportBatch[]; rows: ImportPreviewRow[]; selectedImportId: string | null };
-      setBatches(payload.batches);
-      setSelectedBatchId(payload.selectedImportId ?? batchId);
-      setRows(payload.rows);
-      setError(null);
-    } catch {
-      setError("Import detail stayed on the current preview because the API was unavailable.");
-    }
-  }
-
-  async function saveMappingProfile() {
-    const mapping = buildMappingFromForm(mappingForm);
-    const hasCoreColumns = mapping.date && mapping.description;
-    const hasAmountColumns = mapping.amount || mapping.debit || mapping.credit;
-
-    if (!hasCoreColumns || !hasAmountColumns) {
-      setError("Mapping needs date, description, and either amount or debit/credit columns.");
-      return;
-    }
-
-    const localMapping = {
-      id: `local_mapping_${Date.now()}`,
-      accountId: selectedAccountId,
-      name: mappingForm.name.trim() || "CSV mapping",
-      mapping,
-      updatedAt: new Date().toISOString(),
-    };
-
-    hasLocalEdits.current = true;
-
-    if (dataSource === "database") {
-      try {
-        const response = await fetch("/api/import-mappings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            accountId: selectedAccountId,
-            name: localMapping.name,
-            mapping,
-          }),
-        });
-
-        if (response.ok) {
-          const payload = (await response.json()) as { mapping: ImportMappingSummary };
-          setImportMappings((current) => [payload.mapping, ...current]);
-          setSelectedMappingId(payload.mapping.id);
-          setError(null);
-          return;
-        }
-      } catch {
-        if (!canUseLocalFallback(dataSource)) {
-          setError(productionFallbackMessage("Import mapping save"));
-          return;
-        }
-      }
-    }
-
-    if (!canUseLocalFallback(dataSource)) {
-      setError(productionFallbackMessage("Import mapping save"));
-      return;
-    }
-
-    setImportMappings((current) => [localMapping, ...current]);
-    setSelectedMappingId(localMapping.id);
-    setDataSource(fallbackDataSource());
-    setError(dataSource === "database" ? demoFallback("Mapping stayed local because the API was unavailable.", productionFallbackMessage("Import mapping save")) : null);
-  }
-
-  const selectedAccountName = accountOptions.find((account) => account.id === selectedAccountId)?.name ?? selectedAccountId;
+  const unauthorized = accounts.error instanceof ApiError && accounts.error.status === 401;
 
   return (
-    <div className="transactions-grid fidelity-register-grid">
-      <section className="transactions-main fidelity-register-main">
-        <div className="fidelity-summary-strip fidelity-summary-strip-four">
-          <ImportMetric label="Accepted" value={`${summary.accepted}`} icon={<CheckCircle2 size={17} />} tone="green" />
-          <ImportMetric label="Review" value={`${summary.needs_review}`} icon={<ListChecks size={17} />} tone="violet" />
-          <ImportMetric label="Duplicates" value={`${summary.duplicate}`} icon={<FileSpreadsheet size={17} />} tone="gold" />
-          <ImportMetric label="Rejected" value={`${summary.rejected}`} icon={<ShieldAlert size={17} />} tone="coral" />
+    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+      <PageHeader eyebrow="Data in" title="Imports" description="Statements are the source material — bring them in here." />
+
+      {unauthorized ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-6 py-16 text-center">
+          <p className="font-display text-2xl font-semibold">Sign in to import data</p>
+          <AuthControls />
         </div>
-
-        <section className="panel transactions-table-panel fidelity-register-panel">
-          <div className="panel-header accounts-toolbar">
-            <div>
-              <p className="panel-label">Staging</p>
-              <h2 className="panel-title">Import review</h2>
-            </div>
-            <span className={dataSourceStatusClass(dataSource)}>{dataSourceLabel(dataSource)}</span>
-            <div className="transaction-controls">
-              <label className="search-field">
-                <Search size={16} />
-                <input aria-label="Search import rows" placeholder="Search rows" value={query} onChange={(event) => setQuery(event.target.value)} />
-              </label>
-              <select aria-label="Import account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
-                {accountOptions.map((account) => (
-                  <option value={account.id} key={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-              <select aria-label="Import mapping" value={selectedMappingId} onChange={(event) => setSelectedMappingId(event.target.value)}>
-                {importMappings.map((mapping) => (
-                  <option value={mapping.id} key={mapping.id}>
-                    {mapping.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {mutationMessage ? <p className="form-success">{mutationMessage}</p> : null}
-
-          <div className="transaction-undo-banner review-bulk-bar">
-            <span>{selectedVisibleCount} selected</span>
-            <select aria-label="Bulk import category" value={bulkCategory} onChange={(event) => setBulkCategory(event.target.value)}>
-              {categories.map((category) => (
-                <option value={category} key={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => updateSelectedRows({ category: bulkCategory }, `${selectedVisibleCount} selected import rows recategorized.`)}
-              disabled={selectedVisibleCount === 0}
-            >
-              Set category
-            </button>
-            <select aria-label="Bulk import status" value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as ImportRowStatus)}>
-              {statuses.map((status) => (
-                <option value={status.value} key={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => updateSelectedRows({ status: bulkStatus }, `${selectedVisibleCount} selected import rows marked ${bulkStatus.replace("_", " ")}.`)}
-              disabled={selectedVisibleCount === 0}
-            >
-              Set status
-            </button>
-          </div>
-
-          <div className="transactions-table import-preview-table" role="table" aria-label="Import rows">
-            <div className="transactions-table-head" role="row">
-              <span>
-                <input aria-label="Select all import rows" checked={allVisibleRowsSelected} onChange={toggleAllVisibleRows} type="checkbox" />
-              </span>
-              <span>Description</span>
-              <span>Category</span>
-              <span>Status</span>
-              <span>Amount</span>
-            </div>
-            {filteredRows.map((row) => (
-              <div className="transactions-table-row" role="row" key={row.id}>
-                <input
-                  aria-label={`Select row ${row.rowNumber}`}
-                  checked={selectedRowIds.includes(row.id)}
-                  onChange={() => toggleRowSelection(row.id)}
-                  type="checkbox"
-                />
-                <div className="transaction-register-name">
-                  <p>{row.description || "Missing description"}</p>
-                  <span>
-                    #{row.rowNumber} • {row.date}
-                  </span>
-                </div>
-                <select aria-label={`Category for row ${row.rowNumber}`} value={row.category} onChange={(event) => updateRow(row.id, { category: event.target.value })}>
-                  {categories.map((category) => (
-                    <option value={category} key={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-                <select aria-label={`Status for row ${row.rowNumber}`} value={row.status} onChange={(event) => updateRow(row.id, { status: event.target.value as ImportRowStatus })}>
-                  {statuses.map((status) => (
-                    <option value={status.value} key={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
-                <strong className={row.amountMinor < 0 ? "amount-negative" : "amount-positive"}>{formatMoney(row.amountMinor)}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-      </section>
-
-      <aside className="accounts-side">
-        <section className="panel account-form-panel">
-          <div className="panel-header">
-            <div>
-              <p className="panel-label">CSV intake</p>
-              <h2 className="panel-title">Stage file</h2>
-            </div>
-            <div className="summary-icon">
-              <Upload size={17} />
-            </div>
-          </div>
-          <div className="mt-6 grid gap-3 rounded-[8px] border border-dashed border-[rgba(214,226,217,0.22)] p-5 text-[var(--muted)]">
-            <FileSpreadsheet size={26} />
-            <p className="m-0 font-bold text-[var(--ink-strong)]">CSV staging area</p>
-            <span className="font-mono text-[11px]">{selectedAccountName}</span>
-            <span className="font-mono text-[11px]">Mapping: {getSelectedMapping(importMappings, selectedMappingId)?.name ?? "Auto-detect"}</span>
-            {selectedFileName ? <span className="font-mono text-[11px]">{selectedFileName}</span> : null}
-            {error ? <p className="form-error">{error}</p> : null}
-            <label className="file-action">
-              <Upload size={16} />
-              Stage CSV file
-              <input aria-label="Stage CSV file" type="file" accept=".csv,text/csv" onChange={(event) => void stageCsvFile(event.target.files?.[0] ?? null)} />
-            </label>
-            <button className="primary-action" type="button" onClick={stageMockFile}>
-              <Upload size={16} />
-              Add sample row
-            </button>
-            <button
-              className="secondary-action"
-              type="button"
-              onClick={() => runImportAction("commit")}
-              disabled={!activeBatch || activeBatch.status === "committed" || activeBatch.status === "rolled_back" || isImportActionPending}
-            >
-              <CheckCircle2 size={16} />
-              Commit import
-            </button>
-            <button className="secondary-action" type="button" onClick={() => runImportAction("rollback")} disabled={!activeBatch || activeBatch.status !== "committed" || isImportActionPending}>
-              <RotateCcw size={16} />
-              Roll back import
-            </button>
-          </div>
-        </section>
-
-        <section className="panel account-form-panel">
-          <p className="panel-label">Mapping profile</p>
-          <div className="account-form mt-5">
-            <label>
-              <span>Name</span>
-              <input value={mappingForm.name} onChange={(event) => setMappingForm((current) => ({ ...current, name: event.target.value }))} placeholder="Bank CSV" />
-            </label>
-            <label>
-              <span>Date column</span>
-              <input value={mappingForm.date} onChange={(event) => setMappingForm((current) => ({ ...current, date: event.target.value }))} placeholder="Date" />
-            </label>
-            <label>
-              <span>Description column</span>
-              <input value={mappingForm.description} onChange={(event) => setMappingForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" />
-            </label>
-            <label>
-              <span>Amount column</span>
-              <input value={mappingForm.amount} onChange={(event) => setMappingForm((current) => ({ ...current, amount: event.target.value }))} placeholder="Amount" />
-            </label>
-            <label>
-              <span>Debit column</span>
-              <input value={mappingForm.debit} onChange={(event) => setMappingForm((current) => ({ ...current, debit: event.target.value }))} placeholder="Debit" />
-            </label>
-            <label>
-              <span>Credit column</span>
-              <input value={mappingForm.credit} onChange={(event) => setMappingForm((current) => ({ ...current, credit: event.target.value }))} placeholder="Credit" />
-            </label>
-            <label>
-              <span>Category column</span>
-              <input value={mappingForm.category} onChange={(event) => setMappingForm((current) => ({ ...current, category: event.target.value }))} placeholder="Category" />
-            </label>
-            <button className="secondary-action" type="button" onClick={saveMappingProfile}>
-              <CheckCircle2 size={16} />
-              Save mapping
-            </button>
-          </div>
-        </section>
-
-        <section className="panel account-form-panel">
-          <p className="panel-label">Recent files</p>
-          <div className="mt-5 grid gap-3">
-            {batches.map((batch) => (
-              <button className="import-history-item" data-state={batch.id === activeBatch?.id ? "selected" : "idle"} type="button" key={batch.id} onClick={() => void selectBatch(batch.id)}>
-                <span className={batch.status === "committed" ? "status-chip status-chip-live" : "status-chip"}>{batch.status.replace("_", " ")}</span>
-                <strong>{batch.filename}</strong>
-                <span>
-                  {batch.account} • {batch.uploadedAt}
-                </span>
-                <small>
-                  {batch.acceptedRows} accepted / {batch.rejectedRows} rejected
-                </small>
-              </button>
-            ))}
-          </div>
-        </section>
-      </aside>
+      ) : (
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            const next = value as TabKey;
+            setTab(next);
+            router.replace(`${pathname}${next === "import" ? "" : `?tab=${next}`}`, { scroll: false });
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="import">
+              <FileInput /> Import CSV
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History /> History
+            </TabsTrigger>
+            <TabsTrigger value="documents">
+              <Upload /> Documents
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="import" className="pt-2">
+            <ImportStepper />
+          </TabsContent>
+          <TabsContent value="history" className="pt-2">
+            <HistoryTab />
+          </TabsContent>
+          <TabsContent value="documents" className="pt-2">
+            <DocumentsTab />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
 
-type DatabaseAccount = {
-  id: string;
-  name: string;
-};
+/* ---------------------------------- stepper --------------------------------- */
 
-type DatabaseImport = {
-  acceptedRowCount: number;
-  createdAt: string;
-  id: string;
-  originalFilename: string;
-  rejectedRowCount: number;
-  status: ImportBatch["status"];
-};
+type StepState =
+  | { step: "setup" }
+  | { step: "parsed"; fileName: string; fileText: string; rows: ParsedCsvImportRow[] }
+  | { step: "staged"; importId: string }
+  | { step: "done"; committedCount: number; duplicateCount: number };
 
-type ImportMappingSummary = {
-  accountId: string | null;
-  id: string;
-  mapping: CsvImportColumnMapping;
-  name: string;
-  updatedAt: string;
-};
+const EMPTY_MAPPING: CsvImportColumnMapping = {};
 
-type AccountOption = {
-  id: string;
-  name: string;
-};
+function ImportStepper() {
+  const accounts = useAccounts();
+  const mappings = useImportMappings();
+  const stage = useStageImport();
+  const commit = useCommitImport();
+  const createMapping = useCreateImportMapping();
 
-function buildMappingFromForm(mappingForm: {
-  amount: string;
-  category: string;
-  credit: string;
-  date: string;
-  debit: string;
-  description: string;
-}) {
-  return {
-    date: mappingForm.date.trim(),
-    description: mappingForm.description.trim(),
-    amount: mappingForm.amount.trim() || undefined,
-    debit: mappingForm.debit.trim() || undefined,
-    credit: mappingForm.credit.trim() || undefined,
-    category: mappingForm.category.trim() || undefined,
-  };
-}
+  const [state, setState] = useState<StepState>({ step: "setup" });
+  const [accountId, setAccountId] = useState("");
+  const [mappingId, setMappingId] = useState("");
+  const [customMapping, setCustomMapping] = useState<CsvImportColumnMapping>(EMPTY_MAPPING);
+  const [showMappingEditor, setShowMappingEditor] = useState(false);
+  const [saveMapping, setSaveMapping] = useState(false);
+  const [mappingName, setMappingName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-function getSelectedMapping(mappings: ImportMappingSummary[], selectedMappingId: string) {
-  return mappings.find((mapping) => mapping.id === selectedMappingId) ?? mappings[0];
-}
+  const openAccounts = (accounts.data ?? []).filter((account) => account.isActive);
+  const activeMapping = useMemo<CsvImportColumnMapping>(() => {
+    if (showMappingEditor) {
+      return customMapping;
+    }
+    return (mappings.data ?? []).find((mapping) => mapping.id === mappingId)?.mapping ?? EMPTY_MAPPING;
+  }, [showMappingEditor, customMapping, mappings.data, mappingId]);
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
+  async function handleFile(file: File) {
+    const text = await file.text();
+    const rows = parseCsvImportRows(text, activeMapping);
+    if (rows.length === 0) {
+      toast.error("No rows found — is this a CSV export with a header row?");
+      return;
+    }
+    setState({ step: "parsed", fileName: file.name, fileText: text, rows });
+    if (rows.every((row) => row.status === "rejected")) {
+      setShowMappingEditor(true);
+      toast.warning("No rows parsed cleanly — map the column headers below and re-parse.");
+    }
+  }
 
-function toPreviewRow(row: ParsedCsvImportRow): ImportPreviewRow {
-  return {
-    id: `local_row_${row.rowNumber}_${row.status}`,
-    rowNumber: row.rowNumber,
-    date: row.date,
-    description: row.description || row.validationMessage || "Rejected CSV row",
-    category: row.category,
-    amountMinor: row.amountMinor,
-    status: row.status,
-  };
-}
+  function reparse() {
+    if (state.step !== "parsed") {
+      return;
+    }
+    const rows = parseCsvImportRows(state.fileText, activeMapping);
+    setState({ ...state, rows });
+  }
 
-function ImportMetric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: "green" | "coral" | "violet" | "gold" }) {
+  function stageRows() {
+    if (state.step !== "parsed" || !accountId) {
+      return;
+    }
+    if (saveMapping && mappingName.trim() && showMappingEditor) {
+      createMapping.mutate(
+        { name: mappingName.trim(), accountId, mapping: customMapping },
+        { onError: (error) => toast.error(error.message || "Could not save the mapping") },
+      );
+    }
+    stage.mutate(
+      {
+        accountId,
+        filename: state.fileName,
+        ...(mappingId ? { savedMappingId: mappingId } : {}),
+        rows: state.rows.map((row) => ({
+          rowNumber: row.rowNumber,
+          date: row.date || "1970-01-01",
+          description: row.description || "(empty)",
+          amount: row.amount || "0",
+          category: row.category || "Uncategorized",
+          status: row.status,
+        })),
+      },
+      {
+        onSuccess: (response) => {
+          toast.success("Rows staged — review them, then commit.");
+          setState({ step: "staged", importId: response.import.id });
+        },
+        onError: (error) => toast.error(error.message || "Could not stage the import"),
+      },
+    );
+  }
+
+  function commitStaged(importId: string) {
+    commit.mutate(importId, {
+      onSuccess: (result) => {
+        setState({ step: "done", committedCount: result.committedCount, duplicateCount: result.duplicateCount });
+      },
+      onError: (error) => toast.error(error.message || "Commit failed"),
+    });
+  }
+
+  if (state.step === "done") {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <CheckCircle2 className="size-8 text-positive" strokeWidth={1.5} />
+          <p className="font-display text-2xl font-semibold">
+            {state.committedCount} transaction{state.committedCount === 1 ? "" : "s"} committed
+          </p>
+          {state.duplicateCount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {state.duplicateCount} duplicate{state.duplicateCount === 1 ? " was" : "s were"} skipped — already in the ledger.
+            </p>
+          ) : null}
+          <div className="flex gap-2 pt-1">
+            <Button asChild size="sm">
+              <Link href="/review">
+                Review them <ArrowRight />
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setState({ step: "setup" })}>
+              Import another file
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (state.step === "staged") {
+    return <StagedReview importId={state.importId} onCommit={() => commitStaged(state.importId)} committing={commit.isPending} />;
+  }
+
   return (
-    <article className="stat-panel account-metric">
-      <div className={`account-metric-icon account-metric-${tone}`}>{icon}</div>
-      <p className="panel-label">{label}</p>
-      <p className="panel-title">{value}</p>
-    </article>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <p className="label-caps">Step 1 — Where does this statement belong?</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label className="label-caps">Account</Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger className="w-full" aria-label="Import account">
+                  <SelectValue placeholder="Choose an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {openAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="label-caps">Saved column mapping (optional)</Label>
+              <Select value={mappingId || "__none"} onValueChange={(value) => setMappingId(value === "__none" ? "" : value)}>
+                <SelectTrigger className="w-full" aria-label="Saved mapping">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Auto-detect headers</SelectItem>
+                  {(mappings.data ?? []).map((mapping) => (
+                    <SelectItem key={mapping.id} value={mapping.id}>
+                      {mapping.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-10 text-center transition-colors",
+              accountId ? "cursor-pointer hover:border-primary/50 hover:bg-primary/[0.03]" : "opacity-50",
+            )}
+            onClick={() => accountId && fileInputRef.current?.click()}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const file = event.dataTransfer.files?.[0];
+              if (file && accountId) {
+                void handleFile(file);
+              }
+            }}
+            role="button"
+            aria-label="Stage CSV file"
+            tabIndex={accountId ? 0 : -1}
+          >
+            <Upload className="size-6 text-muted-foreground/60" strokeWidth={1.5} />
+            <p className="text-sm font-medium">{accountId ? "Drop a CSV here, or click to choose" : "Pick an account first"}</p>
+            <p className="text-xs text-muted-foreground">Bank and card statement exports · headers auto-detected</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              aria-label="Stage CSV file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  void handleFile(file);
+                }
+                event.target.value = "";
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {state.step === "parsed" ? (
+        <Card>
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="label-caps">Step 2 — Preview {state.fileName}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {state.rows.length} rows · {state.rows.filter((row) => row.status === "rejected").length} rejected ·{" "}
+                {state.rows.filter((row) => row.status === "duplicate").length} in-file duplicates
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowMappingEditor((value) => !value)}>
+                Adjust columns
+              </Button>
+              <Button size="sm" onClick={stageRows} disabled={stage.isPending || state.rows.every((row) => row.status === "rejected")}>
+                {stage.isPending ? "Staging…" : "Stage rows"} <ArrowRight />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {showMappingEditor ? (
+              <div className="grid gap-3 rounded-lg border border-border p-3">
+                <p className="label-caps">Column headers in your file</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {(["date", "description", "amount", "debit", "credit", "category"] as const).map((key) => (
+                    <div key={key} className="grid gap-1">
+                      <Label htmlFor={`map-${key}`} className="text-xs capitalize text-muted-foreground">
+                        {key}
+                      </Label>
+                      <Input
+                        id={`map-${key}`}
+                        value={customMapping[key] ?? ""}
+                        onChange={(event) => setCustomMapping((current) => ({ ...current, [key]: event.target.value || undefined }))}
+                        placeholder={key === "date" ? "Posted Date" : ""}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button size="sm" variant="outline" onClick={reparse}>
+                    <RotateCcw /> Re-parse
+                  </Button>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={saveMapping} onCheckedChange={(checked) => setSaveMapping(checked === true)} />
+                    Save this mapping
+                  </label>
+                  {saveMapping ? (
+                    <Input
+                      value={mappingName}
+                      onChange={(event) => setMappingName(event.target.value)}
+                      placeholder="Bank CSV"
+                      className="h-8 w-40 text-sm"
+                      aria-label="Mapping name"
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <PreviewTable rows={state.rows} />
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function PreviewTable({ rows }: { rows: ParsedCsvImportRow[] }) {
+  return (
+    <div className="max-h-96 overflow-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-card">
+          <tr className="border-b border-border text-left">
+            <th className="label-caps px-3 py-2 font-semibold">Date</th>
+            <th className="label-caps px-3 py-2 font-semibold">Description</th>
+            <th className="label-caps px-3 py-2 text-right font-semibold">Amount</th>
+            <th className="label-caps px-3 py-2 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.rowNumber} className={cn("border-b border-border/60 last:border-b-0", row.status === "rejected" && "opacity-50")}>
+              <td className="whitespace-nowrap px-3 py-1.5 font-money text-xs">{row.date || "—"}</td>
+              <td className="max-w-64 truncate px-3 py-1.5">{row.description || row.validationMessage || "—"}</td>
+              <td className="px-3 py-1.5 text-right">
+                <Money amountMinor={row.amountMinor} className="text-xs" />
+              </td>
+              <td className="px-3 py-1.5">
+                <RowStatusBadge status={row.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RowStatusBadge({ status }: { status: ImportRow["status"] }) {
+  const styles: Record<ImportRow["status"], string> = {
+    accepted: "border-positive/40 text-positive",
+    needs_review: "border-warning/40 text-warning",
+    duplicate: "border-transfer/40 text-transfer",
+    rejected: "border-destructive/40 text-destructive",
+  };
+  return (
+    <Badge variant="outline" className={cn("h-4 px-1 text-[10px]", styles[status])}>
+      {status.replace("_", " ")}
+    </Badge>
+  );
+}
+
+function StagedReview({ importId, onCommit, committing }: { importId: string; onCommit: () => void; committing: boolean }) {
+  const imports = useImports(importId);
+  const updateRow = useUpdateImportRow();
+
+  if (imports.isPending) {
+    return <PageSkeleton rows={8} />;
+  }
+  if (imports.isError) {
+    return <ErrorState message={imports.error.message} onRetry={() => void imports.refetch()} />;
+  }
+
+  const rows = imports.data.rows;
+  const committable = rows.filter((row) => row.status === "accepted" || row.status === "needs_review").length;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="label-caps">Step 3 — Confirm what enters the ledger</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {committable} of {rows.length} rows will commit · duplicates and rejected rows stay out
+          </p>
+        </div>
+        <Button size="sm" onClick={onCommit} disabled={committing || committable === 0}>
+          {committing ? "Committing…" : `Commit ${committable} rows`}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="max-h-96 overflow-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b border-border text-left">
+                <th className="label-caps px-3 py-2 font-semibold">Date</th>
+                <th className="label-caps px-3 py-2 font-semibold">Description</th>
+                <th className="label-caps px-3 py-2 text-right font-semibold">Amount</th>
+                <th className="label-caps px-3 py-2 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="border-b border-border/60 last:border-b-0">
+                  <td className="whitespace-nowrap px-3 py-1.5 font-money text-xs">{row.date}</td>
+                  <td className="max-w-64 truncate px-3 py-1.5">{row.description}</td>
+                  <td className="px-3 py-1.5 text-right">
+                    <Money amountMinor={row.amountMinor} className="text-xs" />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <Select
+                      value={row.status}
+                      onValueChange={(value) =>
+                        updateRow.mutate(
+                          { id: row.id, status: value as ImportRow["status"] },
+                          { onError: (error) => toast.error(error.message || "Could not update the row") },
+                        )
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-7 w-32 text-xs" aria-label={`Status for row ${row.rowNumber}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="needs_review">Needs review</SelectItem>
+                        <SelectItem value="duplicate">Duplicate</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ---------------------------------- history --------------------------------- */
+
+function HistoryTab() {
+  const imports = useImports();
+  const rollback = useRollbackImport();
+
+  if (imports.isPending) {
+    return <PageSkeleton rows={5} />;
+  }
+  if (imports.isError) {
+    return <ErrorState message={imports.error.message} onRetry={() => void imports.refetch()} />;
+  }
+
+  const batches = imports.data.batches;
+
+  if (batches.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="No imports yet"
+        description="Staged and committed statement imports show up here, with one-click rollback."
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <ul>
+        {batches.map((batch) => (
+          <li key={batch.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
+            <span className="min-w-0">
+              <span className="flex items-center gap-2">
+                <span className="truncate text-sm font-medium">{batch.filename}</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "h-4 px-1 text-[10px]",
+                    batch.status === "committed" && "border-positive/40 text-positive",
+                    batch.status === "staged" && "border-warning/40 text-warning",
+                    batch.status === "rolled_back" && "text-muted-foreground",
+                  )}
+                >
+                  {batch.status.replace("_", " ")}
+                </Badge>
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {batch.account} · {batch.uploadedAt} · {batch.acceptedRows} accepted / {batch.rejectedRows} rejected
+              </span>
+            </span>
+            {batch.status === "committed" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={rollback.isPending}
+                onClick={() =>
+                  rollback.mutate(batch.id, {
+                    onSuccess: (result) => toast.success(`${result.rolledBackCount} transactions rolled back`),
+                    onError: (error) => toast.error(error.message || "Rollback failed"),
+                  })
+                }
+              >
+                <RotateCcw /> Roll back
+              </Button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

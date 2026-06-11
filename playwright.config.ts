@@ -11,7 +11,12 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY= CLERK_SECRET_KEY= npm run dev -- -p 3100",
+    command: "npm run dev -- -p 3100",
+    env: {
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "",
+      CLERK_SECRET_KEY: "",
+      DATABASE_URL: "",
+    },
     url: "http://localhost:3100",
     reuseExistingServer: false,
   },
@@ -19,6 +24,10 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile",
+      use: { ...devices["iPhone 13"] },
     },
   ],
 });

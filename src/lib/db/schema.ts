@@ -351,6 +351,56 @@ export const rateLimits = pgTable(
   }),
 );
 
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull().references(() => ledgers.id),
+    categoryId: uuid("category_id").notNull().references(() => categories.id),
+    /* first day of the budget month, e.g. 2026-06-01 */
+    month: date("month").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: text("currency").notNull().default("USD"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => ({
+    categoryMonthUnique: uniqueIndex("budgets_ledger_category_month_unique")
+      .on(table.ledgerId, table.categoryId, table.month)
+      .where(sql`${table.deletedAt} is null`),
+    monthIdx: index("budgets_ledger_month_idx").on(table.ledgerId, table.month),
+  }),
+);
+
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull().references(() => ledgers.id),
+    /* optional funding account: progress reads from its latest snapshot */
+    accountId: uuid("account_id").references(() => accounts.id),
+    name: text("name").notNull(),
+    color: text("color"),
+    icon: text("icon"),
+    targetAmountMinor: bigint("target_amount_minor", { mode: "number" }).notNull(),
+    startingAmountMinor: bigint("starting_amount_minor", { mode: "number" }).notNull().default(0),
+    /* used when no account is linked */
+    manualProgressMinor: bigint("manual_progress_minor", { mode: "number" }).notNull().default(0),
+    currency: text("currency").notNull().default("USD"),
+    targetDate: date("target_date"),
+    status: text("status").notNull().default("active"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => ({
+    statusIdx: index("goals_ledger_status_idx").on(table.ledgerId, table.status),
+  }),
+);
+
 export const userRelations = relations(users, ({ many }) => ({
   ledgers: many(ledgers),
 }));
@@ -367,4 +417,6 @@ export const ledgerRelations = relations(ledgers, ({ one, many }) => ({
   transactions: many(transactions),
   balanceSnapshots: many(balanceSnapshots),
   exportJobs: many(exportJobs),
+  budgets: many(budgets),
+  goals: many(goals),
 }));

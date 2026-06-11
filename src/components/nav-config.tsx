@@ -21,6 +21,7 @@ export type NavHref =
   | "/credit-cards"
   | "/upload"
   | "/files"
+  | "/imports"
   | "/accounts"
   | "/cashflow"
   | "/net-worth"
@@ -49,6 +50,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/payroll", label: "Payroll", Icon: IconPayroll },
       { href: "/credit-cards", label: "Credit Cards", Icon: IconCreditCard },
+      { href: "/imports", label: "Imports", Icon: IconUpload },
       { href: "/upload", label: "Upload", Icon: IconUpload },
       { href: "/files", label: "Files", Icon: IconFiles },
     ],
@@ -70,7 +72,7 @@ export const ITEM_BY_HREF = new Map<string, NavItem>(ALL_NAV_ITEMS.map((item) =>
 
 export const DEFAULT_SECTIONS: NavSection[] = [
   { id: "core", label: "Core", items: ["/", "/review", "/transactions"] },
-  { id: "workflows", label: "Workflows", items: ["/payroll", "/credit-cards", "/upload", "/files"] },
+  { id: "workflows", label: "Workflows", items: ["/payroll", "/credit-cards", "/imports", "/upload", "/files"] },
   { id: "ledger", label: "Ledger", items: ["/accounts", "/cashflow", "/net-worth", "/rules"] },
 ];
 
