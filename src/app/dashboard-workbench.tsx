@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { format, startOfMonth, subMonths, startOfYear } from "date-fns";
-import { ArrowRight, ClipboardCheck, FileInput, Landmark, PiggyBank, ReceiptText, Target } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Landmark, PiggyBank, ReceiptText, Sparkles, Target } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { CategoryIcon } from "@/components/category-icon";
+import { LoadSampleDataButton } from "@/components/load-sample-data-button";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { AnimatedMoney, Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
@@ -109,25 +112,7 @@ export function DashboardWorkbench() {
   if (accounts.data.length === 0) {
     return (
       <DashboardFrame>
-        <EmptyState
-          icon={Landmark}
-          title="Open the ledger"
-          description="Add your first account, then bring in transactions from a CSV statement export."
-          action={
-            <div className="flex gap-2">
-              <Button asChild>
-                <Link href="/accounts">
-                  <Landmark /> Add an account
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/imports">
-                  <FileInput /> Import a statement
-                </Link>
-              </Button>
-            </div>
-          }
-        />
+        <WelcomePanel />
       </DashboardFrame>
     );
   }
@@ -145,6 +130,7 @@ export function DashboardWorkbench() {
 
   return (
     <DashboardFrame>
+      <OnboardingTour />
       <NetWorthHero
         netWorthMinor={netWorthMinor}
         windowDeltaMinor={windowDeltaMinor}
@@ -154,7 +140,7 @@ export function DashboardWorkbench() {
         hasSnapshots={fullSeries.length > 0}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3" data-tour="kpis">
         <KpiCard label={`${format(today, "MMMM")} income`} amountMinor={incomeMinor} tone="positive" />
         <KpiCard label={`${format(today, "MMMM")} spending`} amountMinor={spendMinor} tone="negative" />
         <KpiCard label={`${format(today, "MMMM")} net`} amountMinor={incomeMinor + spendMinor} tone="auto" />
@@ -175,6 +161,57 @@ export function DashboardWorkbench() {
         <GoalsCard />
       </div>
     </DashboardFrame>
+  );
+}
+
+function WelcomePanel() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="relative px-6 py-12 text-center md:px-12 md:py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 [background:radial-gradient(120%_80%_at_50%_0%,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_65%)]"
+        />
+        <div className="relative mx-auto max-w-xl">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+            <Sparkles className="size-7" strokeWidth={1.6} />
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight md:text-4xl">Welcome to your ledger</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
+            See the whole app in action with a realistic sample ledger — accounts, four months of transactions,
+            budgets, goals, and net-worth history. Clear it any time and start fresh.
+          </p>
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <LoadSampleDataButton size="lg" label="Explore with sample data" />
+            <Button asChild size="lg" variant="outline">
+              <Link href="/accounts">
+                <Landmark /> Start fresh
+              </Link>
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Prefer your real numbers?{" "}
+            <Link href="/imports" className="font-medium text-primary hover:underline">
+              Import a CSV statement
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-px border-t border-border bg-border sm:grid-cols-3">
+        {[
+          { icon: ClipboardCheck, title: "Review fast", body: "A keyboard-first queue with smart category suggestions." },
+          { icon: PiggyBank, title: "Budget with intent", body: "Monthly category plans tracked against real spending." },
+          { icon: Target, title: "Reach your goals", body: "Savings targets with deadlines and live progress." },
+        ].map((feature) => (
+          <div key={feature.title} className="bg-card px-5 py-5">
+            <feature.icon className="size-5 text-primary" strokeWidth={1.7} />
+            <p className="mt-2 text-sm font-semibold">{feature.title}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{feature.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -208,7 +245,7 @@ function NetWorthHero({
   }));
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden" data-tour="net-worth">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(120%_80%_at_15%_0%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_60%)]"
@@ -356,8 +393,11 @@ function CategorySpendCard({ categories, className }: { categories: { name: stri
           <ul className="space-y-3">
             {categories.map((category, index) => (
               <li key={category.name}>
-                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                  <span className="truncate">{category.name}</span>
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <CategoryIcon size="sm" name={category.name} color={`var(--chart-${(index % 8) + 1})`} />
+                    <span className="truncate">{category.name}</span>
+                  </span>
                   <Money amountMinor={-category.totalMinor} className="text-muted-foreground" />
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -421,7 +461,7 @@ function RecentActivityCard({ rows, isPending, className }: { rows: ApiTransacti
 
 function ReviewCard({ count }: { count: number }) {
   return (
-    <Card>
+    <Card data-tour="review-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Review queue</CardTitle>
         <ClipboardCheck className="size-4 text-muted-foreground" />
@@ -455,7 +495,7 @@ function BudgetsCard({ month }: { month: string }) {
   const top = [...rows].sort((left, right) => right.spentMinor - left.spentMinor).slice(0, 4);
 
   return (
-    <Card>
+    <Card data-tour="budgets-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Budgets</CardTitle>
         <PiggyBank className="size-4 text-muted-foreground" />
@@ -507,7 +547,7 @@ function GoalsCard() {
   const active = (goals.data ?? []).filter((goal) => goal.status === "active").slice(0, 3);
 
   return (
-    <Card>
+    <Card data-tour="goals-card">
       <CardHeader className="flex items-center justify-between">
         <CardTitle className="label-caps font-sans">Goals</CardTitle>
         <Target className="size-4 text-muted-foreground" />

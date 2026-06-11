@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { START_TOUR_EVENT } from "@/components/onboarding-tour";
 import {
   ArrowLeftRight,
   ClipboardCheck,
+  Compass,
   FileInput,
   LayoutDashboard,
   Landmark,
@@ -87,6 +89,19 @@ export function CommandMenu() {
           >
             {resolvedTheme === "light" ? <Moon /> : <Sun />}
             Switch to {resolvedTheme === "light" ? "dark" : "light"} mode
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Help">
+          <CommandItem
+            onSelect={() => {
+              setOpen(false);
+              router.push("/");
+              setTimeout(() => window.dispatchEvent(new Event(START_TOUR_EVENT)), 600);
+            }}
+          >
+            <Compass />
+            Replay the welcome tour
           </CommandItem>
         </CommandGroup>
       </CommandList>

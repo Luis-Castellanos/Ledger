@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { ArrowLeftRight, Check, ClipboardCheck, SkipForward, Sparkles, Undo2, Wand2 } from "lucide-react";
+import { ArrowLeftRight, Check, ClipboardCheck, SkipForward, Undo2, Wand2 } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
+import { CategoryIcon } from "@/components/category-icon";
 import { CategoryPicker } from "@/components/category-picker";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
@@ -208,7 +209,7 @@ export function ReviewWorkbench() {
                   className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-left transition-colors hover:bg-primary/10"
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <Sparkles className="size-4 shrink-0 text-primary" />
+                    <CategoryIcon size="sm" name={suggestion.name} color={suggestion.color ?? "var(--primary)"} />
                     <span className="truncate text-sm">
                       <span className="font-medium">{suggestion.name}</span>
                       <span className="text-muted-foreground"> — matched {suggestion.basedOn} prior{suggestion.basedOn === 1 ? "" : "s"}</span>

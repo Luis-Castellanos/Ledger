@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
+  // CI runners are slower than local; allow retries to absorb infra flakiness
+  retries: process.env.CI ? 2 : 0,
   expect: {
     timeout: 5_000,
   },

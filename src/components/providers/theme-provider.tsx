@@ -8,7 +8,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <NextThemesProvider
       attribute="data-theme"
       themes={["dark", "light"]}
-      defaultTheme="dark"
+      defaultTheme="light"
       storageKey={THEME_STORAGE_KEY}
       disableTransitionOnChange
     >

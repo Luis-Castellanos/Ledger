@@ -2,9 +2,10 @@
 @import "tw-animate-css";
 
 /*
- * Counting House — design tokens
- * Private-bank editorial: green-ink surfaces, brass accent, hairline borders.
- * Dark is the default theme (:root); light overrides under [data-theme="light"].
+ * Fresh Ledger — design tokens
+ * Warm, bright, personal-finance friendly: ivory paper ground, fresh green
+ * primary, soft colorful category accents. Light is the default theme
+ * (:root); the green-ink dark theme lives under [data-theme="dark"].
  */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -59,113 +60,112 @@
 }
 
 :root {
-  color-scheme: dark;
-  --radius: 0.625rem;
+  color-scheme: light;
+  --radius: 0.75rem;
 
-  /* override legacy.css font stacks (declared later in the cascade, so these win) */
+  /* font stacks (raw custom properties so plain CSS can resolve them) */
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* green-ink ground */
-  --background: #0d1210;
-  --foreground: #e9e6dd;
-  --card: #141b17;
-  --card-foreground: #e9e6dd;
-  --popover: #18211c;
-  --popover-foreground: #e9e6dd;
+  /* warm ivory ground, white cards */
+  --background: #faf9f5;
+  --foreground: #252d28;
+  --card: #ffffff;
+  --card-foreground: #252d28;
+  --popover: #ffffff;
+  --popover-foreground: #252d28;
 
-  /* brass */
-  --primary: #c2a14d;
-  --primary-foreground: #161208;
-  --secondary: #1b2420;
-  --secondary-foreground: #d8d4c8;
-  --muted: #1a221e;
-  --muted-foreground: #97a39a;
-  --accent: #202a25;
-  --accent-foreground: #e9e6dd;
-  --destructive: #c96f5e;
-  --destructive-foreground: #1a0f0c;
+  /* fresh green */
+  --primary: #2e9d62;
+  --primary-foreground: #ffffff;
+  --secondary: #f0efe7;
+  --secondary-foreground: #34403a;
+  --muted: #f2f1ea;
+  --muted-foreground: #6d7a71;
+  --accent: #e9f5ee;
+  --accent-foreground: #1e3a2b;
+  --destructive: #d9544d;
+  --destructive-foreground: #ffffff;
 
-  /* hairlines, not shadows */
-  --border: rgba(233, 230, 221, 0.09);
-  --input: rgba(233, 230, 221, 0.14);
-  --ring: #c2a14d;
+  --border: rgba(37, 45, 40, 0.1);
+  --input: rgba(37, 45, 40, 0.16);
+  --ring: #2e9d62;
 
   /* flow-state semantics */
-  --positive: #84ad72;
-  --negative: #cf7a68;
-  --transfer: #849cba;
-  --warning: #d9b861;
+  --positive: #2e9d62;
+  --negative: #d9544d;
+  --transfer: #5b7fbf;
+  --warning: #c28e12;
 
-  /* muted categorical ramp */
-  --chart-1: #c2a14d;
-  --chart-2: #84ad72;
-  --chart-3: #849cba;
-  --chart-4: #cf7a68;
-  --chart-5: #6d8a68;
-  --chart-6: #d9b861;
-  --chart-7: #a98ea4;
-  --chart-8: #8fa6aa;
+  /* friendly categorical ramp */
+  --chart-1: #2e9d62;
+  --chart-2: #4e8fd9;
+  --chart-3: #e8b23a;
+  --chart-4: #e2654e;
+  --chart-5: #3aa8a0;
+  --chart-6: #8a6fd1;
+  --chart-7: #d86fa4;
+  --chart-8: #7b8a99;
 
-  --sidebar: #101613;
-  --sidebar-foreground: #cfccc1;
-  --sidebar-primary: #c2a14d;
-  --sidebar-primary-foreground: #161208;
-  --sidebar-accent: #1c2620;
-  --sidebar-accent-foreground: #e9e6dd;
-  --sidebar-border: rgba(233, 230, 221, 0.07);
-  --sidebar-ring: #c2a14d;
+  --sidebar: #f4f2eb;
+  --sidebar-foreground: #3c463f;
+  --sidebar-primary: #2e9d62;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7f1ea;
+  --sidebar-accent-foreground: #1e3a2b;
+  --sidebar-border: rgba(37, 45, 40, 0.08);
+  --sidebar-ring: #2e9d62;
 }
 
-[data-theme="light"] {
-  color-scheme: light;
+[data-theme="dark"] {
+  color-scheme: dark;
 
-  /* warm paper */
-  --background: #faf8f2;
-  --foreground: #1c2620;
-  --card: #fffefa;
-  --card-foreground: #1c2620;
-  --popover: #fffefa;
-  --popover-foreground: #1c2620;
+  /* green-ink evening mode, brightened */
+  --background: #131917;
+  --foreground: #e9ede9;
+  --card: #1a211e;
+  --card-foreground: #e9ede9;
+  --popover: #1f2724;
+  --popover-foreground: #e9ede9;
 
-  --primary: #97772c;
-  --primary-foreground: #fdfbf4;
-  --secondary: #efece2;
-  --secondary-foreground: #2c382f;
-  --muted: #f1eee4;
-  --muted-foreground: #65705f;
-  --accent: #ece9dd;
-  --accent-foreground: #1c2620;
-  --destructive: #ad4f3e;
-  --destructive-foreground: #fdfbf4;
+  --primary: #4fbf7e;
+  --primary-foreground: #0c150f;
+  --secondary: #232c28;
+  --secondary-foreground: #d4dad4;
+  --muted: #212a26;
+  --muted-foreground: #93a399;
+  --accent: #28332e;
+  --accent-foreground: #e9ede9;
+  --destructive: #e07a6c;
+  --destructive-foreground: #1a0f0c;
 
-  --border: rgba(28, 38, 32, 0.12);
-  --input: rgba(28, 38, 32, 0.18);
-  --ring: #97772c;
+  --border: rgba(233, 237, 233, 0.1);
+  --input: rgba(233, 237, 233, 0.16);
+  --ring: #4fbf7e;
 
-  --positive: #4c7a3d;
-  --negative: #ad4f3e;
-  --transfer: #4e6b8f;
-  --warning: #8f7321;
+  --positive: #69c28a;
+  --negative: #e07a6c;
+  --transfer: #84a3cf;
+  --warning: #ddb554;
 
-  --chart-1: #97772c;
-  --chart-2: #4c7a3d;
-  --chart-3: #4e6b8f;
-  --chart-4: #ad4f3e;
-  --chart-5: #5e7d5a;
-  --chart-6: #b08f35;
-  --chart-7: #84657e;
-  --chart-8: #5d7a7f;
+  --chart-1: #4fbf7e;
+  --chart-2: #6ea7e8;
+  --chart-3: #e5bc55;
+  --chart-4: #e58168;
+  --chart-5: #57bbb2;
+  --chart-6: #a48ee0;
+  --chart-7: #e08cbb;
+  --chart-8: #93a6b3;
 
-  --sidebar: #f3f0e7;
-  --sidebar-foreground: #3a463c;
-  --sidebar-primary: #97772c;
-  --sidebar-primary-foreground: #fdfbf4;
-  --sidebar-accent: #e8e4d6;
-  --sidebar-accent-foreground: #1c2620;
-  --sidebar-border: rgba(28, 38, 32, 0.1);
-  --sidebar-ring: #97772c;
+  --sidebar: #161d1a;
+  --sidebar-foreground: #cdd6cf;
+  --sidebar-primary: #4fbf7e;
+  --sidebar-primary-foreground: #0c150f;
+  --sidebar-accent: #243029;
+  --sidebar-accent-foreground: #e9ede9;
+  --sidebar-border: rgba(233, 237, 233, 0.07);
+  --sidebar-ring: #4fbf7e;
 }
 
 @layer base {
@@ -217,6 +217,150 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/*
+ * ── Polish layer ───────────────────────────────────────────────────────
+ * Layered elevation, smooth motion, refined controls. Cascades through
+ * shadcn data-slots so every surface lifts without per-component edits.
+ */
+
+:root {
+  --shadow-card: 0 1px 2px rgba(37, 45, 40, 0.04), 0 2px 6px rgba(37, 45, 40, 0.05);
+  --shadow-elevated: 0 6px 16px rgba(37, 45, 40, 0.08), 0 16px 40px rgba(37, 45, 40, 0.1);
+  --shadow-primary: 0 1px 2px rgba(20, 83, 45, 0.18), 0 2px 8px rgba(46, 157, 98, 0.22);
+}
+
+[data-theme="dark"] {
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --shadow-primary: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(79, 191, 126, 0.25);
+}
+
+@layer base {
+  /* refined resting elevation for cards */
+  [data-slot="card"] {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 200ms ease, border-color 200ms ease;
+  }
+
+  /* floating surfaces get the deeper, softer shadow */
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="select-content"],
+  [data-slot="command-dialog"] {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* primary buttons read as raised, press in on click */
+  [data-slot="button"] {
+    transition: background-color 160ms ease, box-shadow 160ms ease, transform 80ms ease, color 160ms ease;
+  }
+  [data-slot="button"].bg-primary,
+  [data-slot="button"][data-variant="default"] {
+    box-shadow: var(--shadow-primary);
+  }
+  [data-slot="button"]:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+
+  /* inputs + triggers: calm resting border, confident focus */
+  [data-slot="input"],
+  [data-slot="select-trigger"],
+  [data-slot="textarea"] {
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  /* thin, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 16%, transparent);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 28%, transparent);
+    background-clip: padding-box;
+  }
+
+  /* sidebar active item: brand-tinted pill with a hairline */
+  [data-slot="sidebar-menu-button"][data-active="true"] {
+    background: color-mix(in oklab, var(--sidebar-primary) 12%, transparent);
+    color: var(--sidebar-accent-foreground);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sidebar-primary) 22%, transparent);
+    font-weight: 600;
+  }
+}
+
+/* page content drifts up gently on mount */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility page-enter {
+  animation: page-enter 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
+/* onboarding tour popovers follow the app tokens */
+.driver-popover {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgba(37, 45, 40, 0.14);
+}
+
+.driver-popover-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.driver-popover-description {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.driver-popover-navigation-btns button {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  padding: 5px 12px;
+  text-shadow: none;
+  font-weight: 600;
+}
+
+.driver-popover-navigation-btns button.driver-popover-prev-btn {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
 }
 
 /* letterspaced small-caps section labels */

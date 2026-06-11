@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { CheckCheck, Download, ReceiptText, Search, Undo2, X } from "lucide-react";
+import { CategoryIcon } from "@/components/category-icon";
 import { CategoryPicker } from "@/components/category-picker";
 import { ExportButton } from "@/components/export-button";
 import { Money } from "@/components/money";
@@ -442,6 +443,7 @@ function Register({
 }) {
   const groupByDate = sort === "date_desc" || sort === "date_asc";
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -486,6 +488,12 @@ function Register({
                     aria-label={`Select ${row.merchant}`}
                   />
                 </span>
+                <CategoryIcon
+                  icon={categoryById.get(row.categoryId ?? "")?.icon}
+                  name={row.category}
+                  color={categoryById.get(row.categoryId ?? "")?.color}
+                  size="md"
+                />
                 <span className="hidden w-20 shrink-0 font-money text-xs text-muted-foreground md:block">
                   {format(new Date(`${row.date}T00:00:00`), "MMM d")}
                 </span>

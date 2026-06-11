@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Archive, ArchiveRestore, Play, Plus, SlidersHorizontal, Trash2, Wand2 } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
+import { CategoryIcon } from "@/components/category-icon";
 import { CategoryPicker } from "@/components/category-picker";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/states";
@@ -287,7 +288,7 @@ function CategoriesPanel() {
             )}
           >
             <span className="flex min-w-0 items-center gap-2 text-sm">
-              <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: category.color ?? "var(--muted-foreground)" }} />
+              <CategoryIcon size="sm" icon={category.icon} name={category.name} color={category.color} />
               <span className="truncate">{category.name}</span>
               {category.isSystem ? (
                 <Badge variant="outline" className="h-4 shrink-0 px-1 text-[10px] text-muted-foreground">

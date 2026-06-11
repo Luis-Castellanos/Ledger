@@ -4,11 +4,23 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Download, Moon, Sun } from "lucide-react";
+import { Download, Moon, RotateCcw, Sparkles, Sun } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
 import { ExportButton } from "@/components/export-button";
+import { LoadSampleDataButton } from "@/components/load-sample-data-button";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState, PageSkeleton } from "@/components/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError } from "@/lib/api/client";
+import { useHasLedgerData, useLoadSampleData, useResetLedger } from "@/lib/api/queries/sample-data";
 import { useAuditEvents, useMe, useUpdateLedger, useUpdateProfile } from "@/lib/api/queries/settings";
 import { cn } from "@/lib/utils";
 
@@ -116,8 +129,8 @@ function AppearanceTab() {
         <div className="flex gap-3">
           {(
             [
-              { key: "dark", label: "Green ink", icon: Moon, description: "Dark, the house default" },
-              { key: "light", label: "Paper", icon: Sun, description: "Warm light" },
+              { key: "light", label: "Daylight", icon: Sun, description: "Bright and warm, the default" },
+              { key: "dark", label: "Evening", icon: Moon, description: "Green-ink dark mode" },
             ] as const
           ).map((option) => (
             <button
@@ -188,11 +201,102 @@ function LedgerTab({ initialName, currency }: { initialName: string; currency: s
   );
 }
 
+function SampleDataCard() {
+  const status = useHasLedgerData();
+  const load = useLoadSampleData();
+  const reset = useResetLedger();
+  const hasData = status.data?.hasData;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="label-caps font-sans">Sample data</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Explore every feature with a realistic ledger — four months of transactions, budgets, goals, and net-worth
+          history. {hasData ? "Replacing clears your current data first." : "Loads into your empty ledger."}
+        </p>
+        {hasData ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="outline" disabled={reset.isPending || load.isPending}>
+                <Sparkles /> Replace with sample data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Replace everything with sample data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This clears your current accounts, transactions, budgets, goals, and rules, then loads a fresh sample
+                  ledger. Your category list is kept. This can&apos;t be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep my data</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() =>
+                    reset.mutate(undefined, {
+                      onSuccess: () =>
+                        load.mutate(undefined, {
+                          onSuccess: (result) =>
+                            toast.success(`Sample ledger loaded — ${result.data.transactions} transactions`),
+                          onError: (error) => toast.error(error.message || "Could not load sample data"),
+                        }),
+                      onError: (error) => toast.error(error.message || "Could not reset the ledger"),
+                    })
+                  }
+                >
+                  Replace
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <LoadSampleDataButton size="sm" variant="outline" />
+        )}
+        {hasData ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="text-muted-foreground" disabled={reset.isPending}>
+                <RotateCcw /> Reset ledger to empty
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all ledger data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Removes every account, transaction, budget, goal, and rule. Your category list is kept. This
+                  can&apos;t be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() =>
+                    reset.mutate(undefined, {
+                      onSuccess: () => toast.success("Ledger reset to empty"),
+                      onError: (error) => toast.error(error.message || "Could not reset the ledger"),
+                    })
+                  }
+                >
+                  Reset everything
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DataTab() {
   const audit = useAuditEvents();
 
   return (
     <div className="space-y-4">
+      <SampleDataCard />
       <Card>
         <CardHeader>
           <CardTitle className="label-caps font-sans">Exports</CardTitle>

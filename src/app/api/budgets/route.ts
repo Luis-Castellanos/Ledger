@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         parentId: categories.parentId,
         name: categories.name,
         color: categories.color,
+        icon: categories.icon,
         flowType: categories.flowType,
       })
       .from(categories)
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
         categoryId: row.categoryId,
         category: category?.name ?? "Unknown",
         color: category?.color ?? null,
+        icon: category?.icon ?? null,
         amountMinor: Number(row.amountMinor),
         spentMinor,
         remainingMinor: Number(row.amountMinor) - spentMinor,

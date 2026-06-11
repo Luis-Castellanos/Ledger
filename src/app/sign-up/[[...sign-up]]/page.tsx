@@ -1,4 +1,5 @@
 import { SignUp } from "@clerk/nextjs";
+import { AuthShell, clerkAppearance } from "@/components/auth-shell";
 
 export default function SignUpPage() {
   if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -6,20 +7,20 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="auth-page">
-      <SignUp />
-    </main>
+    <AuthShell>
+      <SignUp appearance={clerkAppearance} />
+    </AuthShell>
   );
 }
 
 function AuthSetupFallback({ title }: { title: string }) {
   return (
-    <main className="auth-page">
-      <section className="auth-fallback">
-        <p className="panel-label">Clerk</p>
-        <h1>{title}</h1>
-        <p>Add Clerk keys to `.env.local` to enable authentication.</p>
+    <AuthShell>
+      <section className="max-w-sm text-center">
+        <p className="label-caps">Clerk</p>
+        <h1 className="mt-1 font-display text-2xl font-semibold">{title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Add Clerk keys to `.env.local` to enable authentication.</p>
       </section>
-    </main>
+    </AuthShell>
   );
 }
