@@ -12,7 +12,6 @@ import {
   Settings,
   SlidersHorizontal,
   TrendingUp,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
@@ -57,7 +56,6 @@ const SIDEBAR_GROUPS: SidebarNavGroup[] = [
       { href: "/accounts", label: "Accounts", icon: Landmark },
       { href: "/cashflow", label: "Cashflow", icon: ArrowLeftRight },
       { href: "/net-worth", label: "Net Worth", icon: TrendingUp },
-      { href: "/payroll", label: "Payroll", icon: Wallet },
     ],
   },
   {
