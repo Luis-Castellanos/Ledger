@@ -6,7 +6,6 @@ import { useTheme } from "next-themes";
 import {
   ArrowLeftRight,
   ClipboardCheck,
-  CreditCard,
   FileInput,
   LayoutDashboard,
   Landmark,
@@ -34,7 +33,6 @@ const DESTINATIONS = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/cashflow", label: "Cashflow", icon: ArrowLeftRight },
   { href: "/net-worth", label: "Net Worth", icon: TrendingUp },
-  { href: "/credit-cards", label: "Credit Cards", icon: CreditCard },
   { href: "/imports", label: "Imports", icon: FileInput },
   { href: "/rules", label: "Rules", icon: SlidersHorizontal },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
   ClipboardCheck,
-  CreditCard,
   FileInput,
   FolderOpen,
   LayoutDashboard,
@@ -60,7 +59,6 @@ const SIDEBAR_GROUPS: SidebarNavGroup[] = [
       { href: "/accounts", label: "Accounts", icon: Landmark },
       { href: "/cashflow", label: "Cashflow", icon: ArrowLeftRight },
       { href: "/net-worth", label: "Net Worth", icon: TrendingUp },
-      { href: "/credit-cards", label: "Credit Cards", icon: CreditCard },
       { href: "/payroll", label: "Payroll", icon: Wallet },
     ],
   },

@@ -13,10 +13,10 @@ export function useAccounts() {
   });
 }
 
-export function useBalanceSnapshots() {
+export function useBalanceSnapshots(limit = 1000) {
   return useQuery({
-    queryKey: queryKeys.snapshots,
-    queryFn: () => apiFetch.get<{ snapshots: ApiBalanceSnapshot[] }>("/api/balance-snapshots"),
+    queryKey: [...queryKeys.snapshots, limit],
+    queryFn: () => apiFetch.get<{ snapshots: ApiBalanceSnapshot[] }>(`/api/balance-snapshots?limit=${limit}`),
     select: (response) => response.snapshots,
   });
 }

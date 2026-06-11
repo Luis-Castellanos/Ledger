@@ -1,7 +1,5 @@
-import { Download, PanelLeft } from "lucide-react";
-import { AccountsWorkbench } from "./accounts-workbench";
 import { AppShell } from "@/components/app-shell";
-import { ExportButton } from "@/components/export-button";
+import { AccountsWorkbench } from "./accounts-workbench";
 
 type AccountsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -9,31 +7,11 @@ type AccountsPageProps = {
 
 export default async function AccountsPage({ searchParams }: AccountsPageProps) {
   const params = (await searchParams) ?? {};
-  const initialAccount = singleValue(params.account) ?? "";
+  const single = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
 
   return (
-    <AppShell active="Accounts">
-      <section className="min-w-0">
-        <header className="fidelity-dashboard-header flex min-h-[92px] items-start justify-between gap-4 px-8 py-6">
-          <div>
-            <p className="text-[12px] uppercase tracking-[0.18em] text-[var(--muted)]">Ledger sources</p>
-            <h1 className="mt-1 text-[30px] font-semibold leading-tight tracking-normal text-[var(--ink-strong)]">Accounts</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <ExportButton className="icon-button" aria-label="Export account register" format="backup_package">
-              <Download size={17} />
-            </ExportButton>
-            <button className="icon-button lg:hidden" aria-label="Toggle navigation">
-              <PanelLeft size={18} />
-            </button>
-          </div>
-        </header>
-        <AccountsWorkbench initialAccount={initialAccount} />
-      </section>
+    <AppShell active="/accounts">
+      <AccountsWorkbench initialAccountName={single(params.account)} initialType={single(params.type)} />
     </AppShell>
   );
-}
-
-function singleValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
 }

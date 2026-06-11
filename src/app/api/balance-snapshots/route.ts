@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, balanceSnapshots } from "@/lib/db/schema";
@@ -7,11 +8,21 @@ import { createBalanceSnapshotApiSchema } from "@/lib/finance/account";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
-export async function GET() {
+const listQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  accountId: z.string().uuid().optional(),
+});
+
+export async function GET(request: NextRequest) {
   const context = await getOrCreateCurrentLedger();
 
   if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const params = listQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
+  if (!params.success) {
+    return NextResponse.json({ error: "Invalid snapshots query", issues: params.error.flatten().fieldErrors }, { status: 400 });
   }
 
   const db = getDb();
@@ -29,9 +40,14 @@ export async function GET() {
     })
     .from(balanceSnapshots)
     .innerJoin(accounts, and(eq(accounts.id, balanceSnapshots.accountId), eq(accounts.ledgerId, context.ledger.id), isNull(accounts.deletedAt)))
-    .where(eq(balanceSnapshots.ledgerId, context.ledger.id))
+    .where(
+      and(
+        eq(balanceSnapshots.ledgerId, context.ledger.id),
+        ...(params.data.accountId ? [eq(balanceSnapshots.accountId, params.data.accountId)] : []),
+      ),
+    )
     .orderBy(desc(balanceSnapshots.asOfDate), desc(balanceSnapshots.createdAt))
-    .limit(100);
+    .limit(params.data.limit);
 
   return NextResponse.json({ snapshots: rows });
 }
