@@ -10,10 +10,12 @@ import {
   LayoutDashboard,
   Landmark,
   Moon,
+  PiggyBank,
   ReceiptText,
   Settings,
   SlidersHorizontal,
   Sun,
+  Target,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -33,6 +35,8 @@ const DESTINATIONS = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/cashflow", label: "Cashflow", icon: ArrowLeftRight },
   { href: "/net-worth", label: "Net Worth", icon: TrendingUp },
+  { href: "/budgets", label: "Budgets", icon: PiggyBank },
+  { href: "/goals", label: "Goals", icon: Target },
   { href: "/imports", label: "Imports", icon: FileInput },
   { href: "/rules", label: "Rules", icon: SlidersHorizontal },
   { href: "/settings", label: "Settings", icon: Settings },

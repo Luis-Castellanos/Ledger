@@ -16,6 +16,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ApiError } from "@/lib/api/client";
 import { useAccounts, useBalanceSnapshots } from "@/lib/api/queries/accounts";
+import { useBudgets, useGoals } from "@/lib/api/queries/budgets";
 import { useReviewCount } from "@/lib/api/queries/review";
 import { useTransactions } from "@/lib/api/queries/transactions";
 import { buildNetWorthSeries, filterSeriesByRange } from "@/lib/finance/net-worth";
@@ -170,16 +171,8 @@ export function DashboardWorkbench() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <ReviewCard count={reviewCount.data ?? 0} />
-        <PlaceholderCard
-          icon={PiggyBank}
-          title="Budgets"
-          description="Monthly category budgets are on the way. Spending already tracks against categories, so they will light up the moment they land."
-        />
-        <PlaceholderCard
-          icon={Target}
-          title="Goals"
-          description="Savings goals with target dates arrive with budgets — both are next on the build slate."
-        />
+        <BudgetsCard month={format(today, "yyyy-MM")} />
+        <GoalsCard />
       </div>
     </DashboardFrame>
   );
@@ -456,15 +449,105 @@ function ReviewCard({ count }: { count: number }) {
   );
 }
 
-function PlaceholderCard({ icon: Icon, title, description }: { icon: typeof PiggyBank; title: string; description: string }) {
+function BudgetsCard({ month }: { month: string }) {
+  const budgets = useBudgets(month);
+  const rows = budgets.data?.rows ?? [];
+  const top = [...rows].sort((left, right) => right.spentMinor - left.spentMinor).slice(0, 4);
+
   return (
-    <Card className="border-dashed">
+    <Card>
       <CardHeader className="flex items-center justify-between">
-        <CardTitle className="label-caps font-sans">{title}</CardTitle>
-        <Icon className="size-4 text-muted-foreground/60" />
+        <CardTitle className="label-caps font-sans">Budgets</CardTitle>
+        <PiggyBank className="size-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        {rows.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">No budgets set for this month yet.</p>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/budgets">
+                Plan the month <ArrowRight />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            {top.map((row) => {
+              const percent = row.amountMinor > 0 ? Math.min(100, Math.round((row.spentMinor / row.amountMinor) * 100)) : 0;
+              const over = row.remainingMinor < 0;
+              return (
+                <li key={row.id}>
+                  <div className="mb-0.5 flex items-baseline justify-between gap-2 text-xs">
+                    <span className="truncate">{row.category}</span>
+                    <span className={cn("font-money", over ? "text-negative" : "text-muted-foreground")}>{percent}%</span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.max(3, percent)}%`, background: over ? "var(--negative)" : "var(--primary)" }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+            <li className="pt-1">
+              <Link href="/budgets" className="text-xs text-muted-foreground hover:underline">
+                All budgets →
+              </Link>
+            </li>
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GoalsCard() {
+  const goals = useGoals();
+  const active = (goals.data ?? []).filter((goal) => goal.status === "active").slice(0, 3);
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <CardTitle className="label-caps font-sans">Goals</CardTitle>
+        <Target className="size-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        {active.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">No savings goals yet — give a number a deadline.</p>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/goals">
+                Set a goal <ArrowRight />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            {active.map((goal) => (
+              <li key={goal.id}>
+                <div className="mb-0.5 flex items-baseline justify-between gap-2 text-xs">
+                  <span className="truncate">{goal.name}</span>
+                  <span className="font-money text-muted-foreground">{goal.percent}%</span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(3, goal.percent)}%`,
+                      background: goal.percent >= 100 ? "var(--positive)" : "var(--chart-3)",
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+            <li className="pt-1">
+              <Link href="/goals" className="text-xs text-muted-foreground hover:underline">
+                All goals →
+              </Link>
+            </li>
+          </ul>
+        )}
       </CardContent>
     </Card>
   );

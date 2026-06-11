@@ -43,6 +43,13 @@
       "when": 1780098764094,
       "tag": "0005_sweet_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781159286376,
+      "tag": "0006_tan_annihilus",
+      "breakpoints": true
     }
   ]
 }

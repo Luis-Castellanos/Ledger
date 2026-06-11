@@ -8,9 +8,11 @@ import {
   FileInput,
   LayoutDashboard,
   Landmark,
+  PiggyBank,
   ReceiptText,
   Settings,
   SlidersHorizontal,
+  Target,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -56,6 +58,13 @@ const SIDEBAR_GROUPS: SidebarNavGroup[] = [
       { href: "/accounts", label: "Accounts", icon: Landmark },
       { href: "/cashflow", label: "Cashflow", icon: ArrowLeftRight },
       { href: "/net-worth", label: "Net Worth", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Plan",
+    items: [
+      { href: "/budgets", label: "Budgets", icon: PiggyBank },
+      { href: "/goals", label: "Goals", icon: Target },
     ],
   },
   {
