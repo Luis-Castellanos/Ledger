@@ -6,8 +6,6 @@ import { MobileDock } from "@/components/mobile-dock";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
-  void active;
-
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -16,7 +14,9 @@ export function AppShell({ active, children }: { active: string; children: React
           <SidebarTrigger />
           <span className="font-display text-base font-semibold tracking-tight">Ledger</span>
         </div>
-        {children}
+        <div key={active} className="page-enter">
+          {children}
+        </div>
       </SidebarInset>
       <MobileDock />
       <CommandMenu />

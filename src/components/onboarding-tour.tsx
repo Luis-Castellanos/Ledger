@@ -108,7 +108,10 @@ export function OnboardingTour() {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      if (!localStorage.getItem(TOUR_DONE_KEY) && window.innerWidth >= 768) {
+      // only auto-run on a populated dashboard (the net-worth card is present);
+      // a brand-new empty ledger is onboarded by the welcome panel instead
+      const populated = document.querySelector("[data-tour='net-worth']");
+      if (!localStorage.getItem(TOUR_DONE_KEY) && window.innerWidth >= 768 && populated) {
         timer = setTimeout(runTour, 900);
       }
     } catch {
