@@ -11,8 +11,6 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
-    // disable UI motion under test so animation timing can't race assertions
-    reducedMotion: "reduce",
   },
   webServer: {
     command: "npm run dev -- -p 3100",

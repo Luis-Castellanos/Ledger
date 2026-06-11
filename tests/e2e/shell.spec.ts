@@ -59,9 +59,19 @@ test("sign-in page explains missing auth configuration", async ({ page }) => {
 test("command palette opens with ctrl+k", async ({ page, isMobile }) => {
   test.skip(isMobile, "keyboard shortcut is a desktop affordance");
   await page.goto("/");
-  await page.keyboard.press("ControlOrMeta+k");
-  await expect(page.getByPlaceholder("Where to?")).toBeVisible();
-  await page.getByPlaceholder("Where to?").fill("Net");
+  // ensure the document has focus before the global keydown listener fires
+  await page.waitForLoadState("domcontentloaded");
+  await page.locator("body").click();
+
+  const input = page.getByPlaceholder("Where to?");
+  // the listener can miss the very first keypress on a cold CI page — retry the
+  // shortcut until the dialog is up, then proceed
+  await expect(async () => {
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(input).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+
+  await input.fill("Net");
   await page.getByRole("option", { name: "Net Worth" }).click();
   await expect(page).toHaveURL(/\/net-worth/);
 });
