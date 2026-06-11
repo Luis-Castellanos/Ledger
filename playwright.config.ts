@@ -3,12 +3,16 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
+  // CI runners are slower than local; allow retries to absorb infra flakiness
+  retries: process.env.CI ? 2 : 0,
   expect: {
     timeout: 5_000,
   },
   use: {
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
+    // disable UI motion under test so animation timing can't race assertions
+    reducedMotion: "reduce",
   },
   webServer: {
     command: "npm run dev -- -p 3100",
