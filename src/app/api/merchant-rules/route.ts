@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { getOrCreateCurrentLedger } from "@/lib/auth/current-ledger";
 import { getDb } from "@/lib/db/client";
 import { accounts, auditEvents, categories, merchantRules } from "@/lib/db/schema";
-import { createMerchantRuleApiSchema, normalizeRuleMatchValue } from "@/lib/finance/rules";
+import { createMerchantRuleApiSchema, normalizeRuleMatchValue, updateMerchantRuleApiSchema } from "@/lib/finance/rules";
 import { parseJsonRequest } from "@/lib/http/request";
 import { checkUserMutationRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
 
@@ -111,4 +111,56 @@ export async function POST(request: Request) {
     },
     { status: 201 },
   );
+}
+
+export async function PATCH(request: Request) {
+  const context = await getOrCreateCurrentLedger();
+
+  if (!context) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkUserMutationRateLimit(context.user.id, "merchant-rules");
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit);
+  }
+
+  const parsed = await parseJsonRequest(request, updateMerchantRuleApiSchema, "merchant rule update");
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(merchantRules)
+    .where(and(eq(merchantRules.id, parsed.data.id), eq(merchantRules.ledgerId, context.ledger.id), isNull(merchantRules.deletedAt)))
+    .limit(1);
+
+  if (!existing) {
+    return NextResponse.json({ error: "Rule not found" }, { status: 404 });
+  }
+
+  const [rule] = await db
+    .update(merchantRules)
+    .set({
+      ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
+      ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
+      ...(parsed.data.action === "delete" ? { deletedAt: new Date() } : {}),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(merchantRules.id, parsed.data.id), eq(merchantRules.ledgerId, context.ledger.id)))
+    .returning();
+
+  await db.insert(auditEvents).values({
+    ledgerId: context.ledger.id,
+    actorUserId: context.user.id,
+    action: parsed.data.action === "delete" ? "merchant_rule.deleted" : "merchant_rule.updated",
+    entityType: "merchant_rule",
+    entityId: rule.id,
+    before: existing,
+    after: rule,
+  });
+
+  return NextResponse.json({ rule });
 }

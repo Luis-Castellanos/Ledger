@@ -42,6 +42,17 @@ export const createMerchantRuleApiSchema = createMerchantRuleSchema.extend({
   accountId: z.string().uuid().optional(),
 });
 
+export const updateMerchantRuleApiSchema = z
+  .object({
+    id: z.string().uuid(),
+    isActive: z.boolean().optional(),
+    priority: z.number().int().min(1).max(1_000).optional(),
+    action: z.enum(["delete"]).optional(),
+  })
+  .refine((value) => value.isActive !== undefined || value.priority !== undefined || value.action !== undefined, {
+    message: "At least one rule field is required.",
+  });
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateMerchantRuleInput = z.infer<typeof createMerchantRuleSchema>;
