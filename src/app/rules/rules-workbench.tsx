@@ -52,7 +52,7 @@ export function RulesWorkbench() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-5 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 md:px-8 md:py-8">
       <PageHeader
         eyebrow="Classification"
         title="Rules"

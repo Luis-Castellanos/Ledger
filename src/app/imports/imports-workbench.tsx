@@ -44,7 +44,7 @@ export function ImportsWorkbench({ initialTab }: { initialTab: TabKey }) {
   const unauthorized = accounts.error instanceof ApiError && accounts.error.status === 401;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6 md:px-8 md:py-8">
       <PageHeader eyebrow="Data in" title="Imports" description="Statements are the source material — bring them in here." />
 
       {unauthorized ? (

@@ -85,7 +85,7 @@ export function AccountsWorkbench({
   const activeAccount = allAccounts.find((account) => account.id === activeAccountId) ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6 md:px-8 md:py-8">
       <PageHeader
         eyebrow="Ledger sources"
         title="Accounts"
@@ -136,7 +136,7 @@ export function AccountsWorkbench({
           {filtered.length === 0 ? (
             <EmptyState title="No accounts of this type" className="py-10" />
           ) : (
-            <>
+            <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
               {assets.length > 0 ? (
                 <AccountGroup
                   label="Assets"
@@ -153,7 +153,7 @@ export function AccountsWorkbench({
                   onOpen={(account) => setActiveAccountId(account.id)}
                 />
               ) : null}
-            </>
+            </div>
           )}
         </>
       )}

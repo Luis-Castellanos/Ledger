@@ -34,7 +34,7 @@ export function GoalsWorkbench() {
   const unauthorized = goals.error instanceof ApiError && goals.error.status === 401;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-4 py-6 md:px-8 md:py-8">
       <PageHeader
         eyebrow="Plan"
         title="Goals"
@@ -59,7 +59,7 @@ export function GoalsWorkbench() {
           action={<CreateGoalDialog />}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {goals.data.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
