@@ -217,7 +217,7 @@ function WelcomePanel() {
 
 function DashboardFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 md:px-8 md:py-8">
       <PageHeader eyebrow="Overview" title="The ledger" description={`As of ${format(new Date(), "MMMM d, yyyy")}`} />
       {children}
     </div>
