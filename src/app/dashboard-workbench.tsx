@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { format, startOfMonth, subMonths, startOfYear } from "date-fns";
-import { ArrowRight, ClipboardCheck, Landmark, PiggyBank, ReceiptText, Sparkles, Target } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Landmark, PiggyBank, ReceiptText, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { CategoryIcon } from "@/components/category-icon";
 import { LoadSampleDataButton } from "@/components/load-sample-data-button";
@@ -217,7 +217,7 @@ function WelcomePanel() {
 
 function DashboardFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 md:space-y-8 md:px-8 md:py-10 lg:px-10">
       <PageHeader eyebrow="Overview" title="The ledger" description={`As of ${format(new Date(), "MMMM d, yyyy")}`} />
       {children}
     </div>
@@ -250,16 +250,29 @@ function NetWorthHero({
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(120%_80%_at_15%_0%,color-mix(in_oklab,var(--primary)_7%,transparent),transparent_60%)]"
       />
-      <CardHeader className="relative flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <CardHeader className="relative flex flex-wrap items-start justify-between gap-3 md:px-8 md:pt-2">
+        <div className="min-w-0">
           <p className="label-caps">Net worth</p>
-          <div className="font-hero text-foreground">
+          <div className="mt-1 font-hero text-foreground">
             <AnimatedMoney amountMinor={netWorthMinor} className="font-hero" />
           </div>
           {hasSnapshots ? (
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              <Money amountMinor={windowDeltaMinor} colorBySign showPlus className="font-medium" /> over this window
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
+                  windowDeltaMinor >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative",
+                )}
+              >
+                {windowDeltaMinor >= 0 ? (
+                  <TrendingUp className="size-3.5" strokeWidth={2} />
+                ) : (
+                  <TrendingDown className="size-3.5" strokeWidth={2} />
+                )}
+                <Money amountMinor={windowDeltaMinor} showPlus className="font-money" />
+              </span>
+              <span className="text-xs text-muted-foreground">over this window</span>
+            </div>
           ) : null}
         </div>
         <ToggleGroup
@@ -277,7 +290,7 @@ function NetWorthHero({
           ))}
         </ToggleGroup>
       </CardHeader>
-      <CardContent className="relative">
+      <CardContent className="relative md:px-8">
         {chartData.length >= 2 ? (
           <ChartContainer config={netWorthChartConfig} className="h-56 w-full">
             <AreaChart data={chartData} margin={{ left: 4, right: 4, top: 4 }}>
@@ -352,7 +365,7 @@ function KpiCard({ label, amountMinor, tone }: { label: string; amountMinor: num
     <Card>
       <CardContent className="pt-0">
         <p className="label-caps">{label}</p>
-        <p className={cn("mt-1 text-2xl font-semibold", color)}>
+        <p className={cn("mt-1 text-2xl font-semibold md:text-3xl", color)}>
           <Money amountMinor={amountMinor} />
         </p>
       </CardContent>

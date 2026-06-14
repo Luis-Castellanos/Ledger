@@ -181,7 +181,11 @@
   body {
     margin: 0;
     min-height: 100%;
-    background: var(--background);
+    background-color: var(--background);
+    /* faint brand-tinted glow from the top so the ground reads as depth, not flat fill */
+    background-image: radial-gradient(115% 75% at 50% -15%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 55%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--foreground);
     font-family: var(--font-sans);
     font-size: 14px;
@@ -368,9 +372,9 @@
 @utility font-hero {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums lining-nums;
-  font-size: clamp(2.75rem, 5vw, 3.5rem);
+  font-size: clamp(3rem, 6vw, 4.25rem);
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   font-weight: 500;
 }
 
