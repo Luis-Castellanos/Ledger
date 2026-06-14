@@ -68,104 +68,104 @@
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* warm ivory ground, white cards */
-  --background: #faf9f5;
-  --foreground: #252d28;
+  /* cool paper ground, white cards */
+  --background: #f6f6f4;
+  --foreground: #16181d;
   --card: #ffffff;
-  --card-foreground: #252d28;
+  --card-foreground: #16181d;
   --popover: #ffffff;
-  --popover-foreground: #252d28;
+  --popover-foreground: #16181d;
 
-  /* fresh green */
-  --primary: #2e9d62;
+  /* restrained pine, graphite neutrals */
+  --primary: #15604a;
   --primary-foreground: #ffffff;
-  --secondary: #f0efe7;
-  --secondary-foreground: #34403a;
-  --muted: #f2f1ea;
-  --muted-foreground: #6d7a71;
-  --accent: #e9f5ee;
-  --accent-foreground: #1e3a2b;
-  --destructive: #d9544d;
+  --secondary: #ececea;
+  --secondary-foreground: #2b2f38;
+  --muted: #eeefec;
+  --muted-foreground: #6b7079;
+  --accent: #e9efec;
+  --accent-foreground: #15604a;
+  --destructive: #b8483f;
   --destructive-foreground: #ffffff;
 
-  --border: rgba(37, 45, 40, 0.1);
-  --input: rgba(37, 45, 40, 0.16);
-  --ring: #2e9d62;
+  --border: rgba(22, 24, 29, 0.1);
+  --input: rgba(22, 24, 29, 0.16);
+  --ring: #15604a;
 
   /* flow-state semantics */
-  --positive: #2e9d62;
-  --negative: #d9544d;
-  --transfer: #5b7fbf;
-  --warning: #c28e12;
+  --positive: #15604a;
+  --negative: #b8483f;
+  --transfer: #4a5a72;
+  --warning: #b07d1e;
 
-  /* friendly categorical ramp */
-  --chart-1: #2e9d62;
-  --chart-2: #4e8fd9;
-  --chart-3: #e8b23a;
-  --chart-4: #e2654e;
-  --chart-5: #3aa8a0;
-  --chart-6: #8a6fd1;
-  --chart-7: #d86fa4;
-  --chart-8: #7b8a99;
+  /* tonal ramp: pine → graphite, one gold accent */
+  --chart-1: #15604a;
+  --chart-2: #3f6b5f;
+  --chart-3: #6f7d77;
+  --chart-4: #9aa39d;
+  --chart-5: #c2c7c2;
+  --chart-6: #d8a657;
+  --chart-7: #4a5a72;
+  --chart-8: #8a8f88;
 
-  --sidebar: #f4f2eb;
-  --sidebar-foreground: #3c463f;
-  --sidebar-primary: #2e9d62;
+  --sidebar: #f1f1ef;
+  --sidebar-foreground: #2b2f38;
+  --sidebar-primary: #15604a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7f1ea;
-  --sidebar-accent-foreground: #1e3a2b;
-  --sidebar-border: rgba(37, 45, 40, 0.08);
-  --sidebar-ring: #2e9d62;
+  --sidebar-accent: #e9efec;
+  --sidebar-accent-foreground: #15604a;
+  --sidebar-border: rgba(22, 24, 29, 0.07);
+  --sidebar-ring: #15604a;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* green-ink evening mode, brightened */
-  --background: #131917;
-  --foreground: #e9ede9;
-  --card: #1a211e;
-  --card-foreground: #e9ede9;
-  --popover: #1f2724;
-  --popover-foreground: #e9ede9;
+  /* cool charcoal evening mode */
+  --background: #14171a;
+  --foreground: #e7e9ea;
+  --card: #1a1e22;
+  --card-foreground: #e7e9ea;
+  --popover: #1f242a;
+  --popover-foreground: #e7e9ea;
 
-  --primary: #4fbf7e;
-  --primary-foreground: #0c150f;
-  --secondary: #232c28;
-  --secondary-foreground: #d4dad4;
-  --muted: #212a26;
-  --muted-foreground: #93a399;
-  --accent: #28332e;
-  --accent-foreground: #e9ede9;
-  --destructive: #e07a6c;
-  --destructive-foreground: #1a0f0c;
+  --primary: #3fae84;
+  --primary-foreground: #08120d;
+  --secondary: #232830;
+  --secondary-foreground: #d3d7da;
+  --muted: #20252b;
+  --muted-foreground: #8b929b;
+  --accent: #232a2f;
+  --accent-foreground: #e7e9ea;
+  --destructive: #d2776c;
+  --destructive-foreground: #170d0b;
 
-  --border: rgba(233, 237, 233, 0.1);
-  --input: rgba(233, 237, 233, 0.16);
-  --ring: #4fbf7e;
+  --border: rgba(231, 233, 234, 0.1);
+  --input: rgba(231, 233, 234, 0.16);
+  --ring: #3fae84;
 
-  --positive: #69c28a;
-  --negative: #e07a6c;
-  --transfer: #84a3cf;
-  --warning: #ddb554;
+  --positive: #3fae84;
+  --negative: #d2776c;
+  --transfer: #8aa0bd;
+  --warning: #cda757;
 
-  --chart-1: #4fbf7e;
-  --chart-2: #6ea7e8;
-  --chart-3: #e5bc55;
-  --chart-4: #e58168;
-  --chart-5: #57bbb2;
-  --chart-6: #a48ee0;
-  --chart-7: #e08cbb;
-  --chart-8: #93a6b3;
+  --chart-1: #3fae84;
+  --chart-2: #5a9c92;
+  --chart-3: #8a9a93;
+  --chart-4: #aab4ad;
+  --chart-5: #c8cfc9;
+  --chart-6: #d8b25a;
+  --chart-7: #8aa0bd;
+  --chart-8: #9aa39d;
 
-  --sidebar: #161d1a;
-  --sidebar-foreground: #cdd6cf;
-  --sidebar-primary: #4fbf7e;
-  --sidebar-primary-foreground: #0c150f;
-  --sidebar-accent: #243029;
-  --sidebar-accent-foreground: #e9ede9;
-  --sidebar-border: rgba(233, 237, 233, 0.07);
-  --sidebar-ring: #4fbf7e;
+  --sidebar: #16191d;
+  --sidebar-foreground: #cdd2d4;
+  --sidebar-primary: #3fae84;
+  --sidebar-primary-foreground: #08120d;
+  --sidebar-accent: #232a2f;
+  --sidebar-accent-foreground: #e7e9ea;
+  --sidebar-border: rgba(231, 233, 234, 0.07);
+  --sidebar-ring: #3fae84;
 }
 
 @layer base {
@@ -226,15 +226,16 @@
  */
 
 :root {
-  --shadow-card: 0 1px 2px rgba(37, 45, 40, 0.04), 0 2px 6px rgba(37, 45, 40, 0.05);
-  --shadow-elevated: 0 6px 16px rgba(37, 45, 40, 0.08), 0 16px 40px rgba(37, 45, 40, 0.1);
-  --shadow-primary: 0 1px 2px rgba(20, 83, 45, 0.18), 0 2px 8px rgba(46, 157, 98, 0.22);
+  /* flat by default — hairline borders carry definition; shadow only on real overlays */
+  --shadow-card: none;
+  --shadow-elevated: 0 8px 24px rgba(22, 24, 29, 0.1), 0 20px 48px rgba(22, 24, 29, 0.12);
+  --shadow-primary: 0 1px 2px rgba(22, 24, 29, 0.12);
 }
 
 [data-theme="dark"] {
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.28);
-  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4), 0 20px 48px rgba(0, 0, 0, 0.45);
-  --shadow-primary: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(79, 191, 126, 0.25);
+  --shadow-card: none;
+  --shadow-elevated: 0 10px 28px rgba(0, 0, 0, 0.45), 0 24px 56px rgba(0, 0, 0, 0.5);
+  --shadow-primary: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
@@ -361,6 +362,16 @@
 .driver-popover-navigation-btns button.driver-popover-prev-btn {
   background: var(--secondary);
   color: var(--secondary-foreground);
+}
+
+/* the one big number — hero monetary figure, mono and tightly set */
+@utility font-hero {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: clamp(2.75rem, 5vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 500;
 }
 
 /* letterspaced small-caps section labels */

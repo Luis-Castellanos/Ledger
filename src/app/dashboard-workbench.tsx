@@ -253,8 +253,8 @@ function NetWorthHero({
       <CardHeader className="relative flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="label-caps">Net worth</p>
-          <div className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-            <AnimatedMoney amountMinor={netWorthMinor} className="font-display tracking-tight" />
+          <div className="font-hero text-foreground">
+            <AnimatedMoney amountMinor={netWorthMinor} className="font-hero" />
           </div>
           {hasSnapshots ? (
             <p className="mt-1.5 text-sm text-muted-foreground">
