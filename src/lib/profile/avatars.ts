@@ -24,5 +24,3 @@ export type ProfileData = {
   navHidden: string[];
   navLayout: NavSection[];
 };
-
-export const PROFILE_EVENT = "vault:profile";
